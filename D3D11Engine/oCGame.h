@@ -48,10 +48,12 @@ public:
 
 		Engine::GAPI->OnWorldLoaded();
 
+		// TODO: Player sometimes gets invisible, apparently.
 		// Re-Add the player npc to the world because it sometimes would be invisible after a world-change
-		Engine::GAPI->OnRemovedVob((zCVob *)oCGame::GetPlayer(), ((zCVob *)oCGame::GetPlayer())->GetHomeWorld());	
-		Engine::GAPI->OnAddVob((zCVob *)oCGame::GetPlayer(), ((zCVob *)oCGame::GetPlayer())->GetHomeWorld());
-		
+		//auto const&& player = (zCVob *)oCGame::GetPlayer();
+		//auto const&& playerHomeworld = player->GetHomeWorld();
+		//Engine::GAPI->OnRemovedVob(player, playerHomeworld);
+		//Engine::GAPI->OnAddVob(player, playerHomeworld);
 	}
 
 	void TestKey(int key)

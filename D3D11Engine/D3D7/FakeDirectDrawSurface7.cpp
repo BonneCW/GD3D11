@@ -106,17 +106,12 @@ HRESULT FakeDirectDrawSurface7::EnumOverlayZOrders(DWORD dwFlags, LPVOID lpConte
 HRESULT FakeDirectDrawSurface7::Flip(LPDIRECTDRAWSURFACE7 lpDDSurfaceTargetOverride, DWORD dwFlags)
 {
 	DebugWrite("FakeDirectDrawSurface7(%p)::Flip() #####");//, PRINT_DEV);
-
-	//transferFrame(this);
-
-	//return S_OK; //return originalSurface->Flip(lpDDSurfaceTargetOverride, dwFlags);
 	return S_OK; // Dont actually flip this
 }
 
 HRESULT FakeDirectDrawSurface7::GetAttachedSurface(LPDDSCAPS2 lpDDSCaps2, LPDIRECTDRAWSURFACE7* lplpDDAttachedSurface)
 {
 	DebugWrite("FakeDirectDrawSurface7(%p)::GetAttachedSurface()");//, PRINT_DEV);
-	//return originalSurface->GetAttachedSurface(lpDDSCaps2, lplpDDAttachedSurface);
 
 	if (AttachedSurfaces.empty())
 		return E_FAIL;
@@ -231,35 +226,7 @@ HRESULT FakeDirectDrawSurface7::Unlock(LPRECT lpRect)
 
 	int bpp = redBits + greenBits + blueBits + alphaBits;
 
-	if (bpp == 16)
-	{
-		// Convert
-		/*unsigned char* dst = new unsigned char[Resource->GetEngineTexture()->GetSizeInBytes(MipLevel)];
-		for(unsigned int i=0;i<Resource->GetEngineTexture()->GetSizeInBytes(MipLevel) / 4;i++)
-		{
-			unsigned char temp0 = Data[i * 2 + 0];
-			unsigned char temp1 = Data[i * 2 + 1];
-			unsigned pixel_data = temp1 << 8 | temp0;
-
-			unsigned char blueComponent  = (pixel_data & 0x1F);
-			unsigned char greenComponent = (pixel_data >> 5) & 0x3F;
-			unsigned char redComponent   = (pixel_data >> 11) & 0x1F;
-
-			// Extract red, green and blue components from the 16 bits
-			dst[4*i+0] = (unsigned char)((redComponent  / 32.0) * 255.0f);
-			dst[4*i+1] = (unsigned char)((greenComponent  / 64.0) * 255.0f);
-			dst[4*i+2] = (unsigned char)((blueComponent  / 32.0) * 255.0f);
-			dst[4*i+3] = 255;
-		}
-
-		int px = (int)std::max(1.0f, floor(OriginalDesc.dwWidth / pow(2.0f, MipLevel)));
-		int py = (int)std::max(1.0f, floor(OriginalDesc.dwHeight / pow(2.0f, MipLevel)));
-		lodepng::encode(Resource->GetTextureName() + "_" + std::to_string(MipLevel) + ".png", dst, px, py);
-
-		Resource->GetEngineTexture()->UpdateDataDeferred(dst, MipLevel);
-
-		delete[] dst;*/
-	} else
+	if (bpp != 16)
 	{
 		Resource->GetEngineTexture()->UpdateDataDeferred(Data, MipLevel);
 		Resource->IncreaseQueuedMipMapCount();

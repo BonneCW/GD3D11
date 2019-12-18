@@ -8,6 +8,8 @@
 #include "BaseLineRenderer.h"
 #include "WorldConverter.h"
 #include "ThreadPool.h"
+using namespace DirectX;
+using namespace DirectX::SimpleMath;
 
 const float LIGHT_COLORCHANGE_POS_MOD = 0.1f;
 
@@ -86,18 +88,6 @@ void D3D11PointLight::InitResources()
 	{
 		WorldCacheInvalid = true;
 	}
-	/*DebugTextureCubemap = new RenderToTextureBuffer(engine->GetDevice(), 
-		POINTLIGHT_SHADOWMAP_SIZE,
-		POINTLIGHT_SHADOWMAP_SIZE,
-		DXGI_FORMAT_R8G8B8A8_UNORM,
-		nullptr,
-		DXGI_FORMAT_UNKNOWN,
-		DXGI_FORMAT_UNKNOWN,
-		1,
-		6);*/
-
-	// Init the cubemap
-	//RenderCubemap(true);
 
 	InitDone = true;
 
@@ -134,20 +124,12 @@ void D3D11PointLight::RenderCubemap(bool forceUpdate)
 	D3D11GraphicsEngine * engine = (D3D11GraphicsEngine *) engineBase; // TODO: Remove and use newer system!
 
 
-	D3DXVECTOR3 vEyePt = LightInfo->Vob->GetPositionWorld();
+	auto vEyePt = LightInfo->Vob->GetPositionWorld();
 	//vEyePt += D3DXVECTOR3(0, 1, 0) * 20.0f; // Move lightsource out of the ground or other objects (torches!)
 	// TODO: Move the actual lightsource up too!
 
-	/*if (WantsUpdate())
-	{
-		// Move lights with colorchanges around a bit to make it look more light torches
-		vEyePt.y += (float4(LastUpdateColor).x - 0.5f) * LIGHT_COLORCHANGE_POS_MOD;
-		vEyePt.x += (float4(LastUpdateColor).y - 0.5f) * LIGHT_COLORCHANGE_POS_MOD;
-		vEyePt.z += (float4(LastUpdateColor).y - 0.5f) * LIGHT_COLORCHANGE_POS_MOD;
-	}*/
-
-    D3DXVECTOR3 vLookDir;
-    D3DXVECTOR3 vUpDir;
+    Vector3 vLookDir;
+	Vector3 vUpDir;
 
 	if (!NeedsUpdate() && !WantsUpdate())
 	{
@@ -171,44 +153,49 @@ void D3D11PointLight::RenderCubemap(bool forceUpdate)
 	// Update indoor/outdoor-state
 	LightInfo->IsIndoorVob = LightInfo->Vob->IsIndoorVob();
 
-	D3DXMATRIX proj;
+	DirectX::SimpleMath::Matrix proj;
 
 	const bool dbg = false;
 
 	// Generate cubemap view-matrices
-    vLookDir = D3DXVECTOR3(1.0f, 0.0f, 0.0f) + vEyePt;
-    vUpDir = D3DXVECTOR3(0.0f, 1.0f, 0.0f);
+    vLookDir = Vector3(1.0f, 0.0f, 0.0f) + vEyePt;
+    vUpDir = Vector3(0.0f, 1.0f, 0.0f);
 	if (dbg)Engine::GraphicsEngine->GetLineRenderer()->AddLine(LineVertex(vEyePt, float4(1.0f, 0, 0, 1)), LineVertex((vLookDir - vEyePt) * 50.0f + vEyePt, float4(1.0f, 1.0f, 0, 1)));
-    D3DXMatrixLookAtLH(&CubeMapViewMatrices[0], &vEyePt, &vLookDir, &vUpDir);
-    vLookDir = D3DXVECTOR3(-1.0f, 0.0f, 0.0f) + vEyePt;
-    vUpDir = D3DXVECTOR3(0.0f, 1.0f, 0.0f);
+	CubeMapViewMatrices[0] = XMMatrixLookAtLH(vEyePt, vLookDir, vUpDir);
+    
+	vLookDir = Vector3(-1.0f, 0.0f, 0.0f) + vEyePt;
+    vUpDir = Vector3(0.0f, 1.0f, 0.0f);
 	if (dbg)Engine::GraphicsEngine->GetLineRenderer()->AddLine(LineVertex(vEyePt, float4(1.0f, 0, 0, 1)), LineVertex((vLookDir - vEyePt) * 50.0f + vEyePt, float4(1.0f, 1.0f, 0, 1)));
-    D3DXMatrixLookAtLH(&CubeMapViewMatrices[1], &vEyePt, &vLookDir, &vUpDir);
-    vLookDir = D3DXVECTOR3(0.0f, 0.0f + 1.0f, 0.0f) + vEyePt;
-    vUpDir = D3DXVECTOR3(0.0f, 0.0f, -1.0f);
-	if (dbg)Engine::GraphicsEngine->GetLineRenderer()->AddLine(LineVertex(vEyePt, float4(1.0f, 0, 0, 1)), LineVertex((vLookDir - vEyePt) * 50.0f + vEyePt, float4(1.0f, 1.0f, 0, 1)));
-    D3DXMatrixLookAtLH(&CubeMapViewMatrices[2], &vEyePt, &vLookDir, &vUpDir);
-    vLookDir = D3DXVECTOR3(0.0f, 0.0f - 1.0f, 0.0f) + vEyePt;
-    vUpDir = D3DXVECTOR3(0.0f, 0.0f, 1.0f);
-	if (dbg)Engine::GraphicsEngine->GetLineRenderer()->AddLine(LineVertex(vEyePt, float4(1.0f, 0, 0, 1)), LineVertex((vLookDir - vEyePt) * 50.0f + vEyePt, float4(1.0f, 1.0f, 0, 1)));
-    D3DXMatrixLookAtLH(&CubeMapViewMatrices[3], &vEyePt, &vLookDir, &vUpDir);
-    vLookDir = D3DXVECTOR3(0.0f, 0.0f, 1.0f) + vEyePt;
-    vUpDir = D3DXVECTOR3(0.0f, 1.0f, 0.0f);
-	if (dbg)Engine::GraphicsEngine->GetLineRenderer()->AddLine(LineVertex(vEyePt, float4(1.0f, 0, 0, 1)), LineVertex((vLookDir - vEyePt) * 50.0f + vEyePt, float4(1.0f, 1.0f, 0, 1)));
-    D3DXMatrixLookAtLH(&CubeMapViewMatrices[4], &vEyePt, &vLookDir, &vUpDir);
-    vLookDir = D3DXVECTOR3(0.0f, 0.0f, -1.0f) + vEyePt;
-    vUpDir = D3DXVECTOR3(0.0f, 1.0f, 0.0f);
-	if (dbg)Engine::GraphicsEngine->GetLineRenderer()->AddLine(LineVertex(vEyePt, float4(1.0f, 0, 0, 1)), LineVertex((vLookDir - vEyePt) * 50.0f + vEyePt, float4(1.0f, 1.0f, 0, 1)));
-    D3DXMatrixLookAtLH(&CubeMapViewMatrices[5], &vEyePt, &vLookDir, &vUpDir);
+	CubeMapViewMatrices[1] = XMMatrixLookAtLH(vEyePt, vLookDir, vUpDir);
 
-	for(int i=0;i<6;i++)
-		D3DXMatrixTranspose(&CubeMapViewMatrices[i], &CubeMapViewMatrices[i]);
+	vLookDir = Vector3(0.0f, 0.0f + 1.0f, 0.0f) + vEyePt;
+    vUpDir = Vector3(0.0f, 0.0f, -1.0f);
+	if (dbg)Engine::GraphicsEngine->GetLineRenderer()->AddLine(LineVertex(vEyePt, float4(1.0f, 0, 0, 1)), LineVertex((vLookDir - vEyePt) * 50.0f + vEyePt, float4(1.0f, 1.0f, 0, 1)));
+	CubeMapViewMatrices[2] = XMMatrixLookAtLH(vEyePt, vLookDir, vUpDir);
+
+	vLookDir = Vector3(0.0f, 0.0f - 1.0f, 0.0f) + vEyePt;
+    vUpDir = Vector3(0.0f, 0.0f, 1.0f);
+	if (dbg)Engine::GraphicsEngine->GetLineRenderer()->AddLine(LineVertex(vEyePt, float4(1.0f, 0, 0, 1)), LineVertex((vLookDir - vEyePt) * 50.0f + vEyePt, float4(1.0f, 1.0f, 0, 1)));
+	CubeMapViewMatrices[3] = XMMatrixLookAtLH(vEyePt, vLookDir, vUpDir);
+
+	vLookDir = Vector3(0.0f, 0.0f, 1.0f) + vEyePt;
+    vUpDir = Vector3(0.0f, 1.0f, 0.0f);
+	if (dbg)Engine::GraphicsEngine->GetLineRenderer()->AddLine(LineVertex(vEyePt, float4(1.0f, 0, 0, 1)), LineVertex((vLookDir - vEyePt) * 50.0f + vEyePt, float4(1.0f, 1.0f, 0, 1)));
+	CubeMapViewMatrices[4] = XMMatrixLookAtLH(vEyePt, vLookDir, vUpDir);
+
+	vLookDir = Vector3(0.0f, 0.0f, -1.0f) + vEyePt;
+    vUpDir = Vector3(0.0f, 1.0f, 0.0f);
+	if (dbg)Engine::GraphicsEngine->GetLineRenderer()->AddLine(LineVertex(vEyePt, float4(1.0f, 0, 0, 1)), LineVertex((vLookDir - vEyePt) * 50.0f + vEyePt, float4(1.0f, 1.0f, 0, 1)));
+	CubeMapViewMatrices[5] = XMMatrixLookAtLH(vEyePt, vLookDir, vUpDir);
+
+	for (int i=0; i < 6; i++)
+		CubeMapViewMatrices[i] = CubeMapViewMatrices[i].Transpose();
 
 	// Create the projection matrix
 	float zNear = 15.0f;
 	float zFar = LightInfo->Vob->GetLightRange() * 2.0f;
-    D3DXMatrixPerspectiveFovLH(&proj, ((float)D3DX_PI * 0.5f), 1.0f, zNear, zFar);
-	D3DXMatrixTranspose(&proj, &proj);
+	proj = XMMatrixPerspectiveFovLH((XM_PI * 0.5f), 1.0f, zNear, zFar);
+	proj = proj.Transpose();
 
 	// Setup near/far-planes. We need linear viewspace depth for the cubic shadowmaps.
 	Engine::GAPI->GetRendererState()->GraphicsState.FF_zNear = zNear;
@@ -229,8 +216,6 @@ void D3D11PointLight::RenderCubemap(bool forceUpdate)
 	ViewMatricesCB->UpdateBuffer(&gcb);
 	ViewMatricesCB->BindToGeometryShader(2);
 
-	//for(int i=0;i<6;i++)
-	//	RenderCubemapFace(CubeMapViewMatrices[i], proj, i);
 	RenderFullCubemap();
 
 	if (dbg)
@@ -255,7 +240,7 @@ void D3D11PointLight::RenderFullCubemap()
 
 	// Disable shadows for NPCs
 	// TODO: Only for the player himself, because his shadows look ugly when using a torch
-	bool oldDrawSkel = Engine::GAPI->GetRendererState()->RendererSettings.DrawSkeletalMeshes;
+	//bool oldDrawSkel = Engine::GAPI->GetRendererState()->RendererSettings.DrawSkeletalMeshes;
 	//Engine::GAPI->GetRendererState()->RendererSettings.DrawSkeletalMeshes = false;
 
 	float range = LightInfo->Vob->GetLightRange() * 1.1f;
@@ -276,7 +261,7 @@ void D3D11PointLight::RenderFullCubemap()
 }
 
 /** Renders the scene with the given view-proj-matrices */
-void D3D11PointLight::RenderCubemapFace(const D3DXMATRIX& view, const D3DXMATRIX& proj, UINT faceIdx)
+void D3D11PointLight::RenderCubemapFace(const DirectX::SimpleMath::Matrix& view, const DirectX::SimpleMath::Matrix& proj, UINT faceIdx)
 {
 	D3D11GraphicsEngineBase* engineBase = (D3D11GraphicsEngineBase *)Engine::GraphicsEngine;
 	D3D11GraphicsEngine * engine = (D3D11GraphicsEngine *) engineBase; // TODO: Remove and use newer system!
@@ -293,7 +278,7 @@ void D3D11PointLight::RenderCubemapFace(const D3DXMATRIX& view, const D3DXMATRIX
 
 	// Disable shadows for NPCs
 	// TODO: Only for the player himself, because his shadows look ugly when using a torch
-	bool oldDrawSkel = Engine::GAPI->GetRendererState()->RendererSettings.DrawSkeletalMeshes;
+	//bool oldDrawSkel = Engine::GAPI->GetRendererState()->RendererSettings.DrawSkeletalMeshes;
 	//Engine::GAPI->GetRendererState()->RendererSettings.DrawSkeletalMeshes = false;
 
 	float range = LightInfo->Vob->GetLightRange() * 1.1f;

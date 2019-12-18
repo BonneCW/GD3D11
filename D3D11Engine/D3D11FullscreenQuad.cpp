@@ -17,29 +17,29 @@ HRESULT D3D11FullscreenQuad::CreateQuad(ID3D11Device* device)
 		SimpleVertexStruct* vx = new SimpleVertexStruct[6];
 		UINT CurVertex=0;
 
-		/*FarCornersA4[0]		= D3DXVECTOR3(-farX,  farY, farZ);
-		FarCornersA4[1]		= D3DXVECTOR3(farX,  farY, farZ);
-		FarCornersA4[2]		= D3DXVECTOR3(farX, -farY, farZ);
-		FarCornersA4[3]		= D3DXVECTOR3(-farX, -farY, farZ);*/
+		/*FarCornersA4[0]		= DirectX::SimpleMath::Vector3(-farX,  farY, farZ);
+		FarCornersA4[1]		= DirectX::SimpleMath::Vector3(farX,  farY, farZ);
+		FarCornersA4[2]		= DirectX::SimpleMath::Vector3(farX, -farY, farZ);
+		FarCornersA4[3]		= DirectX::SimpleMath::Vector3(-farX, -farY, farZ);*/
 
-		vx[0].Position=D3DXVECTOR3(-1,-1, 0);
-		vx[0].TexCoord=D3DXVECTOR2(0, 1);
+		vx[0].Position=DirectX::SimpleMath::Vector3(-1,-1, 0);
+		vx[0].TexCoord=DirectX::SimpleMath::Vector2(0, 1);
 	
-		vx[1].Position=D3DXVECTOR3(-1, 1, 0);
-		vx[1].TexCoord=D3DXVECTOR2(0, 0);
+		vx[1].Position=DirectX::SimpleMath::Vector3(-1, 1, 0);
+		vx[1].TexCoord=DirectX::SimpleMath::Vector2(0, 0);
 
-		vx[2].Position=D3DXVECTOR3(1,-1, 0);
-		vx[2].TexCoord=D3DXVECTOR2(1, 1);
+		vx[2].Position=DirectX::SimpleMath::Vector3(1,-1, 0);
+		vx[2].TexCoord=DirectX::SimpleMath::Vector2(1, 1);
 	
 
-		vx[3].Position=D3DXVECTOR3(1, 1, 0);
-		vx[3].TexCoord=D3DXVECTOR2(1, 0);
+		vx[3].Position=DirectX::SimpleMath::Vector3(1, 1, 0);
+		vx[3].TexCoord=DirectX::SimpleMath::Vector2(1, 0);
 
-		vx[4].Position=D3DXVECTOR3(1,-1, 0);
-		vx[4].TexCoord=D3DXVECTOR2(1, 1);
+		vx[4].Position=DirectX::SimpleMath::Vector3(1,-1, 0);
+		vx[4].TexCoord=DirectX::SimpleMath::Vector2(1, 1);
 		
-		vx[5].Position=D3DXVECTOR3(-1, 1, 0);
-		vx[5].TexCoord=D3DXVECTOR2(0, 0);
+		vx[5].Position=DirectX::SimpleMath::Vector3(-1, 1, 0);
+		vx[5].TexCoord=DirectX::SimpleMath::Vector2(0, 0);
 
 
 		//Create the vertex buffer

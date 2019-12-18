@@ -7,6 +7,9 @@
 #include "WidgetContainer.h"
 #include "zCVob.h"
 
+using namespace DirectX;
+using namespace DirectX::SimpleMath;
+
 Widget_TransRot::Widget_TransRot(WidgetContainer * container) : BaseWidget(container) {
 	ActiveWidget = WTR_None;
 	ActiveSelection = WTR_None;
@@ -14,31 +17,31 @@ Widget_TransRot::Widget_TransRot(WidgetContainer * container) : BaseWidget(conta
 	LineVertex vx[2];
 	float TransLength = BASEWIDGET_TRANS_LENGTH;
 	// X-Axis
-	vx[0].Position = D3DXVECTOR4(TransLength, 0, 0, 0);
-	vx[0].Color = D3DXVECTOR4(1, 0, 0, 1);
+	vx[0].Position = Vector4(TransLength, 0, 0, 0);
+	vx[0].Color = Vector4(1, 0, 0, 1);
 
-	vx[1].Position = D3DXVECTOR3(0, 0, 0);
-	vx[1].Color = D3DXVECTOR4(1, 0, 0, 1);
+	vx[1].Position = Vector3::Zero;
+	vx[1].Color = Vector4(1, 0, 0, 1);
 
 	TransLines[0] = new EditorLinePrimitive;
 	TransLines[0]->CreatePrimitive(vx, 2);
 
 	// Y-Axis
-	vx[0].Position = D3DXVECTOR4(0,TransLength, 0, 0);
-	vx[0].Color = D3DXVECTOR4(0, 1, 0, 1);
+	vx[0].Position = Vector4(0,TransLength, 0, 0);
+	vx[0].Color = Vector4(0, 1, 0, 1);
 
-	vx[1].Position = D3DXVECTOR3(0, 0, 0);
-	vx[1].Color = D3DXVECTOR4(0, 1, 0, 1);
+	vx[1].Position = Vector3::Zero;
+	vx[1].Color = Vector4(0, 1, 0, 1);
 
 	TransLines[1] = new EditorLinePrimitive;
 	TransLines[1]->CreatePrimitive(vx, 2);
 
 	// Z-Axis
-	vx[0].Position = D3DXVECTOR4(0, 0,TransLength, 0);
-	vx[0].Color = D3DXVECTOR4(0, 0, 1, 1);
+	vx[0].Position = Vector4(0, 0,TransLength, 0);
+	vx[0].Color = Vector4(0, 0, 1, 1);
 
-	vx[1].Position = D3DXVECTOR3(0, 0, 0);
-	vx[1].Color = D3DXVECTOR4(0, 0, 1, 1);
+	vx[1].Position = Vector3::Zero;
+	vx[1].Color = Vector4(0, 0, 1, 1);
 
 	TransLines[2] = new EditorLinePrimitive;
 	TransLines[2]->CreatePrimitive(vx, 2);
@@ -50,22 +53,22 @@ Widget_TransRot::Widget_TransRot(WidgetContainer * container) : BaseWidget(conta
 	Circles[1] = new EditorLinePrimitive;
 	Circles[2] = new EditorLinePrimitive;
 
-	Circles[0]->CreateCirclePrimitive(1,Detail, &D3DXVECTOR4(0, 1, 0, 1), 0);
-	Circles[1]->CreateCirclePrimitive(1,Detail, &D3DXVECTOR4(1, 0, 0, 1), 1);
-	Circles[2]->CreateCirclePrimitive(1,Detail, &D3DXVECTOR4(0, 0, 1, 1), 2);
+	Circles[0]->CreateCirclePrimitive(1,Detail, &Vector4(0, 1, 0, 1), 0);
+	Circles[1]->CreateCirclePrimitive(1,Detail, &Vector4(1, 0, 0, 1), 1);
+	Circles[2]->CreateCirclePrimitive(1,Detail, &Vector4(0, 0, 1, 1), 2);
 
-	//LE_R(TransRotWidget.Rot_Bgr.CreateFilledCirclePrimitive(1,Detail, &D3DXVECTOR4(0, 0, 0, 0), 0));
+	//LE_R(TransRotWidget.Rot_Bgr.CreateFilledCirclePrimitive(1,Detail, &Vector4(0, 0, 0, 0), 0));
 	//TransRotWidget.Rot_Bgr.SetShader(ColorShader);
 
-	//LE_R(TransRotWidget.Rot_Bgr_Line.CreateCirclePrimitive(1.025f,Detail, &D3DXVECTOR4(0.5, 0.5, 0.5, 1), 0));
+	//LE_R(TransRotWidget.Rot_Bgr_Line.CreateCirclePrimitive(1.025f,Detail, &Vector4(0.5, 0.5, 0.5, 1), 0));
 	//TransRotWidget.Rot_Bgr_Line.SetShader(ColorShader);
 
 	Arrows[0] = new EditorLinePrimitive;
 	Arrows[1] = new EditorLinePrimitive;
 	Arrows[2] = new EditorLinePrimitive;
-	CreateArrowCone(25, 0, &D3DXVECTOR4(1, 0, 0, 1), Arrows[0]);
-	CreateArrowCone(25, 1, &D3DXVECTOR4(0, 1, 0, 1), Arrows[1]);
-	CreateArrowCone(25, 2, &D3DXVECTOR4(0, 0, 1, 1), Arrows[2]);
+	CreateArrowCone(25, 0, &Vector4(1, 0, 0, 1), Arrows[0]);
+	CreateArrowCone(25, 1, &Vector4(0, 1, 0, 1), Arrows[1]);
+	CreateArrowCone(25, 2, &Vector4(0, 0, 1, 1), Arrows[2]);
 
 	ActiveSelection = WTR_None;
 }
@@ -120,7 +123,7 @@ void Widget_TransRot::RenderWidget() {
 	}
 
 	if (ActiveWidget != WTR_None) {
-		D3DXVECTOR2 delta = GetMouseDelta();
+		auto delta = GetMouseDelta();
 		switch (ActiveWidget) {
 		case WTR_TransX:
 			Position.x += delta.x;
@@ -141,11 +144,11 @@ void Widget_TransRot::RenderWidget() {
 	//return;
 	for (int i = 0; i < 3; i++) {
 		Arrows[i]->RenderPrimitive();
-		Arrows[i]->SetScale(D3DXVECTOR3(100, 100, 100));
+		Arrows[i]->SetScale(Vector3(100, 100, 100));
 
 		//Circles[i]->RenderPrimitive();
 		TransLines[i]->RenderPrimitive();
-		TransLines[i]->SetScale(D3DXVECTOR3(100, 100, 100));
+		TransLines[i]->SetScale(Vector3(100, 100, 100));
 	}
 }
 
@@ -173,8 +176,8 @@ void Widget_TransRot::OnMButtonClick(int button) {
 }
 
 void Widget_TransRot::DoHoverTest(HWND hw) {
-	D3DXVECTOR3 Pos;
-	D3DXVECTOR3 Dir;
+	Vector3 Pos;
+	Vector3 Dir;
 	Dir = Engine::GAPI->UnprojectCursor();
 	Pos = Engine::GAPI->GetCameraPosition();
 
@@ -229,26 +232,4 @@ void Widget_TransRot::DoHoverTest(HWND hw) {
 		ActiveSelection = WTR_TransZ;
 		//StartValue = (*Targets.begin())->GetLocation()->z;
 	}
-
-	// Rotation
-	/*if (RotXDist < Dist)
-	{
-		Prim = &TransRotWidget.RotX;
-		Dist = RotXDist;
-		//StartValue = D3DXToDegree((*Targets.begin())->GetRotation()->x);
-	}
-
-	if (RotYDist < Dist)
-	{
-		Prim = &TransRotWidget.RotY;
-		Dist = RotYDist;
-		//StartValue = D3DXToDegree((*Targets.begin())->GetRotation()->y);
-	}
-
-	if (RotZDist < Dist)
-	{
-		Prim = &TransRotWidget.RotZ;
-		Dist = RotZDist;
-		//StartValue = D3DXToDegree((*Targets.begin())->GetRotation()->z);
-	}*/
 }

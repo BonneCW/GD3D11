@@ -42,7 +42,7 @@ public:
 	WaterPatchInfo& AddWaterPatchAt(int x, int y);
 
 	/** Returns a vector of the patch locations */
-	void GetPatchLocations(std::vector<D3DXVECTOR3> & patchLocations);
+	void GetPatchLocations(std::vector<DirectX::SimpleMath::Vector3> & patchLocations);
 
 	/** Clears all patches */
 	void ClearPatches();

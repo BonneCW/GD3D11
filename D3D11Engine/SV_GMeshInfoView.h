@@ -57,11 +57,11 @@ protected:
 	float ObjectYaw;
 	float ObjectPitch;
 	float ObjectDistance;
-	D3DXVECTOR3 ObjectPosition;
+	DirectX::SimpleMath::Vector3 ObjectPosition;
 	float FOV;
-	D3DXMATRIX ObjectWorldMatrix;
-	D3DXMATRIX ObjectViewMatrix;
-	D3DXMATRIX ObjectProjMatrix;
+	DirectX::SimpleMath::Matrix ObjectWorldMatrix;
+	DirectX::SimpleMath::Matrix ObjectViewMatrix;
+	DirectX::SimpleMath::Matrix ObjectProjMatrix;
 
 	/** Props */
 	bool IsDraggingView;

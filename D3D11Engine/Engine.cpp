@@ -52,21 +52,13 @@ namespace Engine {
 
 	/** Loads the needed dll files from subdir */
 	void LoadDLLFiles() {
-		//volatile int * i = new int;
-		//*i = 0;
-
-		// Load dll files from subdir
-		/*for(int i=0;i<NUM_DLL_FILES;i++)
-		{
-			LoadLibrary((ENGINE_BASE_DIR + DLL_FILES[i]).c_str());
-		}*/
 	}
 
 	/** Called when the game is about to close */
 	void OnShutDown() {
 		LogInfo() << "Shutting down...";
 
-		exit(0); // FIXME: remove this hack in the future, just a temporary workaround to fix crash on shutdown with the need to kill process via TaskManager
+		exit(0); // TODO: remove this hack in the future, just a temporary workaround to fix crash on shutdown with the need to kill process via TaskManager
 
 		SAFE_DELETE(Engine::RenderingThreadPool);
 		SAFE_DELETE(Engine::AntTweakBar);

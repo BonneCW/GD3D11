@@ -130,7 +130,7 @@ public:
 	virtual XRESULT DrawVertexBufferIndexedUINT(D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, unsigned int indexOffset){return XR_SUCCESS;};
 
 	/** Draws a skeletal mesh */
-	virtual XRESULT DrawSkeletalMesh(D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, const std::vector<D3DXMATRIX> & transforms, float fatness = 1.0f, SkeletalMeshVisualInfo* msh = nullptr){return XR_SUCCESS;};
+	virtual XRESULT DrawSkeletalMesh(D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, const std::vector<DirectX::SimpleMath::Matrix> & transforms, float fatness = 1.0f){return XR_SUCCESS;};
 
 	/** Draws a vertexarray, non-indexed */
 	virtual XRESULT DrawIndexedVertexArray(ExVertexStruct* vertices, unsigned int numVertices, D3D11VertexBuffer* ib, unsigned int numIndices, unsigned int stride = sizeof(ExVertexStruct)){return XR_SUCCESS;};
@@ -158,6 +158,9 @@ public:
 
 	/** Draws the static VOBs */
 	virtual XRESULT DrawVOBs(bool noTextures=false) { return XR_SUCCESS; }
+
+	/** Draws PolyStrips (weapon and particle trails) */
+	virtual XRESULT DrawPolyStrips(bool noTextures = false) { return XR_SUCCESS; };
 
 	/** Draws the sky using the GSky-Object */
 	virtual XRESULT DrawSky() { return XR_SUCCESS; }

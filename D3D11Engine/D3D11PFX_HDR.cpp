@@ -22,9 +22,9 @@ D3D11PFX_HDR::D3D11PFX_HDR(D3D11PfxRenderer* rnd) : D3D11PFX_Effect(rnd)
 	LumBuffer2 = new RenderToTextureBuffer(engine->GetDevice(), LUM_SIZE, LUM_SIZE, DXGI_FORMAT_R16_FLOAT, nullptr, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, (int)(log(LUM_SIZE) / log(2)));
 	LumBuffer3 = new RenderToTextureBuffer(engine->GetDevice(), LUM_SIZE, LUM_SIZE, DXGI_FORMAT_R16_FLOAT, nullptr, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, (int)(log(LUM_SIZE) / log(2)));
 
-	engine->GetContext()->ClearRenderTargetView(LumBuffer1->GetRenderTargetView(), (float *)&D3DXVECTOR4(0, 0, 0, 0));
-	engine->GetContext()->ClearRenderTargetView(LumBuffer2->GetRenderTargetView(), (float *)&D3DXVECTOR4(0, 0, 0, 0));
-	engine->GetContext()->ClearRenderTargetView(LumBuffer3->GetRenderTargetView(), (float *)&D3DXVECTOR4(0, 0, 0, 0));
+	engine->GetContext()->ClearRenderTargetView(LumBuffer1->GetRenderTargetView(), (float *)&DirectX::SimpleMath::Vector4::Zero);
+	engine->GetContext()->ClearRenderTargetView(LumBuffer2->GetRenderTargetView(), (float *)&DirectX::SimpleMath::Vector4::Zero);
+	engine->GetContext()->ClearRenderTargetView(LumBuffer3->GetRenderTargetView(), (float *)&DirectX::SimpleMath::Vector4::Zero);
 	ActiveLumBuffer = 0;
 }
 

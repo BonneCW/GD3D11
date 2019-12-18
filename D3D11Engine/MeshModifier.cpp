@@ -1,50 +1,8 @@
 #include "pch.h"
 #include "MeshModifier.h"
-/*#include "include\OpenMesh\Tools\Subdivider\Uniform\CatmullClarkT.hh"
-#include "include\OpenMesh\Tools\Subdivider\Uniform\LoopT.hh"
-#include "include\OpenMesh\Tools\Decimater\DecimaterT.hh"
-#include "include\OpenMesh\Tools\Decimater\ModQuadricT.hh"
-#include "include\OpenMesh\Tools\Decimater\ModRoundnessT.hh"
 
-#include "include\OpenMesh\Core\Mesh\TriMeshT.hh"
-
-#include "include\OpenMesh\Core\Mesh\PolyMesh_ArrayKernelT.hh"
-#include "include\OpenMesh\Core\Mesh\PolyConnectivity.hh"
-
-#pragma comment(lib, "OpenMeshCore.lib")
-#pragma comment(lib, "OpenMeshTools.lib")*/
-
-
-/**
-struct ExTraits : public OpenMesh::DefaultTraits
-{
-	typedef OpenMesh::Vec3f Point;
-	typedef OpenMesh::Vec3f Normal;
-	typedef OpenMesh::Vec2f TexCoord;
-	typedef OpenMesh::Vec1ui Color;
-};
-
-struct ExVertexStructOM : public OpenMesh::DefaultTraits
-{
-	VertexAttributes(OpenMesh::Attributes::Normal | OpenMesh::Attributes::Color | OpenMesh::Attributes::TexCoord2D);
-	HalfedgeAttributes(OpenMesh::Attributes::PrevHalfedge);
-
-	ExTraits::Point Position;
-	ExTraits::Normal Normal;
-	ExTraits::TexCoord TexCoord;
-	ExTraits::Color Color;
-};
-
-typedef OpenMesh::PolyMesh_ArrayKernelT<ExTraits> MyMesh;
-
-// Decimater type
-typedef OpenMesh::Decimater::DecimaterT<MyMesh> Decimater;
-
-// Decimation Module Handle type
-typedef OpenMesh::Decimater::ModQuadricT<MyMesh>::Handle HModQuadric;
-typedef OpenMesh::Decimater::ModRoundnessT<MyMesh>::Handle HModRoundnessT;
-
-*/
+using namespace DirectX;
+using namespace DirectX::SimpleMath;
 
 
 MeshModifier::MeshModifier()
@@ -56,178 +14,28 @@ MeshModifier::~MeshModifier()
 {
 }
 
-/** Puts vertext data into a MyMesh *//*
-static void PutVertexData(MyMesh& mesh, const std::vector<ExVertexStruct> & inVertices, const std::vector<unsigned short> & inIndices)
-{
-	mesh.request_vertex_normals();
-	mesh.request_vertex_colors();
-	mesh.request_vertex_texcoords2D();
-
-	// Shovel over vertices
-	std::vector<OpenMesh::VertexHandle> vxs;
-	for(unsigned int i=0;i<inVertices.size();i++)
-	{
-		ExVertexStructOM om;
-		om.Position = *(OpenMesh::Vec3f *)&inVertices[i].Position;
-		om.Normal = *(OpenMesh::Vec3f *)&inVertices[i].Normal;
-		om.TexCoord = *(OpenMesh::Vec2f *)&inVertices[i].TexCoord;
-		om.Color = *(OpenMesh::Vec1ui *)&inVertices[i].Color;
-
-		OpenMesh::VertexHandle vh = mesh.add_vertex(om.Position);
-		mesh.set_normal(vh, om.Normal);
-		mesh.set_color(vh, om.Color);
-		mesh.set_texcoord2D(vh, om.TexCoord);
-
-		vxs.push_back(vh);
-	}
-
-	// Shovel over indices
-	for(unsigned int i=0;i<inIndices.size();i+=3)
-	{
-		mesh.add_face(vxs[inIndices[i]], vxs[inIndices[i+1]], vxs[inIndices[i+2]]);
-	}
-
-}*/
-
-/** Extracts the vertexdata from a MyMesh *//*
-static void PullVertexData(MyMesh& mesh, std::vector<ExVertexStruct> & outVertices, std::vector<unsigned short> & outIndices)
-{
-	// Get data back out
-	for (MyMesh::VertexIter v_it=mesh.vertices_begin(); v_it!=mesh.vertices_end(); ++v_it) 
-	{
-		ExVertexStruct v;
-		v.Position = *(float3 *)&mesh.point(*v_it);
-		v.Color = *(DWORD *)&mesh.color(*v_it);
-		v.Normal = *(float3 *)&mesh.normal(*v_it);
-		v.TexCoord = *(float2 *)&mesh.texcoord2D(*v_it);
-
-		// Check if this is a boundry vertex
-		if (mesh.is_boundary(*v_it))
-		{
-			v.TexCoord2.x = 0.0f;
-		} else
-		{
-			v.TexCoord2.x = 1.0f;
-		}
-		
-		outVertices.push_back(v);
-	}
-
-	for (MyMesh::FaceIter f_it=mesh.faces_begin(); f_it!=mesh.faces_end(); ++f_it) 
-	{
-		MyMesh::FaceVertexIter fvIt = mesh.fv_iter(*f_it);
-		outIndices.push_back(fvIt->idx());
-		++fvIt;
-		outIndices.push_back(fvIt->idx());
-		++fvIt;
-		outIndices.push_back(fvIt->idx());
-	}
-}*/
-
 /** Performs catmul-clark smoothing on the mesh */
 void MeshModifier::DoCatmulClark(const std::vector<ExVertexStruct> & inVertices, const std::vector<unsigned short> & inIndices, std::vector<ExVertexStruct> & outVertices, std::vector<unsigned short> & outIndices, int iterations)
 {
-	/*
-	MyMesh mesh;
 
-	PutVertexData(mesh, inVertices, inIndices);
-
-	// Perform subdivision
-	OpenMesh::Subdivider::Uniform::CatmullClarkT<MyMesh> catmull;
-	catmull.attach(mesh);
-	catmull(iterations);
-	catmull.detach();
-
-	mesh.triangulate();
-
-	PullVertexData(mesh, outVertices, outIndices);
-	*/
 }
 
 /** Detects borders on the mesh */
 void MeshModifier::DetectBorders(const std::vector<ExVertexStruct> & inVertices, const std::vector<unsigned short> & inIndices, std::vector<ExVertexStruct> & outVertices, std::vector<unsigned short> & outIndices)
 {
-	/*
-	MyMesh mesh;
 
-	PutVertexData(mesh, inVertices, inIndices);
-
-	mesh.update_normals();
-
-	// Boundry gets set in here
-	PullVertexData(mesh, outVertices, outIndices);*/
 }
 
 /** Drops texcoords on the given mesh, making it appear crackless */
 void MeshModifier::DropTexcoords(const std::vector<ExVertexStruct> & inVertices, const std::vector<unsigned short> & inIndices, std::vector<ExVertexStruct> & outVertices, std::vector<VERTEX_INDEX> & outIndices)
 {
-	/*struct CmpClass // class comparing vertices in the set
-	{
-		bool operator() (const std::pair<ExVertexStruct, int> & p1, const std::pair<ExVertexStruct, int> & p2) const
-		{
-			const float eps = 0.001f;
 
-			if (fabs(p1.first.Position.x-p2.first.Position.x) > eps) return p1.first.Position.x < p2.first.Position.x;
-			if (fabs(p1.first.Position.y-p2.first.Position.y) > eps) return p1.first.Position.y < p2.first.Position.y;
-			if (fabs(p1.first.Position.z-p2.first.Position.z) > eps) return p1.first.Position.z < p2.first.Position.z;
-
-			return false;
-		}
-	};
-
-	std::set<std::pair<ExVertexStruct, int>, CmpClass> vertices;
-	int index = 0;
-
-	for(unsigned int i=0;i<inIndices.size();i++)
-	{
-        std::set<std::pair<ExVertexStruct, int>>::iterator it = vertices.find(std::make_pair(inVertices[inIndices[i]], 0));
-        if (it!=vertices.end()) outIndices.push_back(it->second);
-        else
-        {
-            vertices.insert(std::make_pair(inVertices[inIndices[i]], index));
-            outIndices.push_back(index++);
-        }
-    }
-
-    // Notice that the vertices in the set are not sorted by the index
-    // so you'll have to rearrange them like this:
-    outVertices.resize(vertices.size());
-    for (std::set<std::pair<ExVertexStruct, int>>::iterator it=vertices.begin(); it!=vertices.end(); it++)
-        outVertices[it->second] = it->first;*/
 }
 
 /** Decimates the mesh, reducing its complexity */
 void MeshModifier::Decimate(const std::vector<ExVertexStruct> & inVertices, const std::vector<unsigned short> & inIndices, std::vector<ExVertexStruct> & outVertices, std::vector<VERTEX_INDEX> & outIndices)
 {
-	/*MyMesh mesh;
-
-	PutVertexData(mesh, inVertices, inIndices);
-
-	Decimater decimater(mesh); // a decimater object, connected to a mesh
-
-	//HModQuadric hModQuadric; // use a quadric module
-	HModRoundnessT hModRoundness;
-
-	decimater.add(hModRoundness); // register module at the decimater
-
-	//
-	//since we need exactly one priority module (non-binary)
-	//we have to call set_binary(false) for our priority module
-	//in the case of HModQuadric, unset_max_err() calls set_binary(false) internally
-	//
-	//decimater.module(hModRoundness).set_binary(false);//.unset_max_err();
-	decimater.module(hModRoundness).set_min_roundness(0.05f);
-	//decimater.module(hModRoundness).set_min_angle(
-	decimater.module(hModRoundness).initialize();
-	decimater.initialize(); // let the decimater initialize the mesh and the
-	// modules
-	decimater.decimate(); // do decimation
 	
-	mesh.update_normals();
-	mesh.triangulate();
-
-	// Get data out of the openmesh
-	PullVertexData(mesh, outVertices, outIndices);*/
 }
 
 struct PNAENEdge
@@ -545,13 +353,13 @@ void MeshModifier::ComputePNAEN18Indices(std::vector<ExVertexStruct> & inVertice
 	{
 		std::vector<ExVertexStruct *> & vx = it->second.second;
 
-		D3DXVECTOR3 nrm = D3DXVECTOR3(0, 0, 0);
+		DirectX::SimpleMath::Vector3 nrm = DirectX::SimpleMath::Vector3::Zero;
 		if (softNormals)
 		{
 			// Average normal of all adj. vertices			
 			for(unsigned int i=0;i<vx.size();i++)
 			{
-				nrm += *vx[i]->Normal.toD3DXVECTOR3();
+				nrm += *vx[i]->Normal.toVector3();
 			}
 			nrm /= vx.size();
 		}
@@ -803,10 +611,10 @@ void MeshModifier::ComputeSmoothNormals(std::vector<ExVertexStruct> & inVertices
 	{
 		std::vector<ExVertexStruct *> & vx = it->second;
 		// Average all face normals
-		D3DXVECTOR3 avgNormal = D3DXVECTOR3(0, 0, 0);
+		DirectX::SimpleMath::Vector3 avgNormal = DirectX::SimpleMath::Vector3::Zero;
 		for(unsigned int i=0;i<vx.size();i++)
 		{
-			avgNormal += *vx[i]->Normal.toD3DXVECTOR3();
+			avgNormal += *vx[i]->Normal.toVector3();
 		}
 		avgNormal /= (float)vx.size();
 
@@ -825,7 +633,7 @@ void MeshModifier::ComputeSmoothNormals(std::vector<ExVertexStruct> & inVertices
 			}
 
 			vx[i]->Normal = avgNormal;
-			//D3DXVec3Lerp(vx[i]->Normal.toD3DXVECTOR3(), &avgNormal, vx[i]->Normal.toD3DXVECTOR3(), 0.7f);
+			//D3DXVec3Lerp(vx[i]->Normal.toVector3(), &avgNormal, vx[i]->Normal.toVector3(), 0.7f);
 		}
 	}
 }

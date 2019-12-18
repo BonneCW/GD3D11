@@ -6,6 +6,9 @@
 #include "SV_Panel.h"
 #include "zCTexture.h"
 
+using namespace DirectX;
+using namespace DirectX::SimpleMath;
+
 const float MESH_ROT_SPEED = 0.01f;
 const float ZOOM_SPEED = 0.01f;
 const float DEFAULT_FOV = 90.0f;
@@ -18,7 +21,7 @@ SV_GMeshInfoView::SV_GMeshInfoView(D2DView * view, D2DSubView * parent) : D2DSub
 
 	IsDraggingView = false;
 
-	ObjectPosition = D3DXVECTOR3(0, 0, 0);
+	ObjectPosition = Vector3::Zero;
 	SetObjectOrientation(0, 0, 10.0f);
 	RT = nullptr;
 	DS = nullptr;
@@ -45,8 +48,8 @@ void SV_GMeshInfoView::SetMeshes(const std::map<zCTexture *, MeshInfo *> & meshe
 	FOV = DEFAULT_FOV;
 
 	// Find boundingbox of skeletal
-	D3DXVECTOR3 bbmin = D3DXVECTOR3(FLT_MAX, FLT_MAX, FLT_MAX);
-	D3DXVECTOR3 bbmax = D3DXVECTOR3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+	auto bbmin = DirectX::SimpleMath::Vector3(FLT_MAX, FLT_MAX, FLT_MAX);
+	auto bbmax = DirectX::SimpleMath::Vector3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 	for (auto it = Meshes.cbegin(); it != Meshes.cend(); ++it) {
 		std::vector<ExVertexStruct> & vertices = it->second->Vertices;
 		for (unsigned int i = 0; i < vertices.size(); i++) {
@@ -62,7 +65,7 @@ void SV_GMeshInfoView::SetMeshes(const std::map<zCTexture *, MeshInfo *> & meshe
 	}
 
 	ObjectPosition = -(bbmin * 0.5f + bbmax * 0.5f);
-	SetObjectOrientation(0, 0, D3DXVec3Length(&(bbmin - bbmax)) / 2.0f);
+	SetObjectOrientation(0, 0, (bbmin - bbmax).Length() / 2.0f);
 }
 
 /** Sets the name of this view */
@@ -75,18 +78,17 @@ void SV_GMeshInfoView::SetObjectOrientation(float yaw, float pitch, float distan
 	ObjectPitch = pitch;
 	ObjectDistance = distance;
 
-	D3DXMatrixTranslation(&ObjectWorldMatrix, ObjectPosition.x, ObjectPosition.y, ObjectPosition.z);
+	ObjectWorldMatrix = XMMatrixTranslation(ObjectPosition.x, ObjectPosition.y, ObjectPosition.z);
 
-	D3DXMATRIX rotY;
-	D3DXMATRIX rotZ;
-	D3DXMatrixRotationY(&rotY, yaw);
-	D3DXMatrixRotationZ(&rotZ, pitch);
+	DirectX::SimpleMath::Matrix rotY = XMMatrixRotationY(yaw);
+	DirectX::SimpleMath::Matrix rotZ = XMMatrixRotationZ(pitch);
+
 	ObjectWorldMatrix *= rotY * rotZ;
 
-	D3DXMatrixTranspose(&ObjectWorldMatrix, &ObjectWorldMatrix);
+	ObjectWorldMatrix = ObjectWorldMatrix.Transpose();
 
-	D3DXMatrixLookAtLH(&ObjectViewMatrix, &D3DXVECTOR3(-distance, 0, 0), &D3DXVECTOR3(0, 0, 0), &D3DXVECTOR3(0, 1, 0));
-	D3DXMatrixTranspose(&ObjectViewMatrix, &ObjectViewMatrix);
+	ObjectViewMatrix = XMMatrixLookAtLH(Vector3(-distance, 0, 0), Vector3::Zero, Vector3::Up);
+	ObjectViewMatrix = ObjectViewMatrix.Transpose();
 }
 
 /** Updates the view */
@@ -95,15 +97,15 @@ void SV_GMeshInfoView::UpdateView() {
 		return;
 
 	D3D11GraphicsEngine * g = (D3D11GraphicsEngine *)Engine::GraphicsEngine;
-
-	D3DXMatrixPerspectiveFovLH(&ObjectProjMatrix, (float)D3DXToRadian(FOV), GetSize().height / GetSize().width, 0.01f, 10000.0f);
-	D3DXMatrixTranspose(&ObjectProjMatrix, &ObjectProjMatrix);
+	
+	ObjectProjMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), GetSize().height / GetSize().width, 0.01f, 10000.0f);
+	ObjectProjMatrix = ObjectProjMatrix.Transpose();
 
 	g->SetDefaultStates();
 	Engine::GAPI->GetRendererState()->RasterizerState.CullMode = GothicRasterizerStateInfo::CM_CULL_NONE;
 	Engine::GAPI->GetRendererState()->RasterizerState.SetDirty();
 
-	D3DXMATRIX oldProj = Engine::GAPI->GetProjTransform();
+	DirectX::SimpleMath::Matrix oldProj = Engine::GAPI->GetProjTransform();
 
 	// Set transforms
 	Engine::GAPI->SetWorldTransform(ObjectWorldMatrix);
@@ -126,7 +128,7 @@ void SV_GMeshInfoView::UpdateView() {
 	g->GetContext()->RSSetViewports(1, &vp);
 
 	// Clear
-	g->GetContext()->ClearRenderTargetView(RT->GetRenderTargetView(), (float *)&D3DXVECTOR4(0, 0, 0, 0));
+	g->GetContext()->ClearRenderTargetView(RT->GetRenderTargetView(), (float *)&DirectX::SimpleMath::Vector4::Zero);
 	g->GetContext()->ClearDepthStencilView(DS->GetDepthStencilView(), D3D11_CLEAR_DEPTH, 1.0f, 0); 
 
 	// Bind RTV

@@ -56,7 +56,7 @@ XRESULT GOcean::InitOcean()
 	// A scale to control the amplitude. Not the world space height
 	ocean_param.wave_amplitude		= 0.35f;
 	// 2D wind direction. No need to be normalized
-	ocean_param.wind_dir			= D3DXVECTOR2(0.8f, 0.6f);
+	ocean_param.wind_dir			= DirectX::SimpleMath::Vector2(0.8f, 0.6f);
 	// The bigger the wind speed, the larger scale of wave crest.
 	// But the wave scale can be no larger than patch_length
 	ocean_param.wind_speed			= 600.0f;
@@ -134,11 +134,17 @@ void GOcean::CreateFresnelMap(ID3D11Device* pd3dDevice)
 	float SkyBlending = 16.0f;
 
 	DWORD* buffer = new DWORD[FRESNEL_TEX_SIZE];
+	const float waterrefract = 1.33f;
+	auto one_andthird = DirectX::XMLoadFloat(&waterrefract);
+
 	for (int i = 0; i < FRESNEL_TEX_SIZE; i++)
 	{
 		float cos_a = i / (FLOAT)FRESNEL_TEX_SIZE;
 		// Using water's refraction index 1.33
-		DWORD fresnel = (DWORD)(D3DXFresnelTerm(cos_a, 1.33f) * 255);
+		
+		float fresnelPreComp;
+		DirectX::XMStoreFloat(&fresnelPreComp, DirectX::XMFresnelTerm(DirectX::XMLoadFloat(&cos_a), one_andthird));
+		DWORD fresnel = (DWORD)(fresnelPreComp * 255);
 
 		DWORD sky_blend = (DWORD)(powf(1 / (1 + cos_a), SkyBlending) * 255);
 
@@ -183,11 +189,11 @@ WaterPatchInfo& GOcean::AddWaterPatchAt(int x, int y)
 }
 
 /** Returns a vector of the patch locations */
-void GOcean::GetPatchLocations(std::vector<D3DXVECTOR3> & patchLocations)
+void GOcean::GetPatchLocations(std::vector<DirectX::SimpleMath::Vector3> & patchLocations)
 {
 	for(std::map<std::pair<int, int>, WaterPatchInfo>::iterator it = Patches.begin(); it != Patches.end(); it++)
 	{
-		patchLocations.push_back(D3DXVECTOR3(	(float)(it->first.first * OCEAN_PATCH_SIZE), 
+		patchLocations.push_back(DirectX::SimpleMath::Vector3(	(float)(it->first.first * OCEAN_PATCH_SIZE),
 												(float)(it->second.PatchHeight), 
 												(float)(it->first.second * OCEAN_PATCH_SIZE)));
 	}

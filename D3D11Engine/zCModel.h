@@ -23,8 +23,8 @@ struct zCModelNodeInst
 	zCModelNodeInst* ParentNode;
 	zCModelNode* ProtoNode;
 	zCVisual* NodeVisual;
-	D3DXMATRIX Trafo;			
-	D3DXMATRIX TrafoObjToCam;	
+	DirectX::SimpleMath::Matrix Trafo;
+	DirectX::SimpleMath::Matrix TrafoObjToCam;
 	zTBBox3D BBox3D;
 
 	zCModelTexAniState TexAniState;
@@ -37,13 +37,13 @@ struct zCModelNode
 	zCModelNode* ParentNode;
 	zSTRING	NodeName;
 	zCVisual* Visual;
-	D3DXMATRIX Transform;
+	DirectX::SimpleMath::Matrix Transform;
 
-	D3DXVECTOR3 NodeRotAxis;
+	DirectX::SimpleMath::Vector3 NodeRotAxis;
 	float NodeRotAngle;
-	D3DXVECTOR3	Translation;
-	D3DXMATRIX TransformObjToWorld;
-	D3DXMATRIX* NodeTransformList;
+	DirectX::SimpleMath::Vector3	Translation;
+	DirectX::SimpleMath::Matrix TransformObjToWorld;
+	DirectX::SimpleMath::Matrix* NodeTransformList;
 	zCModelNodeInst* LastInstNode;
 };
 
@@ -217,7 +217,7 @@ public:
 
 
 	/** Creates an array of matrices for the bone transforms */
-	void __fastcall RenderNodeList(zTRenderContext& renderContext, zCArray<D3DXMATRIX*> & boneTransforms, zCRenderLightContainer& lightContainer, int lightingMode = 0)
+	void __fastcall RenderNodeList(zTRenderContext& renderContext, zCArray<DirectX::SimpleMath::Matrix*> & boneTransforms, zCRenderLightContainer& lightContainer, int lightingMode = 0)
 	{
 		XCALL(GothicMemoryLocations::zCModel::RenderNodeList);
 	}
@@ -277,13 +277,13 @@ public:
 #endif
 	}
 
-	D3DXVECTOR3 GetModelScale()
+	DirectX::SimpleMath::Vector3 GetModelScale()
 	{
 #ifdef BUILD_GOTHIC_1_08k
-		return D3DXVECTOR3(1, 1, 1);
+		return DirectX::SimpleMath::Vector3::One;
 #endif
 
-		return *(D3DXVECTOR3 *)THISPTR_OFFSET(GothicMemoryLocations::zCModel::Offset_ModelScale);
+		return *(DirectX::SimpleMath::Vector3 *)THISPTR_OFFSET(GothicMemoryLocations::zCModel::Offset_ModelScale);
 	}
 
 	float GetModelFatness()
@@ -335,13 +335,13 @@ public:
 	}
 
 	/** Fills a vector of (viewspace) bone-transformation matrices for this frame */
-	void GetBoneTransforms(std::vector<D3DXMATRIX>* transforms, zCVob * vob = nullptr)
+	void GetBoneTransforms(std::vector<DirectX::SimpleMath::Matrix>* transforms, zCVob * vob = nullptr)
 	{
 		if (!GetNodeList())
 			return;
 
 		// Make this static so we don't reallocate the memory every time
-		static std::vector<D3DXMATRIX*> tptr;
+		static std::vector<DirectX::SimpleMath::Matrix*> tptr;
 		tptr.resize(GetNodeList()->NumInArray, nullptr);
 		for (int i=0; i<GetNodeList()->NumInArray; i++) 
 		{
@@ -362,7 +362,7 @@ public:
 		// Put them into our vector
 		for(unsigned int i=0;i<tptr.size();i++)
 		{
-			D3DXMATRIX m = *tptr[i];
+			DirectX::SimpleMath::Matrix m = *tptr[i];
 			transforms->push_back(m);
 		}
 	}

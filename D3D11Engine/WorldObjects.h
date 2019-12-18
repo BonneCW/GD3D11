@@ -165,7 +165,7 @@ struct QuadMarkInfo
 	int NumVertices;
 
 	zCQuadMark* Visual;
-	D3DXVECTOR3 Position;
+	DirectX::SimpleMath::Vector3 Position;
 };
 
 /** Holds information about a skeletal mesh */
@@ -235,7 +235,7 @@ struct BaseVisualInfo
 	zTBBox3D BBox;
 
 	/** Meshes midpoint */
-	D3DXVECTOR3 MidPoint; 
+	DirectX::SimpleMath::Vector3 MidPoint; 
 
 	/** Games visual */
 	zCVisual* Visual;
@@ -355,7 +355,7 @@ struct VobInfo : public BaseVobInfo
 	D3D11ConstantBuffer* VobConstantBuffer;
 
 	/** Position the vob was at while being rendered last time */
-	D3DXVECTOR3 LastRenderPosition;
+	DirectX::SimpleMath::Vector3 LastRenderPosition;
 
 	/** True if this is an indoor-vob */
 	bool IsIndoorVob;
@@ -367,7 +367,7 @@ struct VobInfo : public BaseVobInfo
 	WorldMeshSectionInfo* VobSection;
 
 	/** Current world transform */
-	D3DXMATRIX WorldMatrix;
+	DirectX::SimpleMath::Matrix WorldMatrix;
 
 	/** BSP-Node this is stored in */
 	std::vector<BspInfo*> ParentBSPNodes;
@@ -413,7 +413,7 @@ struct VobLightInfo
 	bool UpdateShadows; // Whether to update this lights shadows on the next occasion
 
 	/** Position where we were rendered the last time */
-	D3DXVECTOR3 LastRenderedPosition;
+	DirectX::SimpleMath::Vector3 LastRenderedPosition;
 };
 
 
@@ -458,7 +458,7 @@ struct SkeletalVobInfo : public BaseVobInfo
 	bool VisibleInRenderPass;
 
 	/** Current world transform */
-	D3DXMATRIX WorldMatrix;
+	DirectX::SimpleMath::Matrix WorldMatrix;
 
 	/** BSP-Node this is stored in */
 	std::vector<BspInfo*> ParentBSPNodes;
@@ -488,8 +488,8 @@ struct WorldMeshSectionInfo
 {
 	WorldMeshSectionInfo()
 	{
-		BoundingBox.Min = D3DXVECTOR3(FLT_MAX, FLT_MAX, FLT_MAX);
-		BoundingBox.Max = D3DXVECTOR3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+		BoundingBox.Min = DirectX::SimpleMath::Vector3(FLT_MAX, FLT_MAX, FLT_MAX);
+		BoundingBox.Max = DirectX::SimpleMath::Vector3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 		FullStaticMesh = nullptr;
 	}
 
@@ -546,7 +546,7 @@ struct WorldMeshSectionInfo
 	std::list<VobInfo*> Vobs;
 
 	/** Loaded ocean-polys of this section */
-	std::vector<D3DXVECTOR3> OceanPoints;
+	std::vector<DirectX::SimpleMath::Vector3> OceanPoints;
 
 	// This is filled in case we have loaded a custom worldmesh
 	std::vector<zCPolygon *> SectionPolygons;
@@ -576,7 +576,7 @@ struct WorldInfo
 		CustomWorldLoaded = false;
 	}
 
-	D3DXVECTOR2 MidPoint;
+	DirectX::SimpleMath::Vector2 MidPoint;
 	float LowestVertex;
 	float HighestVertex;
 	zCBspTree* BspTree;

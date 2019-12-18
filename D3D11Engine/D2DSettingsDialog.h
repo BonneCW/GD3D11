@@ -27,7 +27,7 @@ protected:
 	/** Tab in main tab-control was switched */
 	static void ShadowQualitySliderChanged(SV_Slider * sender, void * userdata);
 	static void ResolutionSliderChanged(SV_Slider * sender, void * userdata);
-
+	static void FpsLimitSliderChanged(SV_Slider * sender, void * userdata);
 	/** Close button */
 	static void CloseButtonPressed(SV_Button * sender, void * userdata);
 

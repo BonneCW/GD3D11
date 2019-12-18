@@ -20,7 +20,7 @@ public:
 #endif
 	}
 
-	static void __fastcall Hooked_CreateQuadMark(void * thisptr, void * unknwn, zCPolygon* poly, const D3DXVECTOR3 & position, const D3DXVECTOR2 & size, struct zTEffectParams* params)
+	static void __fastcall Hooked_CreateQuadMark(void * thisptr, void * unknwn, zCPolygon* poly, const DirectX::SimpleMath::Vector3 & position, const DirectX::SimpleMath::Vector2 & size, struct zTEffectParams* params)
 	{
 		hook_infunc
 

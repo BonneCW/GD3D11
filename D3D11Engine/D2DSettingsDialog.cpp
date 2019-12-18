@@ -14,7 +14,8 @@ D2DSettingsDialog::D2DSettingsDialog(D2DView * view, D2DSubView * parent) : D2DD
 	Header->SetCaption("Settings");
 
 	// Get display modes
-	Engine::GraphicsEngine->GetDisplayModeList(&Resolutions, true);
+	// TODO: reenable-superresolution, workaround: Nvidia DSR/AMD VSR
+	Engine::GraphicsEngine->GetDisplayModeList(&Resolutions, false);
 
 	// Find current
 	ResolutionSetting = 0;
@@ -139,27 +140,34 @@ XRESULT D2DSettingsDialog::InitControls() {
 	shadowmapSizeSlider->SetPositionAndSize(D2D1::Point2F(10, 22), D2D1::SizeF(150, 15));
 	shadowmapSizeSlider->AlignUnder(shadowmapSizeLabel, 5);
 	shadowmapSizeSlider->SetSliderChangedCallback(ShadowQualitySliderChanged, this);
+	shadowmapSizeSlider->SetDisplayValues({"0", "512", "1024", "2048", "4096", "8192", "16384"});
 	shadowmapSizeSlider->SetIsIntegralSlider(true);
-	shadowmapSizeSlider->SetMinMax(1.0f, 4.0f);
+	shadowmapSizeSlider->SetMinMax(1.0f, 6.0f);
 
 	// Fix the shadow range
 	switch (Engine::GAPI->GetRendererState()->RendererSettings.ShadowMapSize) {
-	case 512:
-		shadowmapSizeSlider->SetValue(1);
-		break;
-
-	case 1024:
-		shadowmapSizeSlider->SetValue(2);
-		break;
-
-	case 2048:
-		shadowmapSizeSlider->SetValue(3);
-		break;
-
-	case 4096:
-		shadowmapSizeSlider->SetValue(4);
-		break;
+		case   512: shadowmapSizeSlider->SetValue(1); break;
+		case  1024: shadowmapSizeSlider->SetValue(2); break;
+		case  2048: shadowmapSizeSlider->SetValue(3); break;
+		case  4096: shadowmapSizeSlider->SetValue(4); break;
+		case  8192: shadowmapSizeSlider->SetValue(5); break;
+		case 16384: shadowmapSizeSlider->SetValue(6); break;
 	}
+
+
+	SV_Label * fpsLimitLabel = new SV_Label(MainView, MainPanel);
+	fpsLimitLabel->SetPositionAndSize(D2D1::Point2F(10, 10), D2D1::SizeF(150, 12));
+	fpsLimitLabel->AlignUnder(shadowmapSizeSlider, 10);
+	fpsLimitLabel->SetCaption("Framerate Limit:");
+
+	SV_Slider * fpsLimitSlider = new SV_Slider(MainView, MainPanel);
+	fpsLimitSlider->SetPositionAndSize(D2D1::Point2F(10, 22), D2D1::SizeF(150, 15));
+	fpsLimitSlider->AlignUnder(fpsLimitLabel, 5);
+	fpsLimitSlider->SetSliderChangedCallback(FpsLimitSliderChanged, this);
+
+	fpsLimitSlider->SetDisplayValues({"off", "off", "off", "off", "off", "off", "off", "off", "off", "off", "off", "off", "off", "off", "off", "off", "off", "off", "off", "off", "off", "off", "off", "off", "off", "off", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59", "60", "61", "62", "63", "64", "65", "66", "67", "68", "69", "70", "71", "72", "73", "74", "75", "76", "77", "78", "79", "80", "81", "82", "83", "84", "85", "86", "87", "88", "89", "90", "91", "92", "93", "94", "95", "96", "97", "98", "99", "100", "101", "102", "103", "104", "105", "106", "107", "108", "109", "110", "111", "112", "113", "114", "115", "116", "117", "118", "119", "120"});
+	fpsLimitSlider->SetIsIntegralSlider(true);
+	fpsLimitSlider->SetMinMax(0.0f, 120.0f);
 
 	// Next column
 	/*SV_Checkbox* hdrCheckbox = new SV_Checkbox(MainView, MainPanel);
@@ -236,9 +244,9 @@ XRESULT D2DSettingsDialog::InitControls() {
 	dynShadowSlider->AlignUnder(dynShadowLabel, 5);
 	dynShadowSlider->SetDataToUpdate((int *)&Engine::GAPI->GetRendererState()->RendererSettings.EnablePointlightShadows);
 	dynShadowSlider->SetIsIntegralSlider(true);
-	dynShadowSlider->SetMinMax(0.0f, GothicRendererSettings::_PLS_NUM_SETTINGS-1);
+	dynShadowSlider->SetMinMax(0.0f, GothicRendererSettings::_PLS_NUM_SETTINGS - 1);
 
-	static char * dsValues[] = { "Disabled", "Static only", "Update dynamic", "Update all" };
+	static char * dsValues[] = {"Disabled", "Static only", "Update dynamic", "Update all"};
 	std::vector<std::string> dsStrings = std::vector<std::string>(dsValues, dsValues + sizeof(dsValues) / sizeof(dsValues[0]));
 	dynShadowSlider->SetDisplayValues(dsStrings);
 
@@ -306,24 +314,20 @@ XRESULT D2DSettingsDialog::InitControls() {
 	return XR_SUCCESS;
 }
 
+void D2DSettingsDialog::FpsLimitSliderChanged(SV_Slider * sender, void * userdata) {
+	auto newValue = (int)sender->GetValue();
+	Engine::GAPI->GetRendererState()->RendererSettings.FpsLimit = newValue <= 25 ? 0 : newValue;
+}
+
 /** Tab in main tab-control was switched */
 void D2DSettingsDialog::ShadowQualitySliderChanged(SV_Slider * sender, void * userdata) {
 	switch ((int)(sender->GetValue() + 0.5f)) {
-	case 1:
-		Engine::GAPI->GetRendererState()->RendererSettings.ShadowMapSize = 512;
-		break;
-
-	case 2:
-		Engine::GAPI->GetRendererState()->RendererSettings.ShadowMapSize = 1024;
-		break;
-
-	case 3:
-		Engine::GAPI->GetRendererState()->RendererSettings.ShadowMapSize = 2048;
-		break;
-
-	case 4:
-		Engine::GAPI->GetRendererState()->RendererSettings.ShadowMapSize = 4096;
-		break;
+		case 1: Engine::GAPI->GetRendererState()->RendererSettings.ShadowMapSize =   512; break;
+		case 2: Engine::GAPI->GetRendererState()->RendererSettings.ShadowMapSize =  1024; break;
+		case 3: Engine::GAPI->GetRendererState()->RendererSettings.ShadowMapSize =  2048; break;
+		case 4: Engine::GAPI->GetRendererState()->RendererSettings.ShadowMapSize =  4096; break;
+		case 5: Engine::GAPI->GetRendererState()->RendererSettings.ShadowMapSize =  8192; break;
+		case 6: Engine::GAPI->GetRendererState()->RendererSettings.ShadowMapSize = 16384; break;
 	}
 }
 

@@ -136,14 +136,14 @@ XRESULT GMesh::LoadMesh(const std::string & file, float scale) {
 }
 
 /** Fills this mesh with a grid */
-XRESULT GMesh::CreateGrid(int tesselation, const D3DXVECTOR2 & min, const D3DXVECTOR2 & max, float height) {
-	D3DXVECTOR2 tri1[] = {  D3DXVECTOR3(min.x, height, min.y), 
-							D3DXVECTOR3(max.x, height, min.y), 
-							D3DXVECTOR3(min.x, height, max.y) };
+XRESULT GMesh::CreateGrid(int tesselation, const DirectX::SimpleMath::Vector2 & min, const DirectX::SimpleMath::Vector2 & max, float height) {
+	DirectX::SimpleMath::Vector2 tri1[] = {  DirectX::SimpleMath::Vector3(min.x, height, min.y),
+							DirectX::SimpleMath::Vector3(max.x, height, min.y), 
+							DirectX::SimpleMath::Vector3(min.x, height, max.y) };
 
-	D3DXVECTOR2 tri2[] = {  D3DXVECTOR3(max.x, height, min.y), 
-							D3DXVECTOR3(max.x, height, max.y), 
-							D3DXVECTOR3(min.x, height, max.y) };
+	DirectX::SimpleMath::Vector2 tri2[] = {  DirectX::SimpleMath::Vector3(max.x, height, min.y),
+							DirectX::SimpleMath::Vector3(max.x, height, max.y), 
+							DirectX::SimpleMath::Vector3(min.x, height, max.y) };
 
 	//WorldConverter::TesselateTriangle(
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "basegraphicsengine.h"
+#include <wrl.h>
 
 class D3D11DepthBufferState;
 class D3D11BlendStateInfo;
@@ -125,10 +126,10 @@ public:
 	XRESULT D3D11GraphicsEngineBase::BindViewportInformation(const std::string & shader, int slot);
 
 	/** Returns the Device/Context */
-	ID3D11Device* GetDevice() { return Device; }
-	ID3D11DeviceContext* GetContext() { return Context; }
-	ID3D11DeviceContext* GetDeferredMediaContext() { return DeferredContext; }
-
+	ID3D11Device* GetDevice() { return Device.Get(); }
+	ID3D11DeviceContext* GetContext() { return Context.Get(); }
+	ID3D11DeviceContext* GetDeferredMediaContext() { return DeferredContext.Get(); }
+	
 	/** Returns the current resolution */
 	virtual INT2 GetResolution() { return Resolution; }
 
@@ -160,13 +161,13 @@ protected:
 	void UpdateTransformsCB();
 
 	/** Device-objects */
-	IDXGIFactory* DXGIFactory;
-	IDXGIAdapter* DXGIAdapter;
+	Microsoft::WRL::ComPtr<IDXGIFactory> DXGIFactory;
+	Microsoft::WRL::ComPtr<IDXGIAdapter> DXGIAdapter;
 	std::string DeviceDescription;
 
-	ID3D11Device* Device;
-	ID3D11DeviceContext* Context;
-	ID3D11DeviceContext* DeferredContext;
+	Microsoft::WRL::ComPtr<ID3D11Device> Device;
+	Microsoft::WRL::ComPtr<ID3D11DeviceContext> Context;
+	Microsoft::WRL::ComPtr<ID3D11DeviceContext> DeferredContext;
 
 	/** Deferred contexts for threadpool */
 	std::map<int, ID3D11DeviceContext*> DeferredContextsByThread;
@@ -175,13 +176,13 @@ protected:
 	std::mutex DeferredContextsByThreadMutex;
 
 	/** Swapchain and resources */
-	IDXGISwapChain* SwapChain;
-	RenderToTextureBuffer * Backbuffer;
-	RenderToDepthStencilBuffer * DepthStencilBuffer;
-	RenderToTextureBuffer * HDRBackBuffer;
+	Microsoft::WRL::ComPtr<IDXGISwapChain> SwapChain;
+	std::unique_ptr<RenderToTextureBuffer> Backbuffer;
+	std::unique_ptr<RenderToDepthStencilBuffer> DepthStencilBuffer;
+	std::unique_ptr<RenderToTextureBuffer> HDRBackBuffer;
 
 	/** States */
-	ID3D11SamplerState* DefaultSamplerState;
+	Microsoft::WRL::ComPtr<ID3D11SamplerState> DefaultSamplerState;
 
 	/** Output-window (Gothics main window)*/
 	HWND OutputWindow;
@@ -190,13 +191,13 @@ protected:
 	INT2 Resolution;
 
 	/** Shader manager */
-	D3D11ShaderManager* ShaderManager;
+	std::unique_ptr<D3D11ShaderManager> ShaderManager;
 
 	/** Dynamic buffer for vertex array rendering */
-	D3D11VertexBuffer* TempVertexBuffer;
+	std::unique_ptr<D3D11VertexBuffer> TempVertexBuffer;
 
 	/** Constantbuffers */
-	D3D11ConstantBuffer* TransformsCB; // Holds View/Proj-Transforms
+	std::unique_ptr<D3D11ConstantBuffer> TransformsCB; // Holds View/Proj-Transforms
 
 	/** Shaders */
 	D3D11PShader * PS_DiffuseNormalmapped;
@@ -220,15 +221,15 @@ protected:
 	D3D11GShader* ActiveGS;
 
 	/** FixedFunction-State render states */
-	ID3D11RasterizerState* FFRasterizerState;
+	Microsoft::WRL::ComPtr<ID3D11RasterizerState> FFRasterizerState;
 	size_t FFRasterizerStateHash;
-	ID3D11BlendState* FFBlendState;
+	Microsoft::WRL::ComPtr<ID3D11BlendState> FFBlendState;
 	size_t FFBlendStateHash;
-	ID3D11DepthStencilState* FFDepthStencilState;
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilState> FFDepthStencilState;
 	size_t FFDepthStencilStateHash;
 
 	/** Debug line-renderer */
-	D3D11LineRenderer* LineRenderer;
+	std::unique_ptr<D3D11LineRenderer> LineRenderer;
 
 	/** If true, we are still waiting for a present to happen. Don't draw everything twice! */
 	bool PresentPending;

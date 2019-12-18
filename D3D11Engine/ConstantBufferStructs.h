@@ -5,7 +5,7 @@
 /** Actual instance data for a vob */
 struct VobInstanceInfo
 {
-	D3DXMATRIX world;
+	DirectX::SimpleMath::Matrix world;
 	DWORD color;
 
 	// General purpose slots
@@ -110,13 +110,13 @@ struct PerObjectState
 
 struct PFXVS_ConstantBuffer
 {
-	D3DXMATRIX PFXVS_InvProj;
+	DirectX::SimpleMath::Matrix PFXVS_InvProj;
 };
 
 struct HeightfogConstantBuffer
 {
-	D3DXMATRIX InvProj;
-	D3DXMATRIX InvView;
+	DirectX::SimpleMath::Matrix InvProj;
+	DirectX::SimpleMath::Matrix InvView;
 	float3 CameraPosition;
 	float HF_FogHeight;
 
@@ -175,8 +175,8 @@ struct DS_PointLightConstantBuffer
 	float2 PL_ViewportSize;
 	float2 PL_Pad2;
 
-	D3DXMATRIX PL_InvProj; // Optimize out!
-	D3DXMATRIX PL_InvView;
+	DirectX::SimpleMath::Matrix PL_InvProj; // Optimize out!
+	DirectX::SimpleMath::Matrix PL_InvView;
 
 	float3 PL_LightScreenPos;
 	float PL_Pad3;
@@ -184,22 +184,22 @@ struct DS_PointLightConstantBuffer
 
 struct DS_ScreenQuadConstantBuffer
 {
-	D3DXMATRIX SQ_InvProj; // Optimize out!
-	D3DXMATRIX SQ_InvView;
-	D3DXMATRIX SQ_View;
+	DirectX::SimpleMath::Matrix SQ_InvProj; // Optimize out!
+	DirectX::SimpleMath::Matrix SQ_InvView;
+	DirectX::SimpleMath::Matrix SQ_View;
 
-	D3DXMATRIX SQ_RainViewProj;
+	DirectX::SimpleMath::Matrix SQ_RainViewProj;
 
 	float3 SQ_LightDirectionVS;
 	float SQ_ShadowmapSize;
 
 	float4 SQ_LightColor;
 
-	D3DXMATRIX SQ_ShadowView;
-	D3DXMATRIX SQ_ShadowProj;
+	DirectX::SimpleMath::Matrix SQ_ShadowView;
+	DirectX::SimpleMath::Matrix SQ_ShadowProj;
 
-	D3DXMATRIX SQ_RainView;
-	D3DXMATRIX SQ_RainProj;
+	DirectX::SimpleMath::Matrix SQ_RainView;
+	DirectX::SimpleMath::Matrix SQ_RainProj;
 
 	//float2 SQ_ProjAB;
 	//float2 SQ_Pad2;
@@ -235,26 +235,26 @@ struct AdvanceRainConstantBuffer
 
 struct VS_ExConstantBuffer_PerFrame
 {
-	D3DXMATRIX View;
-	D3DXMATRIX Projection;
-	D3DXMATRIX ViewProj;
+	DirectX::SimpleMath::Matrix View;
+	DirectX::SimpleMath::Matrix Projection;
+	DirectX::SimpleMath::Matrix ViewProj;
 };
 
 struct ParticlePointShadingConstantBuffer
 {
-	D3DXMATRIX View;
-	D3DXMATRIX Projection;
+	DirectX::SimpleMath::Matrix View;
+	DirectX::SimpleMath::Matrix Projection;
 };
 
 struct VS_ExConstantBuffer_PerInstance
 {
-	D3DXMATRIX World;
+	DirectX::SimpleMath::Matrix World;
 	float4 Color;
 };
 
 struct VS_ExConstantBuffer_PerInstanceSkeletal
 {
-	D3DXMATRIX World;
+	DirectX::SimpleMath::Matrix World;
 	float PI_ModelFatness;
 	float3 PI_Pad1;
 };
@@ -270,7 +270,7 @@ struct GrassConstantBuffer
 
 struct WettnessConstantBuffer
 {
-	D3DXMATRIX W_InvProj;
+	DirectX::SimpleMath::Matrix W_InvProj;
 	float W_Wettness;
 	float3 W_Pad1;
 };
@@ -287,8 +287,8 @@ struct DefaultHullShaderConstantBuffer
 
 struct CubemapGSConstantBuffer
 {
-	D3DXMATRIX PCR_View[6]; // View matrices for cube map rendering
-	D3DXMATRIX PCR_ViewProj[6];
+	DirectX::SimpleMath::Matrix PCR_View[6]; // View matrices for cube map rendering
+	DirectX::SimpleMath::Matrix PCR_ViewProj[6];
 };
 
 struct ParticleGSInfoConstantBuffer
@@ -301,7 +301,7 @@ struct ParticleGSInfoConstantBuffer
 
 struct PNAENConstantBuffer
 {
-	D3DXMATRIX    f4x4Projection;           // Projection matrix 
+	DirectX::SimpleMath::Matrix    f4x4Projection;           // Projection DirectX::SimpleMath::Matrix 
 	float4      f4Eye;                    // Eye 
 	float4      f4TessFactors;            // Tessellation factors 
 											// x=Edge  
@@ -315,7 +315,7 @@ struct PNAENConstantBuffer
 
 struct RefractionInfoConstantBuffer
 {
-	D3DXMATRIX RI_Projection;
+	DirectX::SimpleMath::Matrix RI_Projection;
 	float2 RI_ViewportSize;
 	float RI_Time;
 	float RI_Far;

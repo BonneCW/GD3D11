@@ -5,20 +5,20 @@
 struct LineVertex
 {
 	LineVertex(){}
-	LineVertex(const D3DXVECTOR3 & position, DWORD color = 0xFFFFFFFF)
+	LineVertex(const DirectX::SimpleMath::Vector3 & position, DWORD color = 0xFFFFFFFF)
 	{
 		Position = position;
 		Color = color;
 	}
 
-	LineVertex(const D3DXVECTOR3 & position, const D3DXVECTOR4 & color, float zScale = 1.0f)
+	LineVertex(const DirectX::SimpleMath::Vector3 & position, const DirectX::SimpleMath::Vector4 & color, float zScale = 1.0f)
 	{
 		Position = position;
 		Position.w = zScale;
 		Color = color;
 	}
 
-	LineVertex(const D3DXVECTOR3 & position, const float4 & color, float zScale = 1.0f)
+	LineVertex(const DirectX::SimpleMath::Vector3 & position, const float4 & color, float zScale = 1.0f)
 	{
 		Position = position;
 		Position.w = zScale;
@@ -46,26 +46,26 @@ public:
 	virtual XRESULT ClearCache() = 0;
 
 	/** Adds a point locator to the renderlist */
-	void AddPointLocator(const D3DXVECTOR3 & location, float size=1, const D3DXVECTOR4 & color = D3DXVECTOR4(1, 1, 1, 1));
+	void AddPointLocator(const DirectX::SimpleMath::Vector3 & location, float size=1, const DirectX::SimpleMath::Vector4 & color = DirectX::SimpleMath::Vector4::One);
 
 	/** Adds a plane to the renderlist */
-	void AddPlane(const D3DXVECTOR4 & plane, const D3DXVECTOR3 & origin, float size=1, const D3DXVECTOR4 & color = D3DXVECTOR4(1, 1, 1, 1));
+	void AddPlane(const DirectX::SimpleMath::Vector4 & plane, const DirectX::SimpleMath::Vector3 & origin, float size=1, const DirectX::SimpleMath::Vector4 & color = DirectX::SimpleMath::Vector4::One);
 
 	/** Adds a ring to the renderlist */
-	void AddRingZ(const D3DXVECTOR3 & location, float size=1.0f, const D3DXVECTOR4 & color = D3DXVECTOR4(1, 1, 1, 1), int res=32);
+	void AddRingZ(const DirectX::SimpleMath::Vector3 & location, float size=1.0f, const DirectX::SimpleMath::Vector4 & color = DirectX::SimpleMath::Vector4::One, int res=32);
 
 	/** Adds an AABB-Box to the renderlist */
-	void AddAABB(const D3DXVECTOR3 & location, float halfSize, const D3DXVECTOR4 & color = D3DXVECTOR4(1, 1, 1, 1));
-	void AddAABB(const D3DXVECTOR3 & location, const D3DXVECTOR3 & halfSize, const D3DXVECTOR4 & color = D3DXVECTOR4(1, 1, 1, 1));
-	void AddAABBMinMax(const D3DXVECTOR3 & min, const D3DXVECTOR3 & max, const D3DXVECTOR4 & color = D3DXVECTOR4(1, 1, 1, 1));
+	void AddAABB(const DirectX::SimpleMath::Vector3 & location, float halfSize, const DirectX::SimpleMath::Vector4 & color = DirectX::SimpleMath::Vector4::One);
+	void AddAABB(const DirectX::SimpleMath::Vector3 & location, const DirectX::SimpleMath::Vector3 & halfSize, const DirectX::SimpleMath::Vector4 & color = DirectX::SimpleMath::Vector4::One);
+	void AddAABBMinMax(const DirectX::SimpleMath::Vector3 & min, const DirectX::SimpleMath::Vector3 & max, const DirectX::SimpleMath::Vector4 & color = DirectX::SimpleMath::Vector4::One);
 
 	/** Adds a triangle to the renderlist */
-	void AddTriangle(const D3DXVECTOR3 & t0, const D3DXVECTOR3 & t1, const D3DXVECTOR3 & t2, const D3DXVECTOR4 & color = D3DXVECTOR4(1, 1, 1, 1));
+	void AddTriangle(const DirectX::SimpleMath::Vector3 & t0, const DirectX::SimpleMath::Vector3 & t1, const DirectX::SimpleMath::Vector3 & t2, const DirectX::SimpleMath::Vector4 & color = DirectX::SimpleMath::Vector4::One);
 
 	/** Plots a vector of floats */
-	void PlotNumbers(const std::vector<float> & values, const D3DXVECTOR3 & location, const D3DXVECTOR3 & direction, float distance, float heightScale, const D3DXVECTOR4 & color = D3DXVECTOR4(1, 1, 1, 1));
+	void PlotNumbers(const std::vector<float> & values, const DirectX::SimpleMath::Vector3 & location, const DirectX::SimpleMath::Vector3 & direction, float distance, float heightScale, const DirectX::SimpleMath::Vector4 & color = DirectX::SimpleMath::Vector4::One);
 
 	/** Draws a wireframe mesh */
-	void AddWireframeMesh(const std::vector<ExVertexStruct> & vertices, const std::vector<VERTEX_INDEX> & indices, const D3DXVECTOR4 & color = D3DXVECTOR4(1, 1, 1, 1), const D3DXMATRIX* world = nullptr);
+	void AddWireframeMesh(const std::vector<ExVertexStruct> & vertices, const std::vector<VERTEX_INDEX> & indices, const DirectX::SimpleMath::Vector4 & color = DirectX::SimpleMath::Vector4::One, const DirectX::SimpleMath::Matrix* world = nullptr);
 };
 

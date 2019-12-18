@@ -22,7 +22,7 @@ D3D11PFX_Blur::~D3D11PFX_Blur()
 }
 
 /** Draws this effect to the given buffer */
-XRESULT D3D11PFX_Blur::RenderBlur(RenderToTextureBuffer * fxbuffer, bool leaveResultInD4_2, float threshold, float scale, const D3DXVECTOR4 & colorMod, const std::string & finalCopyShader)
+XRESULT D3D11PFX_Blur::RenderBlur(RenderToTextureBuffer * fxbuffer, bool leaveResultInD4_2, float threshold, float scale, const DirectX::SimpleMath::Vector4 & colorMod, const std::string & finalCopyShader)
 {
 	D3D11GraphicsEngine * engine = (D3D11GraphicsEngine *)Engine::GraphicsEngine;
 

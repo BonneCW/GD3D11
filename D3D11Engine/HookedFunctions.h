@@ -22,13 +22,13 @@ class zCVisual;
 typedef int (__thiscall* zCBspTreeLoadBIN)(void *,zCFileBIN&, int);
 typedef void (__thiscall* zCWorldRender)(void *,zCCamera&);
 typedef void (__thiscall* zCWorldVobAddedToWorld)(void *, zCVob *);
-typedef void (__thiscall* oCNPCEnable)(void *, D3DXVECTOR3 &);
+typedef void (__thiscall* oCNPCEnable)(void *, DirectX::SimpleMath::Vector3 &);
 typedef void (__thiscall* oCWorldInsertVobInWorld)(void *, zCVob *);
 typedef void (__thiscall* zCBspTreeAddVob)(void *, zCVob *);
 typedef void (__thiscall* zCWorldLoadWorld)(void *, const zSTRING& fileName, const int loadMode);
 typedef void (__thiscall* oCGameEnterWorld)(void *, oCNPC* playerVob, int changePlayerPos, const zSTRING& startpoint);
 typedef void (__thiscall* zCWorldVobRemovedFromWorld)(void *, zCVob *);
-typedef D3DXMATRIX (__cdecl * Alg_Rotation3DNRad)(const D3DXVECTOR3 & axis, const float angle);
+typedef DirectX::SimpleMath::Matrix (__cdecl * Alg_Rotation3DNRad)(const DirectX::SimpleMath::Vector3 & axis, const float angle);
 typedef int (__cdecl * vidGetFPSRate)();
 typedef void (__thiscall* GenericDestructor)(void *);
 typedef void (__thiscall* GenericThiscall)(void *);
@@ -39,10 +39,11 @@ typedef void (__fastcall* zCBspNodeRenderOutdoor)(void *, zCBspBase*, zTBBox3D, 
 
 typedef int (__fastcall* zCBspBaseCollectPolysInBBox3D)(void *, const zTBBox3D&, zCPolygon **&, int&);
 
-typedef int (__fastcall* zCBspBaseCheckRayAgainstPolys)(void *, const D3DXVECTOR3 &, const D3DXVECTOR3 &, D3DXVECTOR3 &);
+typedef int (__fastcall* zCBspBaseCheckRayAgainstPolys)(void *, const DirectX::SimpleMath::Vector3 &, const DirectX::SimpleMath::Vector3 &, DirectX::SimpleMath::Vector3 &);
 
 typedef int (__thiscall* zFILEOpen)(void *,zSTRING&, bool);
 typedef void (__thiscall* zCRnd_D3DVid_SetScreenMode)(void *, int);
+typedef void (__thiscall* zCRnd_D3D_DrawPoly)(void*, zCPolygon*);
 typedef int (__thiscall* zCOptionReadInt)(void *,zSTRING const&, char const*, int);
 typedef int (__thiscall* zCOptionReadBool)(void *,zSTRING const&, char const*, int);
 typedef unsigned long (__thiscall* zCOptionReadDWORD)(void *,zSTRING const&, char const*, unsigned long);
@@ -52,8 +53,8 @@ typedef int (__thiscall* CGameManagerExitGame)(void *);
 typedef const zSTRING* (__thiscall* zCVisualGetFileExtension)(void *, int);
 typedef long (__stdcall* zCExceptionHandlerUnhandledExceptionFilter)(void *);
 typedef void (__thiscall* zCWorldDisposeVobs)(void *, zCTree<zCVob> *);
-typedef void (__thiscall* oCSpawnManagerSpawnNpc)(void *, oCNPC *, const D3DXVECTOR3 &, float);
-typedef void (__thiscall* oCSpawnManagerInsertNpc)(void *, oCNPC *, const D3DXVECTOR3 &);
+typedef void (__thiscall* oCSpawnManagerSpawnNpc)(void *, oCNPC *, const DirectX::SimpleMath::Vector3 &, float);
+typedef void (__thiscall* oCSpawnManagerInsertNpc)(void *, oCNPC *, const DirectX::SimpleMath::Vector3 &);
 typedef void (__thiscall* zCVobSetVisual)(void *, zCVisual*);
 
 
@@ -61,7 +62,7 @@ typedef int (__thiscall* zCTex_D3DXTEX_BuildSurfaces)(void *, int);
 typedef int (__thiscall* zCTextureLoadResourceData)(void *);
 typedef int (__thiscall* zCThreadSuspendThread)(void *);
 typedef void (__thiscall* zCResourceManagerCacheOut)(void *,class zCResource*);
-typedef void (__thiscall* zCQuadMarkCreateQuadMark)(void *, zCPolygon*, const D3DXVECTOR3 &, const D3DXVECTOR2 &, struct zTEffectParams*);
+typedef void (__thiscall* zCQuadMarkCreateQuadMark)(void *, zCPolygon*, const DirectX::SimpleMath::Vector3 &, const DirectX::SimpleMath::Vector2 &, struct zTEffectParams*);
 typedef void (__thiscall* oCWorldEnableVob)(void *, zCVob *,zCVob *);
 typedef void (__thiscall* oCWorldDisableVob)(void *, zCVob *);
 typedef void (__fastcall* oCWorldRemoveFromLists)(void *, zCVob *);
@@ -99,6 +100,7 @@ struct HookedFunctionInfo
 	zCMaterialInitValues original_zCMaterialInitValues;
 	zFILEOpen original_zFILEOpen;
 	zCRnd_D3DVid_SetScreenMode original_zCRnd_D3DVid_SetScreenMode;
+	zCRnd_D3D_DrawPoly original_zCRnd_D3D_DrawPoly;
 	zCOptionReadInt original_zCOptionReadInt;
 	zCOptionReadBool original_zCOptionReadBool;
 	zCOptionReadDWORD original_zCOptionReadDWORD;

@@ -11,6 +11,9 @@
 #include "D3D11GraphicsEngine.h"
 #include "zCMaterial.h"
 
+using namespace DirectX;
+using namespace DirectX::SimpleMath;
+
 GVegetationBox::GVegetationBox()
 {
 	VegetationMesh = nullptr;
@@ -34,7 +37,7 @@ GVegetationBox::~GVegetationBox()
 }
 
 /** Returns true if the given position is inside the box */
-bool GVegetationBox::PositionInsideBox(const D3DXVECTOR3 & p)
+bool GVegetationBox::PositionInsideBox(const DirectX::SimpleMath::Vector3 & p)
 {
 	if (p.x > BoxMin.x &&
 		p.y > BoxMin.y &&
@@ -75,8 +78,8 @@ XRESULT GVegetationBox::InitVegetationBox( MeshInfo * mesh,
 	MeshTexture = meshTexture;
 
 	// Compute boundingbox and polys
-	BoxMax = D3DXVECTOR3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
-	BoxMin = D3DXVECTOR3(FLT_MAX, FLT_MAX, FLT_MAX);
+	BoxMax = DirectX::SimpleMath::Vector3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+	BoxMin = DirectX::SimpleMath::Vector3(FLT_MAX, FLT_MAX, FLT_MAX);
 
 	for(unsigned int i=0;i<mesh->Vertices.size();i++)
 	{
@@ -89,14 +92,14 @@ XRESULT GVegetationBox::InitVegetationBox( MeshInfo * mesh,
 		BoxMax.z = BoxMax.z < mesh->Vertices[i].Position.z ? mesh->Vertices[i].Position.z : BoxMax.z;
 	}
 
-	std::vector<D3DXVECTOR3> trisInside;
+	std::vector<DirectX::SimpleMath::Vector3> trisInside;
 	for(unsigned int i=0;i<mesh->Indices.size();i+=3)
 	{
-		D3DXVECTOR3 tri[3];
+		DirectX::SimpleMath::Vector3 tri[3];
 
-		tri[0] = *mesh->Vertices[mesh->Indices[i]].Position.toD3DXVECTOR3();
-		tri[1] = *mesh->Vertices[mesh->Indices[i+1]].Position.toD3DXVECTOR3();
-		tri[2] = *mesh->Vertices[mesh->Indices[i+2]].Position.toD3DXVECTOR3();
+		tri[0] = *mesh->Vertices[mesh->Indices[i]].Position.toVector3();
+		tri[1] = *mesh->Vertices[mesh->Indices[i+1]].Position.toVector3();
+		tri[2] = *mesh->Vertices[mesh->Indices[i+2]].Position.toVector3();
 
 		trisInside.push_back(tri[0]);
 		trisInside.push_back(tri[1]);
@@ -110,8 +113,8 @@ XRESULT GVegetationBox::InitVegetationBox( MeshInfo * mesh,
 }
 
 /** Initializes the vegetationbox */
-XRESULT GVegetationBox::InitVegetationBox(const D3DXVECTOR3 & min, 
-										  const D3DXVECTOR3 & max, 
+XRESULT GVegetationBox::InitVegetationBox(const DirectX::SimpleMath::Vector3 & min, 
+										  const DirectX::SimpleMath::Vector3 & max, 
 										  const std::string & vegetationMesh, 
 										  float density, 
 										  float maxSize,
@@ -147,7 +150,7 @@ XRESULT GVegetationBox::InitVegetationBox(const D3DXVECTOR3 & min,
 
 	// Get polygons laying in this box
 	zCPolygon** p = Engine::GAPI->GetLoadedWorldInfo()->BspTree->GetPolygons();
-	std::vector<D3DXVECTOR3> polysInside;
+	std::vector<DirectX::SimpleMath::Vector3> polysInside;
 
 	// Get polys inside the box //TODO: Get crossing polys too!
 	for(int i=0;i<Engine::GAPI->GetLoadedWorldInfo()->BspTree->GetNumPolys();i++)
@@ -157,14 +160,14 @@ XRESULT GVegetationBox::InitVegetationBox(const D3DXVECTOR3 & min,
 			if (v == 4)
 			{
 				// Check center too
-				D3DXVECTOR3 tri[] = {   *p[i]->getVertices()[0]->Position.toD3DXVECTOR3(), 
-										*p[i]->getVertices()[1]->Position.toD3DXVECTOR3(), 
-										*p[i]->getVertices()[2]->Position.toD3DXVECTOR3()};
+				DirectX::SimpleMath::Vector3 tri[] = {   *p[i]->getVertices()[0]->Position.toVector3(), 
+										*p[i]->getVertices()[1]->Position.toVector3(), 
+										*p[i]->getVertices()[2]->Position.toVector3()};
 
 				// Get the center
-				D3DXVECTOR3 center = (tri[0] + tri[1] + tri[2]) / 3.0f;
+				DirectX::SimpleMath::Vector3 center = (tri[0] + tri[1] + tri[2]) / 3.0f;
 
-				if (PositionInsideBox(*p[i]->getVertices()[v]->Position.toD3DXVECTOR3()))
+				if (PositionInsideBox(*p[i]->getVertices()[v]->Position.toVector3()))
 				{
 					// Restrict by texture
 					if (restrictByTexture.length() && 
@@ -191,11 +194,11 @@ XRESULT GVegetationBox::InitVegetationBox(const D3DXVECTOR3 & min,
 				break;
 			}
 
-			if (PositionInsideBox(*p[i]->getVertices()[v]->Position.toD3DXVECTOR3()))
+			if (PositionInsideBox(*p[i]->getVertices()[v]->Position.toVector3()))
 			{
-				D3DXVECTOR3 tri[] = {   *p[i]->getVertices()[0]->Position.toD3DXVECTOR3(), 
-										*p[i]->getVertices()[1]->Position.toD3DXVECTOR3(), 
-										*p[i]->getVertices()[2]->Position.toD3DXVECTOR3()};
+				DirectX::SimpleMath::Vector3 tri[] = {   *p[i]->getVertices()[0]->Position.toVector3(), 
+										*p[i]->getVertices()[1]->Position.toVector3(), 
+										*p[i]->getVertices()[2]->Position.toVector3()};
 
 				// Restrict by texture
 				if (restrictByTexture.length() && 
@@ -231,10 +234,10 @@ XRESULT GVegetationBox::InitVegetationBox(const D3DXVECTOR3 & min,
 }
 
 /** Puts trasformation for the given spots */
-void GVegetationBox::InitSpotsRandom(const std::vector<D3DXVECTOR3> & trisInside, EShape shape, float density)
+void GVegetationBox::InitSpotsRandom(const std::vector<DirectX::SimpleMath::Vector3> & trisInside, EShape shape, float density)
 {
-	D3DXVECTOR3 mid = BoxMin * 0.5f + BoxMax * 0.5f;
-	D3DXVECTOR3 bs = (BoxMax - BoxMin);
+	DirectX::SimpleMath::Vector3 mid = BoxMin * 0.5f + BoxMax * 0.5f;
+	DirectX::SimpleMath::Vector3 bs = (BoxMax - BoxMin);
 	float rad = std::min(bs.x, bs.z) / 2.0f;
 
 	delete InstancingBuffer; InstancingBuffer = nullptr;
@@ -242,12 +245,12 @@ void GVegetationBox::InitSpotsRandom(const std::vector<D3DXVECTOR3> & trisInside
 	VegetationSpots.clear();
 
 	// Find random spots on the polygons (TODO: This is still based off the size of the polygons!)
-	std::vector<D3DXVECTOR3> spots;
+	std::vector<DirectX::SimpleMath::Vector3> spots;
 	for(unsigned int i=0;i<trisInside.size();i+=3)
 	{
 		for(unsigned int d=0;d<std::max(1.0f, 30 * density);d++)
 		{
-			D3DXVECTOR3 tri[] = {   trisInside[i], 
+			DirectX::SimpleMath::Vector3 tri[] = {   trisInside[i], 
 									trisInside[i+1], 
 									trisInside[i+2]};
 
@@ -256,12 +259,12 @@ void GVegetationBox::InitSpotsRandom(const std::vector<D3DXVECTOR3> & trisInside
 			float b1 = (1.0f - b0) * Toolbox::frand();
 			float b2 = 1 - b0 - b1;
 
-			D3DXVECTOR3 rnd = tri[0] * b0
+			DirectX::SimpleMath::Vector3 rnd = tri[0] * b0
 					 + tri[1] * b1
 					 + tri[2] * b2;
 
 			// Get 2 random points on the edges
-			/*D3DXVECTOR3 rp[3];
+			/*DirectX::SimpleMath::Vector3 rp[3];
 			D3DXVec3Lerp(&rp[0], &tri[0], &tri[1], Toolbox::frand());
 			D3DXVec3Lerp(&rp[1], &tri[0], &tri[2], Toolbox::frand());
 
@@ -272,8 +275,8 @@ void GVegetationBox::InitSpotsRandom(const std::vector<D3DXVECTOR3> & trisInside
 			{
 				if (shape == S_Circle) // Restrict to smalles circle inside our AABB
 				{
-					D3DXVECTOR2 m2 = D3DXVECTOR2(mid.x, mid.z);
-					float dist = D3DXVec2Length(&(D3DXVECTOR2(rnd.x, rnd.z) - m2));
+					DirectX::SimpleMath::Vector2 m2 = DirectX::SimpleMath::Vector2(mid.x, mid.z);
+					float dist = (DirectX::SimpleMath::Vector2(rnd.x, rnd.z) - m2).Length();
 
 					if (dist >= rad)
 						continue;
@@ -288,17 +291,17 @@ void GVegetationBox::InitSpotsRandom(const std::vector<D3DXVECTOR3> & trisInside
 	// Create the transformation matrices for every spot
 	for(unsigned int i=0;i<spots.size();i++)
 	{
-		D3DXMATRIX w;
-		D3DXMATRIX s;
-		D3DXMATRIX r;
-		D3DXMatrixTranslation(&w, spots[i].x, spots[i].y, spots[i].z);
+		DirectX::XMMATRIX w;
+		DirectX::SimpleMath::Matrix s;
+		DirectX::SimpleMath::Matrix r;
+		w = DirectX::XMMatrixTranslation(spots[i].x, spots[i].y, spots[i].z);
 		float scale = Toolbox::lerp(20, 80, Toolbox::frand());
-		D3DXMatrixScaling(&s, scale,scale,scale);
-		D3DXMatrixRotationY(&r, Toolbox::frand() * (float)D3DX_PI * 2.0f);
+		s = DirectX::XMMatrixScaling(scale,scale,scale);
+		r = DirectX::XMMatrixRotationY(Toolbox::frand() * (float)XM_PI * 2.0f);
 
 		w = r * s * w;
 
-		D3DXMatrixTranspose(&w, &w);
+		w = DirectX::XMMatrixTranspose(w);
 
 		VegetationSpots.push_back(w);
 	}
@@ -310,7 +313,7 @@ void GVegetationBox::InitSpotsRandom(const std::vector<D3DXVECTOR3> & trisInside
 
 	// Create instancing buffer for this box
 	Engine::GraphicsEngine->CreateVertexBuffer(&InstancingBuffer);
-	InstancingBuffer->Init(&VegetationSpots[0], VegetationSpots.size() * sizeof(D3DXMATRIX));
+	InstancingBuffer->Init(&VegetationSpots[0], VegetationSpots.size() * sizeof(DirectX::SimpleMath::Matrix));
 
 	// Create constant buffer
 	Engine::GraphicsEngine->CreateConstantBuffer(&GrassCB, nullptr, sizeof(GrassConstantBuffer));
@@ -322,7 +325,7 @@ void GVegetationBox::InitSpotsRandom(const std::vector<D3DXVECTOR3> & trisInside
 }
 
 /** Draws this vegetation box */
-void GVegetationBox::RenderVegetation(const D3DXVECTOR3 & eye)
+void GVegetationBox::RenderVegetation(const DirectX::SimpleMath::Vector3 & eye)
 {
 	float drawRadius = Engine::GAPI->GetRendererState()->RendererSettings.OutdoorSmallVobDrawRadius;
 
@@ -371,19 +374,19 @@ void GVegetationBox::RenderVegetation(const D3DXVECTOR3 & eye)
 	// Unseed randomizer to always have the same set of scales/rotations
 	//srand(0);
 
-	D3DXMATRIX view;
+	DirectX::SimpleMath::Matrix view;
 	Engine::GAPI->GetViewMatrix(&view);
-	D3DXMatrixTranspose(&view, &view);
+	view = DirectX::XMMatrixTranspose(view);
 
 	GrassConstantBuffer gcb;
-	D3DXVec3TransformNormal(gcb.G_NormalVS.toD3DXVECTOR3(), &D3DXVECTOR3(0, 1, 0), &view);
+	gcb.G_NormalVS = DirectX::SimpleMath::Vector3::TransformNormal(DirectX::SimpleMath::Vector3(0, 1, 0), view);
 	gcb.G_Time = Engine::GAPI->GetTimeSeconds();
 	gcb.G_WindStrength = Engine::GAPI->GetRendererState()->RendererSettings.GlobalWindStrength;
 	GrassCB->UpdateBuffer(&gcb);
 	GrassCB->BindToVertexShader(1);
 
 	// Draw the batch
-	VegetationMesh->DrawBatch(InstancingBuffer, VegetationSpots.size(), sizeof(D3DXMATRIX));
+	VegetationMesh->DrawBatch(InstancingBuffer, VegetationSpots.size(), sizeof(DirectX::SimpleMath::Matrix));
 	
 	/*for(int i=0;i<VegetationSpots.size();i++)
 	{
@@ -412,7 +415,7 @@ void GVegetationBox::SetRenderBoundingBox(bool value)
 }
 
 /** Visualizes the grass-meshes */
-void GVegetationBox::VisualizeGrass(const D3DXVECTOR4 & color)
+void GVegetationBox::VisualizeGrass(const DirectX::SimpleMath::Vector4 & color)
 {
 	// Draw bounding box
 	Engine::GraphicsEngine->GetLineRenderer()->AddAABBMinMax(BoxMin, BoxMax, color);
@@ -423,42 +426,43 @@ void GVegetationBox::VisualizeGrass(const D3DXVECTOR4 & color)
 		if (i % 10 != 0)
 			continue; // Only render every 10th grassmesh
 
-		D3DXVECTOR3 spot = D3DXVECTOR3(VegetationSpots[i]._14, VegetationSpots[i]._24, VegetationSpots[i]._34); 
-		D3DXVECTOR3 scale = D3DXVECTOR3(0, 0, 0);
-		D3DXVECTOR4 * m = (D3DXVECTOR4 *)&VegetationSpots[i];
+		DirectX::SimpleMath::Vector3 spot = DirectX::SimpleMath::Vector3(VegetationSpots[i]._14, VegetationSpots[i]._24, VegetationSpots[i]._34); 
+		DirectX::SimpleMath::Vector3 scale = DirectX::SimpleMath::Vector3::Zero;
+		DirectX::SimpleMath::Vector4 * m = (DirectX::SimpleMath::Vector4 *)&VegetationSpots[i];
 
 		// Compute scale
-		//scale.x = D3DXVec3Length((D3DXVECTOR3 *)&m[0]);
-		scale.y = D3DXVec3Length((D3DXVECTOR3 *)&m[1]);
-		//scale.z = D3DXVec3Length((D3DXVECTOR3 *)&m[2]);
+		//scale.x = D3DXVec3Length((DirectX::SimpleMath::Vector3 *)&m[0]);
+		scale.y = ((DirectX::SimpleMath::Vector3 *)&m[1])->Length();
+		//scale.z = D3DXVec3Length((DirectX::SimpleMath::Vector3 *)&m[2]);
 
 		Engine::GraphicsEngine->GetLineRenderer()->AddLine(LineVertex(spot, color), LineVertex(spot + scale * 2.0f, color));
 	}
 }
 
 /** Returns the boundingbox of this */
-void GVegetationBox::GetBoundingBox(D3DXVECTOR3 * bbMin, D3DXVECTOR3 * bbMax)
+void GVegetationBox::GetBoundingBox(DirectX::SimpleMath::Vector3 * bbMin, DirectX::SimpleMath::Vector3 * bbMax)
 {
 	*bbMin = BoxMin;
 	*bbMax = BoxMax;
 }
 
-void GVegetationBox::SetBoundingBox(const D3DXVECTOR3 & bbMin, const D3DXVECTOR3 & bbMax)
+void GVegetationBox::SetBoundingBox(const DirectX::SimpleMath::Vector3 & bbMin, const DirectX::SimpleMath::Vector3 & bbMax)
 {
 	BoxMin = bbMin;
 	BoxMax = bbMax;
 }
 
 /** Removes all vegetation in range of the given position */
-void GVegetationBox::RemoveVegetationAt(const D3DXVECTOR3 & position, float range) {
+void GVegetationBox::RemoveVegetationAt(const DirectX::SimpleMath::Vector3 & position, float range) {
 	// Make a list of the vector
-	std::list<D3DXMATRIX> s(VegetationSpots.begin(), VegetationSpots.end());
+	std::list<DirectX::SimpleMath::Matrix> s(VegetationSpots.begin(), VegetationSpots.end());
 
 	// Remove everything in range
-	for (std::list<D3DXMATRIX>::iterator it = s.begin(); it != s.end();) {
-		D3DXVECTOR3 spot = D3DXVECTOR3(it->_14, it->_24, it->_34); 
+	for (std::list<DirectX::SimpleMath::Matrix>::iterator it = s.begin(); it != s.end();) {
+		DirectX::SimpleMath::Vector3 spot = DirectX::SimpleMath::Vector3(it->_14, it->_24, it->_34); 
 
-		float d = D3DXVec3Length(&(spot - position));
+		
+		const float d = (spot - position).Length();
 
 		if (d < range) {
 			it = s.erase(it);
@@ -477,7 +481,7 @@ void GVegetationBox::RemoveVegetationAt(const D3DXVECTOR3 & position, float rang
 
 	if (!IsEmpty()) {
 		Engine::GraphicsEngine->CreateVertexBuffer(&InstancingBuffer);
-		InstancingBuffer->Init(&VegetationSpots[0], VegetationSpots.size() * sizeof(D3DXMATRIX));
+		InstancingBuffer->Init(&VegetationSpots[0], VegetationSpots.size() * sizeof(DirectX::SimpleMath::Matrix));
 	}
 
 	// Refit
@@ -491,19 +495,19 @@ void GVegetationBox::RefitBoundingBox()
 {
 	if (VegetationSpots.empty())
 	{
-		BoxMax = D3DXVECTOR3(0, 0, 0);
-		BoxMin = D3DXVECTOR3(0, 0, 0);
+		BoxMax = DirectX::SimpleMath::Vector3::Zero;
+		BoxMin = DirectX::SimpleMath::Vector3::Zero;
 
 		return;
 	}
 
 	// Compute boundingbox
-	BoxMax = D3DXVECTOR3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
-	BoxMin = D3DXVECTOR3(FLT_MAX, FLT_MAX, FLT_MAX);
+	BoxMax = DirectX::SimpleMath::Vector3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+	BoxMin = DirectX::SimpleMath::Vector3(FLT_MAX, FLT_MAX, FLT_MAX);
 
 	for(unsigned int i=0;i<VegetationSpots.size();i++)
 	{
-		D3DXVECTOR3 spot = D3DXVECTOR3(VegetationSpots[i]._14, VegetationSpots[i]._24, VegetationSpots[i]._34); 
+		DirectX::SimpleMath::Vector3 spot = DirectX::SimpleMath::Vector3(VegetationSpots[i]._14, VegetationSpots[i]._24, VegetationSpots[i]._34); 
 
 		BoxMin.x = BoxMin.x > spot.x ? spot.x : BoxMin.x;
 		BoxMin.y = BoxMin.y > spot.y ? spot.y : BoxMin.y;
@@ -518,20 +522,19 @@ void GVegetationBox::RefitBoundingBox()
 /** Applys a uniform scaling to all vegetations */
 void GVegetationBox::ApplyUniformScaling(float scale)
 {
-	D3DXMATRIX s;
-	D3DXMatrixScaling(&s, scale, scale, scale);
+	DirectX::XMMATRIX s = DirectX::XMMatrixScaling(scale, scale, scale);
 
 	for(unsigned int i=0;i<VegetationSpots.size();i++)
 	{
-		D3DXMATRIX w;
-		D3DXMatrixTranspose(&w, &VegetationSpots[i]);
-		VegetationSpots[i] = s * w;
-		D3DXMatrixTranspose(&VegetationSpots[i], &VegetationSpots[i]);
+		DirectX::XMMATRIX w = VegetationSpots[i];
+		w = DirectX::XMMatrixTranspose(w);
+		w = s * w;
+		VegetationSpots[i] = DirectX::XMMatrixTranspose(w);
 	}
 	
 	delete InstancingBuffer;
 	Engine::GraphicsEngine->CreateVertexBuffer(&InstancingBuffer);
-	InstancingBuffer->Init(&VegetationSpots[0], VegetationSpots.size() * sizeof(D3DXMATRIX));
+	InstancingBuffer->Init(&VegetationSpots[0], VegetationSpots.size() * sizeof(DirectX::SimpleMath::Matrix));
 }
 
 /** Returns true if this is empty */
@@ -548,21 +551,21 @@ void GVegetationBox::SaveToFILE(FILE* f, int version)
 	fwrite(&vsize, sizeof(vsize), 1, f);
 
 	// Save vegetation array itself
-	std::vector<D3DXVECTOR4> spots;
+	std::vector<DirectX::SimpleMath::Vector4> spots;
 	for(unsigned int i=0;i<VegetationSpots.size();i++)
 	{
-		D3DXVECTOR4 * m = (D3DXVECTOR4 *)&VegetationSpots[i];
-		D3DXVECTOR4 spot = D3DXVECTOR4(VegetationSpots[i]._14, VegetationSpots[i]._24, VegetationSpots[i]._34, D3DXVec3Length((D3DXVECTOR3 *)&m[1])); 
+		DirectX::SimpleMath::Vector4 * m = (DirectX::SimpleMath::Vector4 *)&VegetationSpots[i];
+		DirectX::SimpleMath::Vector4 spot = DirectX::SimpleMath::Vector4(VegetationSpots[i]._14, VegetationSpots[i]._24, VegetationSpots[i]._34, ((DirectX::SimpleMath::Vector3 *)&m[1])->Length());
 
 		spots.push_back(spot);
 	}
 
-	fwrite(&spots[0], sizeof(D3DXVECTOR4) * vsize, 1, f);
+	fwrite(&spots[0], sizeof(DirectX::SimpleMath::Vector4) * vsize, 1, f);
 
 	// Save trisInside
 	int tsize = TrisInside.size();
 	fwrite(&tsize, sizeof(tsize), 1, f);
-	fwrite(&TrisInside[0], sizeof(D3DXVECTOR3) * tsize, 1, f);
+	fwrite(&TrisInside[0], sizeof(DirectX::SimpleMath::Vector3) * tsize, 1, f);
 
 	// Save wether this was using a mesh info or not
 	bool hasMeshInfo = MeshPart != nullptr;
@@ -576,24 +579,24 @@ void GVegetationBox::LoadFromFILE(FILE* f, int version)
 	int vsize;
 	fread(&vsize, sizeof(vsize), 1, f);
 
-	std::vector<D3DXVECTOR4> spots;
+	std::vector<DirectX::SimpleMath::Vector4> spots;
 	spots.resize(vsize);
-	fread(&spots[0], sizeof(D3DXVECTOR4) * vsize, 1, f);
+	fread(&spots[0], sizeof(DirectX::SimpleMath::Vector4) * vsize, 1, f);
 
 	// Reconstruct spots
 	for(unsigned int i=0;i<spots.size();i++)
 	{
-		D3DXMATRIX w;
-		D3DXMATRIX s;
-		D3DXMATRIX r;
-		D3DXMatrixTranslation(&w, spots[i].x, spots[i].y, spots[i].z);
+		DirectX::XMMATRIX w;
+		DirectX::SimpleMath::Matrix s;
+		DirectX::SimpleMath::Matrix r;
+		w = DirectX::XMMatrixTranslation(spots[i].x, spots[i].y, spots[i].z);
 		float scale = spots[i].w;
-		D3DXMatrixScaling(&s, scale,scale,scale);
-		D3DXMatrixRotationY(&r, Toolbox::frand() * (float)D3DX_PI * 2.0f);
+		s = DirectX::XMMatrixScaling(scale,scale,scale);
+		r = DirectX::XMMatrixRotationY(Toolbox::frand() * (float)XM_PI * 2.0f);
 
 		w = r * s * w;
 
-		D3DXMatrixTranspose(&w, &w);
+		w = DirectX::XMMatrixTranspose(w);
 
 		VegetationSpots.push_back(w);
 	}
@@ -602,7 +605,7 @@ void GVegetationBox::LoadFromFILE(FILE* f, int version)
 	int tsize;
 	fread(&tsize, sizeof(tsize), 1, f);
 	TrisInside.resize(tsize);
-	fread(&TrisInside[0], sizeof(D3DXVECTOR3) * tsize, 1, f);
+	fread(&TrisInside[0], sizeof(Vector3) * tsize, 1, f);
 
 	// Save wether this was using a mesh info or not
 	bool hasMeshInfo = MeshPart != nullptr;
@@ -623,16 +626,16 @@ void GVegetationBox::LoadFromFILE(FILE* f, int version)
 	for (unsigned int i = 0; i < spots.size(); i += j)
 	{
 		// Use grass-piece and trace straight down
-		D3DXVECTOR3 spot = D3DXVECTOR3(spots[i].x, spots[i].y, spots[i].z);
+		Vector3 spot = Vector3(spots[i].x, spots[i].y, spots[i].z);
 
 		// Little offset
 		spot.y += 1.0f;
 
 		// Try to find meshpart and texture
-		D3DXVECTOR3 hit;
+		Vector3 hit;
 		MeshInfo * hitMeshTrace = nullptr;
 		zCMaterial* hitMaterialTrace = nullptr;
-		Engine::GAPI->TraceWorldMesh(spot, D3DXVECTOR3(0, -1, 0), hit, nullptr, nullptr, &hitMeshTrace, &hitMaterialTrace);
+		Engine::GAPI->TraceWorldMesh(spot, Vector3(0, -1, 0), hit, nullptr, nullptr, &hitMeshTrace, &hitMaterialTrace);
 
 		// Save results
 		if (hitMeshTrace != nullptr)
@@ -665,7 +668,7 @@ void GVegetationBox::LoadFromFILE(FILE* f, int version)
 
 	// Create instancing buffer for this box
 	Engine::GraphicsEngine->CreateVertexBuffer(&InstancingBuffer);
-	InstancingBuffer->Init(&VegetationSpots[0], VegetationSpots.size() * sizeof(D3DXMATRIX));
+	InstancingBuffer->Init(&VegetationSpots[0], VegetationSpots.size() * sizeof(DirectX::SimpleMath::Matrix));
 
 	// Create constant buffer
 	Engine::GraphicsEngine->CreateConstantBuffer(&GrassCB, nullptr, sizeof(GrassConstantBuffer));

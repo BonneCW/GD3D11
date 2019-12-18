@@ -18,20 +18,6 @@ const int INSTANCING_BUFFER_SIZE = sizeof(VobInstanceInfo) * 2048;
 //#define DEBUG_D3D11
 
 D3D11GraphicsEngineBase::D3D11GraphicsEngineBase() {
-	TempVertexBuffer = nullptr;
-	DeferredContext = nullptr;
-	Context = nullptr;
-	Device = nullptr;
-	DXGIAdapter = nullptr;
-	DXGIFactory = nullptr;
-	ShaderManager = nullptr;
-	SwapChain = nullptr;
-	Backbuffer = nullptr;
-	DepthStencilBuffer = nullptr;
-	HDRBackBuffer = nullptr;
-	DefaultSamplerState = nullptr;
-	LineRenderer = nullptr;
-	TransformsCB = nullptr;
 	PresentPending = false;
 
 	// Match the resolution with the current desktop resolution
@@ -46,21 +32,6 @@ D3D11GraphicsEngineBase::~D3D11GraphicsEngineBase() {
 	for (size_t i = 0; i < DeferredContextsAll.size(); i++) {
 		SAFE_RELEASE(DeferredContextsAll[i]);
 	}
-
-	SAFE_DELETE(TempVertexBuffer);
-	SAFE_DELETE(ShaderManager);
-	SAFE_DELETE(Backbuffer);
-	SAFE_DELETE(HDRBackBuffer);
-	SAFE_DELETE(LineRenderer);
-	SAFE_DELETE(TransformsCB);
-
-	SAFE_RELEASE(DefaultSamplerState);
-	SAFE_RELEASE(SwapChain);
-	//SAFE_RELEASE(DeferredContext);
-	SAFE_RELEASE(Context);
-	SAFE_RELEASE(Device);
-	SAFE_RELEASE(DXGIAdapter);
-	SAFE_RELEASE(DXGIFactory);
 }
 
 /** Called after the fake-DDraw-Device got created */
@@ -70,7 +41,7 @@ XRESULT D3D11GraphicsEngineBase::Init() {
 	LogInfo() << "Initializing Device...";
 
 	// Create DXGI factory
-	LE(CreateDXGIFactory(__uuidof(IDXGIFactory), (void **)&DXGIFactory));
+	LE(CreateDXGIFactory(__uuidof(IDXGIFactory), &DXGIFactory));
 	LE(DXGIFactory->EnumAdapters(0, &DXGIAdapter)); // Get first adapter
 
 	// Find out what we are rendering on to write it into the logfile
@@ -88,25 +59,25 @@ XRESULT D3D11GraphicsEngineBase::Init() {
 
 	// Create D3D11-Device
 #ifndef DEBUG_D3D11
-	LE(D3D11CreateDevice(DXGIAdapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags, &featurelevel, 1, D3D11_SDK_VERSION, &Device, nullptr, &Context));
+	LE(D3D11CreateDevice(DXGIAdapter.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags, &featurelevel, 1, D3D11_SDK_VERSION, &Device, nullptr, &Context));
 #else
-	LE(D3D11CreateDevice(DXGIAdapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags | D3D11_CREATE_DEVICE_DEBUG, &featurelevel, 1, D3D11_SDK_VERSION, &Device, nullptr, &Context));
+	LE(D3D11CreateDevice(DXGIAdapter.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags | D3D11_CREATE_DEVICE_DEBUG, &featurelevel, 1, D3D11_SDK_VERSION, &Device, nullptr, &Context));
 #endif
-	
+
 	if (hr == DXGI_ERROR_UNSUPPORTED) {
-		LogErrorBox() <<	"Your GPU (" << deviceDescription.c_str() << ") does not support Direct3D 11, so it can't run GD3D11!\n"
+		LogErrorBox() << "Your GPU (" << deviceDescription.c_str() << ") does not support Direct3D 11, so it can't run GD3D11!\n"
 			"It has to be at least Featurelevel 11_0 compatible, which requires at least:"
 			" *	Nvidia GeForce GTX4xx or newer"
 			" *	AMD Radeon 5xxx or newer\n\n"
 			"The game will now close.";
 		exit(0);
 	}
-	
+
 	LE(Device->CreateDeferredContext(0, &DeferredContext)); // Used for multithreaded texture loading
-	
+
 	LogInfo() << "Creating ShaderManager";
 
-	ShaderManager = new D3D11ShaderManager();
+	ShaderManager = std::make_unique<D3D11ShaderManager>();
 	ShaderManager->Init();
 	ShaderManager->LoadShaders();
 
@@ -137,18 +108,18 @@ XRESULT D3D11GraphicsEngineBase::Init() {
 	samplerDesc.MinLOD = -3.402823466e+38F; // -FLT_MAX
 	samplerDesc.MaxLOD = 3.402823466e+38F; // FLT_MAX
 
-	LE(Device->CreateSamplerState(&samplerDesc, &DefaultSamplerState));
-	Context->PSSetSamplers(0, 1, &DefaultSamplerState);
-	Context->VSSetSamplers(0, 1, &DefaultSamplerState);
-	Context->DSSetSamplers(0, 1, &DefaultSamplerState);
-	Context->HSSetSamplers(0, 1, &DefaultSamplerState);
+	LE(GetDevice()->CreateSamplerState(&samplerDesc, &DefaultSamplerState));
+	GetContext()->PSSetSamplers(0, 1, DefaultSamplerState.GetAddressOf());
+	GetContext()->VSSetSamplers(0, 1, DefaultSamplerState.GetAddressOf());
+	GetContext()->DSSetSamplers(0, 1, DefaultSamplerState.GetAddressOf());
+	GetContext()->HSSetSamplers(0, 1, DefaultSamplerState.GetAddressOf());
 
-	TempVertexBuffer = new D3D11VertexBuffer();
+	TempVertexBuffer = std::make_unique<D3D11VertexBuffer>();
 	TempVertexBuffer->Init(nullptr, DRAWVERTEXARRAY_BUFFER_SIZE, D3D11VertexBuffer::B_VERTEXBUFFER, D3D11VertexBuffer::U_DYNAMIC, D3D11VertexBuffer::CA_WRITE);
 
-	TransformsCB = new D3D11ConstantBuffer(sizeof(VS_ExConstantBuffer_PerFrame), nullptr);
+	TransformsCB = std::make_unique<D3D11ConstantBuffer>(sizeof(VS_ExConstantBuffer_PerFrame), nullptr);
 
-	LineRenderer = new D3D11LineRenderer();
+	LineRenderer = std::make_unique<D3D11LineRenderer>();
 
 	SetDefaultStates();
 	UpdateRenderStates();
@@ -181,8 +152,7 @@ XRESULT D3D11GraphicsEngineBase::OnResize(INT2 newSize)
 	GetClientRect(GetDesktopWindow(), &desktopRect);
 	SetWindowPos(OutputWindow, nullptr, 0, 0, desktopRect.right, desktopRect.bottom, 0);
 
-	delete Backbuffer; Backbuffer = nullptr;
-	delete DepthStencilBuffer; DepthStencilBuffer = nullptr;
+	Backbuffer.reset();
 
 	if (!SwapChain)
 	{
@@ -204,7 +174,7 @@ XRESULT D3D11GraphicsEngineBase::OnResize(INT2 newSize)
 
 		// Check for windowed mode
 		bool windowed = Engine::GAPI->HasCommandlineParameter("ZWINDOW") ||
-						Engine::GAPI->GetIntParamFromConfig("zStartupWindowed");
+			Engine::GAPI->GetIntParamFromConfig("zStartupWindowed");
 		scd.Windowed = windowed;
 
 #ifdef BUILD_GOTHIC_1_08k
@@ -216,8 +186,8 @@ XRESULT D3D11GraphicsEngineBase::OnResize(INT2 newSize)
 #endif
 
 
-		LE(DXGIFactory->CreateSwapChain(Device, &scd, &SwapChain));
-		 
+		LE(DXGIFactory->CreateSwapChain(GetDevice(), &scd, &SwapChain));
+
 		if (!SwapChain)
 		{
 			LogError() << "Failed to create Swapchain! Program will now exit!";
@@ -231,7 +201,7 @@ XRESULT D3D11GraphicsEngineBase::OnResize(INT2 newSize)
 	{
 		LogInfo() << "Resizing swapchain  (Format: DXGI_FORMAT_R8G8B8A8_UNORM)";
 
-		if (FAILED(SwapChain->ResizeBuffers(1, bbres.x, bbres.y, DXGI_FORMAT_R8G8B8A8_UNORM, 0)))
+		if (FAILED(SwapChain->ResizeBuffers(0, bbres.x, bbres.y, DXGI_FORMAT_R8G8B8A8_UNORM, 0)))
 		{
 			LogError() << "Failed to resize swapchain!";
 			return XR_FAILED;
@@ -240,22 +210,21 @@ XRESULT D3D11GraphicsEngineBase::OnResize(INT2 newSize)
 
 	// Successfully resized swapchain, re-get buffers
 	ID3D11Texture2D * backbuffer = nullptr;
-	SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void **)&backbuffer);
+	SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void **)& backbuffer);
 
 	// Recreate RenderTargetView
 	ID3D11RenderTargetView* backbufferRTV;
 	ID3D11ShaderResourceView * backbufferSRV;
-	LE(Device->CreateRenderTargetView(backbuffer, nullptr, &backbufferRTV));
-	LE(Device->CreateShaderResourceView(backbuffer, nullptr, &backbufferSRV));
+	LE(GetDevice()->CreateRenderTargetView(backbuffer, nullptr, &backbufferRTV));
+	LE(GetDevice()->CreateShaderResourceView(backbuffer, nullptr, &backbufferSRV));
 
-	Backbuffer = new RenderToTextureBuffer(backbuffer, backbufferSRV, backbufferRTV, (UINT)Resolution.x, (UINT)Resolution.y);
+	Backbuffer = std::make_unique<RenderToTextureBuffer>(backbuffer, backbufferSRV, backbufferRTV, (UINT)Resolution.x, (UINT)Resolution.y);
 
 	// Recreate DepthStencilBuffer
-	delete DepthStencilBuffer;
-	DepthStencilBuffer = new RenderToDepthStencilBuffer(Device, Resolution.x, Resolution.y, DXGI_FORMAT_R32_TYPELESS, nullptr, DXGI_FORMAT_D32_FLOAT, DXGI_FORMAT_R32_FLOAT);
+	DepthStencilBuffer = std::make_unique<RenderToDepthStencilBuffer>(GetDevice(), Resolution.x, Resolution.y, DXGI_FORMAT_R32_TYPELESS, nullptr, DXGI_FORMAT_D32_FLOAT, DXGI_FORMAT_R32_FLOAT);
 
 	// Bind our newly created resources
-	Context->OMSetRenderTargets(1, Backbuffer->GetRenderTargetViewPtr(), DepthStencilBuffer->GetDepthStencilView());
+	GetContext()->OMSetRenderTargets(1, Backbuffer->GetRenderTargetViewPtr(), DepthStencilBuffer->GetDepthStencilView());
 
 	// Set the viewport
 	D3D11_VIEWPORT viewport;
@@ -268,15 +237,14 @@ XRESULT D3D11GraphicsEngineBase::OnResize(INT2 newSize)
 	viewport.MinDepth = 0.0f;
 	viewport.MaxDepth = 1.0f;
 
-	Context->RSSetViewports(1, &viewport);
+	GetContext()->RSSetViewports(1, &viewport);
 
 	// Create other buffers
-	delete HDRBackBuffer;
-	HDRBackBuffer = new RenderToTextureBuffer(Device, Resolution.x, Resolution.y, DXGI_FORMAT_R16G16B16A16_FLOAT);
+	HDRBackBuffer = std::make_unique<RenderToTextureBuffer>(GetDevice(), Resolution.x, Resolution.y, DXGI_FORMAT_R16G16B16A16_FLOAT);
 
 	Engine::AntTweakBar->OnResize(newSize);
 
-	Context->OMSetRenderTargets(1, Backbuffer->GetRenderTargetViewPtr(), DepthStencilBuffer->GetDepthStencilView());
+	GetContext()->OMSetRenderTargets(1, Backbuffer->GetRenderTargetViewPtr(), DepthStencilBuffer->GetDepthStencilView());
 
 	return XR_SUCCESS;
 }
@@ -287,7 +255,7 @@ XRESULT D3D11GraphicsEngineBase::OnBeginFrame()
 	// Enter the critical section for safety while executing the deferred command list
 	Engine::GAPI->EnterResourceCriticalSection();
 	ID3D11CommandList* dc_cl = nullptr;
-	DeferredContext->FinishCommandList(true, &dc_cl);
+	GetDeferredMediaContext()->FinishCommandList(true, &dc_cl);
 
 	// Copy list of textures we are operating on
 	Engine::GAPI->MoveLoadedTexturesToProcessedList();
@@ -297,12 +265,12 @@ XRESULT D3D11GraphicsEngineBase::OnBeginFrame()
 	if (dc_cl)
 	{
 		//LogInfo() << "Executing command list";
-		Context->ExecuteCommandList(dc_cl, true);
+		GetContext()->ExecuteCommandList(dc_cl, true);
 		dc_cl->Release();
 	}
 
 	// Force the mode upon Gothic
-	zCView::SetMode((int)(Resolution.x / Engine::GAPI->GetRendererState()->RendererSettings.GothicUIScale), (int)(Resolution.y / Engine::GAPI->GetRendererState()->RendererSettings.GothicUIScale), 32);
+	zCView::SetMode(static_cast<int>(Resolution.x / Engine::GAPI->GetRendererState()->RendererSettings.GothicUIScale), static_cast<int>(Resolution.y / Engine::GAPI->GetRendererState()->RendererSettings.GothicUIScale), 32);
 
 	// Notify the shader manager
 	ShaderManager->OnFrameStart();
@@ -329,14 +297,14 @@ XRESULT D3D11GraphicsEngineBase::SetViewport(const ViewportInfo& viewportInfo)
 	D3D11_VIEWPORT viewport;
 	ZeroMemory(&viewport, sizeof(D3D11_VIEWPORT));
 
-	viewport.TopLeftX = (float)viewportInfo.TopLeftX;
-	viewport.TopLeftY = (float)viewportInfo.TopLeftY;
-	viewport.Width = (float)viewportInfo.Width;
-	viewport.Height = (float)viewportInfo.Height;
+	viewport.TopLeftX = static_cast<float>(viewportInfo.TopLeftX);
+	viewport.TopLeftY = static_cast<float>(viewportInfo.TopLeftY);
+	viewport.Width    = static_cast<float>(viewportInfo.Width);
+	viewport.Height   = static_cast<float>(viewportInfo.Height);
 	viewport.MinDepth = viewportInfo.MinZ;
 	viewport.MaxDepth = viewportInfo.MaxZ;
 
-	Context->RSSetViewports(1, &viewport);
+	GetContext()->RSSetViewports(1, &viewport);
 
 	return XR_SUCCESS;
 }
@@ -345,15 +313,15 @@ XRESULT D3D11GraphicsEngineBase::SetViewport(const ViewportInfo& viewportInfo)
 /** Returns the shadermanager */
 D3D11ShaderManager* D3D11GraphicsEngineBase::GetShaderManager()
 {
-	return ShaderManager;
+	return ShaderManager.get();
 }
 
 /** Called when the game wants to clear the bound rendertarget */
 XRESULT D3D11GraphicsEngineBase::Clear(const float4 & color)
 {
-	Context->ClearDepthStencilView(DepthStencilBuffer->GetDepthStencilView(), D3D11_CLEAR_DEPTH, 1.0f, 0);
-	Context->ClearRenderTargetView(HDRBackBuffer->GetRenderTargetView(), (float *)&color);
-	Context->ClearRenderTargetView(Backbuffer->GetRenderTargetView(), (float *)&color);
+	GetContext()->ClearDepthStencilView(DepthStencilBuffer->GetDepthStencilView(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+	GetContext()->ClearRenderTargetView(HDRBackBuffer->GetRenderTargetView(), (float *)& color);
+	GetContext()->ClearRenderTargetView(Backbuffer->GetRenderTargetView(), (float *)& color);
 
 	return XR_SUCCESS;
 }
@@ -386,7 +354,7 @@ XRESULT D3D11GraphicsEngineBase::GetDisplayModeList(std::vector<DisplayModeInfo>
 {
 	HRESULT hr;
 	UINT numModes = 0;
-	DXGI_MODE_DESC* displayModes = nullptr;
+	std::unique_ptr<DXGI_MODE_DESC[]> displayModes = nullptr;
 	DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	IDXGIOutput* output;
 
@@ -404,12 +372,12 @@ XRESULT D3D11GraphicsEngineBase::GetDisplayModeList(std::vector<DisplayModeInfo>
 
 	hr = output->GetDisplayModeList(format, 0, &numModes, nullptr);
 
-	displayModes = new DXGI_MODE_DESC[numModes];
+	displayModes = std::make_unique<DXGI_MODE_DESC[]>(numModes);
 
 	// Get the list
-	hr = output->GetDisplayModeList(format, 0, &numModes, displayModes);
+	hr = output->GetDisplayModeList(format, 0, &numModes, displayModes.get());
 
-	for (unsigned int i = 0; i<numModes; i++)
+	for (unsigned int i = 0; i < numModes; i++)
 	{
 		if (displayModes[i].Format != format)
 			continue;
@@ -433,7 +401,7 @@ XRESULT D3D11GraphicsEngineBase::GetDisplayModeList(std::vector<DisplayModeInfo>
 		// Put supersampling resolutions in, up to just below 8k
 		int i = 2;
 		DisplayModeInfo ssBase = modeList->back();
-		while(ssBase.Width * i < 8192 && ssBase.Height * i < 8192)
+		while (ssBase.Width * i < 8192 && ssBase.Height * i < 8192)
 		{
 			DisplayModeInfo info;
 			info.Height = ssBase.Height * i;
@@ -444,12 +412,8 @@ XRESULT D3D11GraphicsEngineBase::GetDisplayModeList(std::vector<DisplayModeInfo>
 			i++;
 		}
 	}
-
-
-	delete[] displayModes;
-
+	displayModes.reset();
 	output->Release();
-
 	return XR_SUCCESS;
 }
 
@@ -471,39 +435,39 @@ XRESULT D3D11GraphicsEngineBase::Present()
 	bool vsync = Engine::GAPI->GetRendererState()->RendererSettings.EnableVSync;
 	if (SwapChain->Present(vsync ? 1 : 0, 0) == DXGI_ERROR_DEVICE_REMOVED)
 	{
-		switch(Device->GetDeviceRemovedReason())
+		switch (GetDevice()->GetDeviceRemovedReason())
 		{
-		case DXGI_ERROR_DEVICE_HUNG:
-			LogErrorBox() << "Device Removed! (DXGI_ERROR_DEVICE_HUNG)";
-			exit(0);
-			break;
+			case DXGI_ERROR_DEVICE_HUNG:
+				LogErrorBox() << "Device Removed! (DXGI_ERROR_DEVICE_HUNG)";
+				exit(0);
+				break;
 
-		case DXGI_ERROR_DEVICE_REMOVED:
-			LogErrorBox() << "Device Removed! (DXGI_ERROR_DEVICE_REMOVED)";
-			exit(0);
-			break;
+			case DXGI_ERROR_DEVICE_REMOVED:
+				LogErrorBox() << "Device Removed! (DXGI_ERROR_DEVICE_REMOVED)";
+				exit(0);
+				break;
 
-		case DXGI_ERROR_DEVICE_RESET:
-			LogErrorBox() << "Device Removed! (DXGI_ERROR_DEVICE_RESET)";
-			exit(0);
-			break;
+			case DXGI_ERROR_DEVICE_RESET:
+				LogErrorBox() << "Device Removed! (DXGI_ERROR_DEVICE_RESET)";
+				exit(0);
+				break;
 
-		case DXGI_ERROR_DRIVER_INTERNAL_ERROR:
-			LogErrorBox() << "Device Removed! (DXGI_ERROR_DRIVER_INTERNAL_ERROR)";
-			exit(0);
-			break;
+			case DXGI_ERROR_DRIVER_INTERNAL_ERROR:
+				LogErrorBox() << "Device Removed! (DXGI_ERROR_DRIVER_INTERNAL_ERROR)";
+				exit(0);
+				break;
 
-		case DXGI_ERROR_INVALID_CALL:
-			LogErrorBox() << "Device Removed! (DXGI_ERROR_INVALID_CALL)";
-			exit(0);
-			break;
+			case DXGI_ERROR_INVALID_CALL:
+				LogErrorBox() << "Device Removed! (DXGI_ERROR_INVALID_CALL)";
+				exit(0);
+				break;
 
-		case S_OK:
-			LogInfo() << "Device removed, but we're fine!";
-			break;
+			case S_OK:
+				LogInfo() << "Device removed, but we're fine!";
+				break;
 
-		default:
-			LogWarnBox() << "Device Removed! (Unknown reason)";
+			default:
+				LogWarnBox() << "Device Removed! (Unknown reason)";
 		}
 	}
 
@@ -514,7 +478,7 @@ XRESULT D3D11GraphicsEngineBase::Present()
 }
 
 /** Called when we started to render the world */
-XRESULT D3D11GraphicsEngineBase::OnStartWorldRendering() 
+XRESULT D3D11GraphicsEngineBase::OnStartWorldRendering()
 {
 	if (PresentPending)
 		return XR_FAILED;
@@ -533,7 +497,7 @@ XRESULT D3D11GraphicsEngineBase::OnStartWorldRendering()
 /** Returns the line renderer object */
 BaseLineRenderer* D3D11GraphicsEngineBase::GetLineRenderer()
 {
-	return LineRenderer;
+	return LineRenderer.get();
 }
 
 /** Sets up the default rendering state */
@@ -549,7 +513,7 @@ void D3D11GraphicsEngineBase::SetDefaultStates()
 	Engine::GAPI->GetRendererState()->DepthState.SetDirty();
 	Engine::GAPI->GetRendererState()->SamplerState.SetDirty();
 
-	Context->PSSetSamplers(0, 1, &DefaultSamplerState);
+	GetContext()->PSSetSamplers(0, 1, DefaultSamplerState.GetAddressOf());
 
 	UpdateRenderStates();
 }
@@ -567,17 +531,17 @@ XRESULT D3D11GraphicsEngineBase::DrawVertexArray(ExVertexStruct* vertices, unsig
 
 	vShader->Apply();
 	pShader->Apply();
-	
+
 	// Set vertex type
-	Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	GetContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	// Bind the viewport information to the shader
 	D3D11_VIEWPORT vp;
 	UINT num = 1;
-	Context->RSGetViewports(&num, &vp);
+	GetContext()->RSGetViewports(&num, &vp);
 
 	// Update viewport information
-	float scale = Engine::GAPI->GetRendererState()->RendererSettings.GothicUIScale;
+	const float scale = Engine::GAPI->GetRendererState()->RendererSettings.GothicUIScale;
 	float2 temp2Float2[2];
 	temp2Float2[0].x = vp.TopLeftX / scale;
 	temp2Float2[0].y = vp.TopLeftY / scale;
@@ -587,10 +551,8 @@ XRESULT D3D11GraphicsEngineBase::DrawVertexArray(ExVertexStruct* vertices, unsig
 	vShader->GetConstantBuffer()[0]->UpdateBuffer(temp2Float2);
 	vShader->GetConstantBuffer()[0]->BindToVertexShader(0);
 
-
-
 	D3D11_BUFFER_DESC desc;
-	((D3D11VertexBuffer *)TempVertexBuffer)->GetVertexBuffer()->GetDesc(&desc);
+	TempVertexBuffer->GetVertexBuffer()->GetDesc(&desc);
 
 	// Check if we need a bigger vertexbuffer
 	if (desc.ByteWidth < stride * numVertices)
@@ -598,8 +560,7 @@ XRESULT D3D11GraphicsEngineBase::DrawVertexArray(ExVertexStruct* vertices, unsig
 		LogInfo() << "TempVertexBuffer too small (" << desc.ByteWidth << "), need " << stride * numVertices << " bytes. Recreating buffer.";
 
 		// Buffer too small, recreate it
-		delete TempVertexBuffer;
-		TempVertexBuffer = new D3D11VertexBuffer();
+		TempVertexBuffer = std::make_unique<D3D11VertexBuffer>();
 
 		TempVertexBuffer->Init(nullptr, stride * numVertices, D3D11VertexBuffer::B_VERTEXBUFFER, D3D11VertexBuffer::U_DYNAMIC, D3D11VertexBuffer::CA_WRITE);
 	}
@@ -610,10 +571,10 @@ XRESULT D3D11GraphicsEngineBase::DrawVertexArray(ExVertexStruct* vertices, unsig
 	UINT offset = 0;
 	UINT uStride = stride;
 	ID3D11Buffer* buffer = TempVertexBuffer->GetVertexBuffer();
-	Context->IASetVertexBuffers(0, 1, &buffer, &uStride, &offset);
+	GetContext()->IASetVertexBuffers(0, 1, &buffer, &uStride, &offset);
 
 	//Draw the mesh
-	Context->Draw(numVertices, startVertex);
+	GetContext()->Draw(numVertices, startVertex);
 
 	return XR_SUCCESS;
 }
@@ -636,10 +597,8 @@ XRESULT D3D11GraphicsEngineBase::UpdateRenderStates()
 		FFBlendState = state->State;
 
 		Engine::GAPI->GetRendererState()->BlendState.StateDirty = false;
-		Context->OMSetBlendState(FFBlendState, (float *)&D3DXVECTOR4(0, 0, 0, 0), 0xFFFFFFFF);
+		GetContext()->OMSetBlendState(FFBlendState.Get(), (float *)&DirectX::SimpleMath::Vector4::Zero, 0xFFFFFFFF);
 	}
-
-	
 
 	if (Engine::GAPI->GetRendererState()->RasterizerState.StateDirty)
 	{
@@ -656,10 +615,8 @@ XRESULT D3D11GraphicsEngineBase::UpdateRenderStates()
 		FFRasterizerState = state->State;
 
 		Engine::GAPI->GetRendererState()->RasterizerState.StateDirty = false;
-		Context->RSSetState(FFRasterizerState);
+		GetContext()->RSSetState(FFRasterizerState.Get());
 	}
-
-	
 
 	if (Engine::GAPI->GetRendererState()->DepthState.StateDirty)
 	{
@@ -676,11 +633,9 @@ XRESULT D3D11GraphicsEngineBase::UpdateRenderStates()
 		FFDepthStencilState = state->State;
 
 		Engine::GAPI->GetRendererState()->DepthState.StateDirty = false;
-		Context->OMSetDepthStencilState(FFDepthStencilState, 0);
+		GetContext()->OMSetDepthStencilState(FFDepthStencilState.Get(), 0);
 	}
-
 	
-
 	return XR_SUCCESS;
 }
 
@@ -688,7 +643,7 @@ XRESULT D3D11GraphicsEngineBase::UpdateRenderStates()
 /** Constructs the makro list for shader compilation */
 void D3D11GraphicsEngineBase::ConstructShaderMakroList(std::vector<D3D10_SHADER_MACRO> & list)
 {
-	GothicRendererSettings& s = Engine::GAPI->GetRendererState()->RendererSettings;
+	const GothicRendererSettings& s = Engine::GAPI->GetRendererState()->RendererSettings;
 	D3D10_SHADER_MACRO m;
 
 	m.Name = "SHD_ENABLE";
@@ -711,14 +666,14 @@ void D3D11GraphicsEngineBase::SetupVS_ExMeshDrawCall()
 	if (ActiveVS)ActiveVS->Apply();
 	if (ActivePS)ActivePS->Apply();
 
-	Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	GetContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
 void D3D11GraphicsEngineBase::SetupVS_ExConstantBuffer()
 {
-	D3DXMATRIX& world = Engine::GAPI->GetRendererState()->TransformState.TransformWorld;
-	D3DXMATRIX& view = Engine::GAPI->GetRendererState()->TransformState.TransformView;
-	D3DXMATRIX& proj = Engine::GAPI->GetProjectionMatrix();
+	const DirectX::SimpleMath::Matrix& world = Engine::GAPI->GetRendererState()->TransformState.TransformWorld;
+	const DirectX::SimpleMath::Matrix& view  = Engine::GAPI->GetRendererState()->TransformState.TransformView;
+	const DirectX::SimpleMath::Matrix& proj  = Engine::GAPI->GetProjectionMatrix();
 
 	VS_ExConstantBuffer_PerFrame cb;
 	cb.View = view;
@@ -733,7 +688,7 @@ void D3D11GraphicsEngineBase::SetupVS_ExConstantBuffer()
 
 void D3D11GraphicsEngineBase::SetupVS_ExPerInstanceConstantBuffer()
 {
-	D3DXMATRIX& world = Engine::GAPI->GetRendererState()->TransformState.TransformWorld;
+	DirectX::SimpleMath::Matrix& world = Engine::GAPI->GetRendererState()->TransformState.TransformWorld;
 
 	VS_ExConstantBuffer_PerInstance cb;
 	cb.World = world;
@@ -767,14 +722,14 @@ XRESULT D3D11GraphicsEngineBase::SetActiveHDShader(const std::string & shader)
 XRESULT D3D11GraphicsEngineBase::SetActiveGShader(const std::string & shader)
 {
 	ActiveGS = ShaderManager->GetGShader(shader);
-	
+
 	return XR_SUCCESS;
 }
 
 /** Puts the current world matrix into a CB and binds it to the given slot */
 void D3D11GraphicsEngineBase::SetupPerInstanceConstantBuffer(int slot)
 {
-	D3DXMATRIX& world = Engine::GAPI->GetRendererState()->TransformState.TransformWorld;
+	const DirectX::SimpleMath::Matrix& world = Engine::GAPI->GetRendererState()->TransformState.TransformWorld;
 
 	VS_ExConstantBuffer_PerInstance cb;
 	cb.World = world;
@@ -786,9 +741,9 @@ void D3D11GraphicsEngineBase::SetupPerInstanceConstantBuffer(int slot)
 /** Updates the transformsCB with new values from the GAPI */
 void D3D11GraphicsEngineBase::UpdateTransformsCB()
 {
-	D3DXMATRIX& world = Engine::GAPI->GetRendererState()->TransformState.TransformWorld;
-	D3DXMATRIX& view = Engine::GAPI->GetRendererState()->TransformState.TransformView;
-	D3DXMATRIX& proj = Engine::GAPI->GetProjectionMatrix();
+	const DirectX::SimpleMath::Matrix& world = Engine::GAPI->GetRendererState()->TransformState.TransformWorld;
+	const DirectX::SimpleMath::Matrix& view  = Engine::GAPI->GetRendererState()->TransformState.TransformView;
+	const DirectX::SimpleMath::Matrix& proj  = Engine::GAPI->GetProjectionMatrix();
 
 	VS_ExConstantBuffer_PerFrame cb;
 	cb.View = view;
@@ -820,11 +775,11 @@ XRESULT D3D11GraphicsEngineBase::DrawVertexBufferFF(D3D11VertexBuffer* vb, unsig
 
 	UINT offset = 0;
 	UINT uStride = stride;
-	ID3D11Buffer* buffer = ((D3D11VertexBuffer *)vb)->GetVertexBuffer();
-	Context->IASetVertexBuffers(0, 1, &buffer, &uStride, &offset);
+	ID3D11Buffer* buffer = vb->GetVertexBuffer();
+	GetContext()->IASetVertexBuffers(0, 1, &buffer, &uStride, &offset);
 
 	//Draw the mesh
-	Context->Draw(numVertices, startVertex);
+	GetContext()->Draw(numVertices, startVertex);
 
 	Engine::GAPI->GetRendererState()->RendererInfo.FrameDrawnTriangles += numVertices;
 
@@ -833,11 +788,11 @@ XRESULT D3D11GraphicsEngineBase::DrawVertexBufferFF(D3D11VertexBuffer* vb, unsig
 
 
 /** Binds viewport information to the given constantbuffer slot */
-XRESULT D3D11GraphicsEngineBase::BindViewportInformation(const std::string & shader, int slot) 
+XRESULT D3D11GraphicsEngineBase::BindViewportInformation(const std::string & shader, int slot)
 {
 	D3D11_VIEWPORT vp;
 	UINT num = 1;
-	Context->RSGetViewports(&num, &vp);
+	GetContext()->RSGetViewports(&num, &vp);
 
 	// Update viewport information
 	float scale = Engine::GAPI->GetRendererState()->RendererSettings.GothicUIScale;

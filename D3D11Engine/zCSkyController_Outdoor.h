@@ -12,42 +12,42 @@ class zCSkyPlanet
 public:
 	int vtbl;
 	void * mesh; // 0
-	D3DXVECTOR4 color0; // 4 
-	D3DXVECTOR4 color1; // 20
+	DirectX::SimpleMath::Vector4 color0; // 4 
+	DirectX::SimpleMath::Vector4 color1; // 20
 	float		size; // 36
-	D3DXVECTOR3 pos; // 40
-	D3DXVECTOR3 rotAxis; // 52
+	DirectX::SimpleMath::Vector3 pos; // 40
+	DirectX::SimpleMath::Vector3 rotAxis; // 52
 
 
 };
 
-enum zESkyLayerMode 
-{ 
-	zSKY_LAYER_MODE_POLY, 
-	zSKY_LAYER_MODE_BOX 
+enum zESkyLayerMode
+{
+	zSKY_LAYER_MODE_POLY,
+	zSKY_LAYER_MODE_BOX
 };
 
-class zCSkyLayerData 
+class zCSkyLayerData
 {
 public:
 	zESkyLayerMode SkyMode;
 	zCTexture * Tex;
 	char zSTring_TexName[20];
-	
+
 	float TexAlpha;
 	float TexScale;
-	D3DXVECTOR2	TexSpeed;
+	DirectX::SimpleMath::Vector2 TexSpeed;
 };
 
 
-class zCSkyState 
+class zCSkyState
 {
 public:
 	float Time;
-	D3DXVECTOR3	PolyColor;
-	D3DXVECTOR3	FogColor;
-	D3DXVECTOR3	DomeColor1;
-	D3DXVECTOR3	DomeColor0;
+	DirectX::SimpleMath::Vector3 PolyColor;
+	DirectX::SimpleMath::Vector3 FogColor;
+	DirectX::SimpleMath::Vector3 DomeColor1;
+	DirectX::SimpleMath::Vector3 DomeColor0;
 	float FogDist;
 	int	SunOn;
 	int	CloudShadowOn;
@@ -88,7 +88,7 @@ public:
 	BOOL ColorChanged;
 	zTWeather Weather;
 };
- 
+
 // Controler - Typo in Gothic
 class zCSkyController_Outdoor : public zCSkyController
 {
@@ -98,20 +98,20 @@ public:
 	{
 		// Overwrite the rain-renderfunction and particle-updates
 		DWORD dwProtect;
-		VirtualProtect((void *)GothicMemoryLocations::zCSkyController_Outdoor::LOC_ProcessRainFXNOPStart, 
-			GothicMemoryLocations::zCSkyController_Outdoor::LOC_ProcessRainFXNOPEnd 
-			- GothicMemoryLocations::zCSkyController_Outdoor::LOC_ProcessRainFXNOPStart, 
+		VirtualProtect((void *)GothicMemoryLocations::zCSkyController_Outdoor::LOC_ProcessRainFXNOPStart,
+			GothicMemoryLocations::zCSkyController_Outdoor::LOC_ProcessRainFXNOPEnd
+			- GothicMemoryLocations::zCSkyController_Outdoor::LOC_ProcessRainFXNOPStart,
 			PAGE_EXECUTE_READWRITE, &dwProtect);
 
 		REPLACE_RANGE(GothicMemoryLocations::zCSkyController_Outdoor::LOC_ProcessRainFXNOPStart, GothicMemoryLocations::zCSkyController_Outdoor::LOC_ProcessRainFXNOPEnd - 1, INST_NOP);
 
 		// Replace the check for the lensflare with nops
 
-		VirtualProtect((void *)GothicMemoryLocations::zCSkyController_Outdoor::LOC_SunVisibleStart, 
-			GothicMemoryLocations::zCSkyController_Outdoor::LOC_SunVisibleEnd - GothicMemoryLocations::zCSkyController_Outdoor::LOC_SunVisibleStart, 
+		VirtualProtect((void *)GothicMemoryLocations::zCSkyController_Outdoor::LOC_SunVisibleStart,
+			GothicMemoryLocations::zCSkyController_Outdoor::LOC_SunVisibleEnd - GothicMemoryLocations::zCSkyController_Outdoor::LOC_SunVisibleStart,
 			PAGE_EXECUTE_READWRITE, &dwProtect);
-		
-		REPLACE_RANGE(GothicMemoryLocations::zCSkyController_Outdoor::LOC_SunVisibleStart, GothicMemoryLocations::zCSkyController_Outdoor::LOC_SunVisibleEnd-1, INST_NOP);
+
+		REPLACE_RANGE(GothicMemoryLocations::zCSkyController_Outdoor::LOC_SunVisibleStart, GothicMemoryLocations::zCSkyController_Outdoor::LOC_SunVisibleEnd - 1, INST_NOP);
 
 	}
 
@@ -131,33 +131,11 @@ public:
 	zTWeather GetWeatherType()
 	{
 #ifdef BUILD_GOTHIC_2_6_fix
-		return *(zTWeather *)THISPTR_OFFSET(GothicMemoryLocations::zCSkyController_Outdoor::Offset_WeatherType); 
+		return *(zTWeather *)THISPTR_OFFSET(GothicMemoryLocations::zCSkyController_Outdoor::Offset_WeatherType);
 #else
 		return zTWeather::zTWEATHER_RAIN;
 #endif
 	}
-
-	/*zCSkyPlanet* GetSun()
-	{
-		return *(zCSkyPlanet **)(((char *)this) + GothicMemoryLocations::zCSkyController_Outdoor::Offset_Sun);
-	}*/
-
-	/** Returns the continous master time, not wrapped between 0 and 1 */
-	/*float GetMasterTime()
-	{
-		static float s_contMasterTime = 0.0f;
-		static float s_masterTimeLast = 0.0f;
-
-		// Add the delta of this frame so the time won't be wrapped between 0 and 1
-		if (GetMasterTimeReal() < s_masterTimeLast)
-			s_contMasterTime += GetMasterTimeReal() - (s_masterTimeLast - 1.0f); // Make sure we still get the actual delta and dont wrap back
-		else
-			s_contMasterTime += GetMasterTimeReal() - s_masterTimeLast;
-
-		s_masterTimeLast = GetMasterTimeReal();
-
-		return s_contMasterTime;
-	}*/
 
 	/** Returns the master-time wrapped between 0 and 1 */
 	float GetMasterTime()
@@ -170,12 +148,12 @@ public:
 		XCALL(GothicMemoryLocations::zCSkyController_Outdoor::GetUnderwaterFX);
 	}
 
-	D3DXVECTOR3 GetOverrideColor()
+	DirectX::SimpleMath::Vector3 GetOverrideColor()
 	{
 #ifndef BUILD_GOTHIC_1_08k
-		return *(D3DXVECTOR3 *)THISPTR_OFFSET(GothicMemoryLocations::zCSkyController_Outdoor::Offset_OverrideColor);
+		return *(DirectX::SimpleMath::Vector3 *)THISPTR_OFFSET(GothicMemoryLocations::zCSkyController_Outdoor::Offset_OverrideColor);
 #else
-		return D3DXVECTOR3(0, 0, 0);
+		return DirectX::SimpleMath::Vector3::Zero;
 #endif
 	}
 
@@ -191,26 +169,22 @@ public:
 	}
 
 	/** Returns the sun position in world coords */
-	D3DXVECTOR3 GetSunWorldPosition(float timeScale = 1.0f) {
-		/*if (!GetSun())
-		{
-			return D3DXVECTOR3(0, 0, 0);
-		}*/
+	DirectX::SimpleMath::Vector3 GetSunWorldPosition(float timeScale = 1.0f) {
 
-		//float angle = GetMasterTime() * 2.0f * (float)D3DX_PI; // Get mastertime into rad, 0 and 12 are now at the horizon, 18 is in the sky
-		//angle += (float)D3DX_PI * 0.5f; // 12 is now in the sky, 18 horizon
-		float angle = ((GetMasterTime() * timeScale - 0.3f) * 1.25f + 0.5f) * 2.0f * (float)D3DX_PI;
+		//float angle = GetMasterTime() * 2.0f * (float)XM_PI; // Get mastertime into rad, 0 and 12 are now at the horizon, 18 is in the sky
+		//angle += (float)XM_PI * 0.5f; // 12 is now in the sky, 18 horizon
+		float angle = ((GetMasterTime() * timeScale - 0.3f) * 1.25f + 0.5f) * 2.0f * (float)DirectX::XM_PI;
 
-		D3DXVECTOR3 sunPos = D3DXVECTOR3(-60, 0, 100);
-		D3DXVec3Normalize(&sunPos, &sunPos);
+		DirectX::SimpleMath::Vector3 sunPos = DirectX::SimpleMath::Vector3(-60, 0, 100);
+		sunPos.Normalize();
+		DirectX::SimpleMath::Vector3 rotAxis = DirectX::SimpleMath::Vector3::Right;
 
-		D3DXVECTOR3 rotAxis = D3DXVECTOR3(1, 0, 0);
+		DirectX::SimpleMath::Matrix r = HookedFunctions::OriginalFunctions.original_Alg_Rotation3DNRad(rotAxis, -angle);
+		r = r.Transpose();
 
-		D3DXMATRIX r = HookedFunctions::OriginalFunctions.original_Alg_Rotation3DNRad(rotAxis, -angle);
-		D3DXMatrixTranspose(&r, &r);
+		DirectX::SimpleMath::Vector3 pos;
 
-		D3DXVECTOR3 pos;
-		D3DXVec3TransformNormal(&pos, &sunPos, &r);
+		pos = DirectX::XMVector3TransformNormal(sunPos, r);
 
 		return pos;
 	}
@@ -220,97 +194,19 @@ public:
 		XCALL(GothicMemoryLocations::zCSkyController_Outdoor::SetCameraLocationHint);
 	}
 
-	/*zCSkyLayer* GetSkyLayers(int i)
-	{
-		if (i==0)
-			return (zCSkyLayer*)THISPTR_OFFSET(GothicMemoryLocations::zCSkyController_Outdoor::Offset_SkyLayer1);
-		else
-			return (zCSkyLayer*)THISPTR_OFFSET(GothicMemoryLocations::zCSkyController_Outdoor::Offset_SkyLayer2);
-	}
-
-	zCSkyState** GetSkyLayerStates()
-	{
-		return *(zCSkyState***)THISPTR_OFFSET(GothicMemoryLocations::zCSkyController_Outdoor::Offset_SkyLayerState);
-		
-	}
-
-	zCSkyState* GetSkyState(int i)
-	{
-		if (i==0)
-			return *(zCSkyState**)THISPTR_OFFSET(GothicMemoryLocations::zCSkyController_Outdoor::Offset_SkyLayerState0);
-		else
-			return *(zCSkyState**)THISPTR_OFFSET(GothicMemoryLocations::zCSkyController_Outdoor::Offset_SkyLayerState1);
-	}*/
-
 	zCSkyState* GetMasterState()
 	{
 		return (zCSkyState*)THISPTR_OFFSET(GothicMemoryLocations::zCSkyController_Outdoor::Offset_MasterState);
 	}
-
-	/*void Init()
-	{
-		XCALL(GothicMemoryLocations::zCSkyController_Outdoor::Init);
-	}
-
-	bool GetInitDone()
-	{
-		return (*(int *)THISPTR_OFFSET(GothicMemoryLocations::zCSkyController_Outdoor::Offset_InitDone)) != 0;
-	}
-
-	void Activate()
-	{
-		(*(zCSkyController_Outdoor **)GothicMemoryLocations::zCSkyController_Outdoor::OBJ_ActivezCSkyController) = this;
-	}
-
-	void Interpolate()
-	{
-		XCALL(GothicMemoryLocations::zCSkyController_Outdoor::Interpolate);
-	}
-
-	static zCSkyController_Outdoor* GetActiveSkyController()
-	{
-		return (*(zCSkyController_Outdoor **)GothicMemoryLocations::zCSkyController_Outdoor::OBJ_ActivezCSkyController);
-	}*/
 };
 
 class zCMesh;
-class zCSkyLayer 
+class zCSkyLayer
 {
 public:
 	zCMesh* SkyPolyMesh;
 	zCPolygon* SkyPoly;
-	D3DXVECTOR2 SkyTexOffs;
+	DirectX::SimpleMath::Vector2 SkyTexOffs;
 	zCMesh*	SkyDomeMesh;
 	zESkyLayerMode SkyMode;
-
-	/*bool IsNight()
-	{
-		zCSkyController_Outdoor* sky = oCGame::GetGame()->_zCSession_world->GetSkyControllerOutdoor();
-
-		return this == sky->GetSkyLayers(0) && sky->GetMasterTime() >= 0.25f && sky->GetMasterTime() <= 0.75f;
-	}
-
-	int GetLayerChannel()
-	{
-		zCSkyController_Outdoor* sky = oCGame::GetGame()->_zCSession_world->GetSkyControllerOutdoor();
-
-		return this == sky->GetSkyLayers(1) ? 1 : 0;
-	}
-
-	float3 GetSkyColor()
-	{
-		zCSkyController_Outdoor* sky = oCGame::GetGame()->_zCSession_world->GetSkyControllerOutdoor();
-
-		D3DXVECTOR3 c;
-
-		if (IsNight())
-			c = D3DXVECTOR3(1.0f, 1.0f, 1.0f);
-		else
-			c = sky->GetMasterState()->DomeColor1;
-
-		if ((sky->GetMasterTime() >= 0.35f) && (sky->GetMasterTime() <= 0.65f) && GetLayerChannel() == 1)
-			c = 0.5f * (c + D3DXVECTOR3(1.0f, 1.0f, 1.0f));
-
-		return float3(c);
-	}*/
 };

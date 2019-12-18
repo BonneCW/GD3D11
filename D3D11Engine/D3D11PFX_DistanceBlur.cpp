@@ -37,7 +37,7 @@ XRESULT D3D11PFX_DistanceBlur::Render(RenderToTextureBuffer * fxbuffer)
 	Engine::GAPI->GetRendererState()->BlendState.SetDirty();
 
 	// Copy scene
-	engine->GetContext()->ClearRenderTargetView(FxRenderer->GetTempBuffer()->GetRenderTargetView(), (float *)&D3DXVECTOR4(0, 0, 0, 0));
+	engine->GetContext()->ClearRenderTargetView(FxRenderer->GetTempBuffer()->GetRenderTargetView(), (float *)&DirectX::SimpleMath::Vector4::Zero);
 	FxRenderer->CopyTextureToRTV(engine->GetGBuffer0()->GetShaderResView(), FxRenderer->GetTempBuffer()->GetRenderTargetView(), Engine::GraphicsEngine->GetResolution());
 
 	engine->GetContext()->OMSetRenderTargets(1, &oldRTV, nullptr);

@@ -86,7 +86,7 @@ public:
 	/** Returns AniTexture */
 	zCTexture * GetTexture()
 	{		
-		//return GetTextureSingle(); // FIXME: GetAniTexture crashes sometimes
+		//return GetTextureSingle(); // TODO: GetAniTexture crashes sometimes
 		XCALL(GothicMemoryLocations::zCMaterial::GetAniTexture);
 	}
 

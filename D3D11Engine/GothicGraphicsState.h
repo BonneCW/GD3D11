@@ -377,19 +377,19 @@ struct GothicSamplerStateInfo : public GothicPipelineState {
 struct GothicTransformInfo {
 	/** Sets the default values for this struct */
 	void SetDefault() {
-		D3DXMatrixIdentity(&TransformWorld);
-		D3DXMatrixIdentity(&TransformView);
-		D3DXMatrixIdentity(&TransformProj);
+		TransformWorld = TransformWorld.Identity;
+		TransformView = TransformView.Identity;
+		TransformProj = TransformProj.Identity;
 	}
 
 	/** This is actually world * view. Gothic never sets the view matrix */
-	D3DXMATRIX TransformWorld; 
+	DirectX::SimpleMath::Matrix TransformWorld;
 
 	/** Though never really set by Gothic, it's listed here for completeness sake */
-	D3DXMATRIX TransformView;
+	DirectX::SimpleMath::Matrix TransformView;
 
 	/** Projectionmatrix */
-	D3DXMATRIX TransformProj;
+	DirectX::SimpleMath::Matrix TransformProj;
 };
 
 struct HBAOSettings {
@@ -425,7 +425,8 @@ struct GothicRendererSettings {
 	/** Sets the default values for this struct */
 	void SetDefault() {
 		SectionDrawRadius = 4;
-
+		
+		FpsLimit = 0;
 		DrawVOBs = true;
 		DrawWorldMesh = 3;
 		DrawSkeletalMeshes = true;	
@@ -521,11 +522,11 @@ struct GothicRendererSettings {
 		RainHeightRange = 1000.0f;
 		RainNumParticles = 150000;
 		RainMoveParticles = true;
-		RainGlobalVelocity = D3DXVECTOR3(250, -1000, 0);
+		RainGlobalVelocity = DirectX::SimpleMath::Vector3(250, -1000, 0);
 		RainUseInitialSet = false;
 		RainSceneWettness = 0.0f;
 		RainSunLightStrength = 0.50f;
-		RainFogColor = D3DXVECTOR3(0.28f, 0.28f, 0.28f);
+		RainFogColor = DirectX::SimpleMath::Vector3(0.28f, 0.28f, 0.28f);
 		RainFogDensity = 0.00500f;
 
 		GodRayDecay = 0.97f;
@@ -572,6 +573,7 @@ struct GothicRendererSettings {
 	}
 
 	/** Rendering options */
+	int FpsLimit;
 	bool DrawVOBs;
 	bool DrawDynamicVOBs;
 	int DrawWorldMesh;
@@ -663,11 +665,11 @@ struct GothicRendererSettings {
 	UINT RainNumParticles;
 	bool RainMoveParticles;
 	bool RainUseInitialSet;
-	D3DXVECTOR3 RainGlobalVelocity;
+	DirectX::SimpleMath::Vector3 RainGlobalVelocity;
 	float RainSceneWettness;
 
 	float RainSunLightStrength;
-	D3DXVECTOR3 RainFogColor;
+	DirectX::SimpleMath::Vector3 RainFogColor;
 	float RainFogDensity;
 
 	bool AllowNormalmaps;

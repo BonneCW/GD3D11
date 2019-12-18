@@ -12,6 +12,9 @@
 #include "GothicAPI.h"
 #include "GSky.h"
 
+using namespace DirectX;
+using namespace DirectX::SimpleMath;
+
 D3D11PFX_GodRays::D3D11PFX_GodRays(D3D11PfxRenderer* rnd) : D3D11PFX_Effect(rnd)
 {
 }
@@ -28,20 +31,20 @@ XRESULT D3D11PFX_GodRays::Render(RenderToTextureBuffer * fxbuffer)
 
 	engine->SetDefaultStates();
 
-	D3DXVECTOR3 sunPosition = *Engine::GAPI->GetSky()->GetAtmosphereCB().AC_LightPos.toD3DXVECTOR3();
+	Vector3 sunPosition = *Engine::GAPI->GetSky()->GetAtmosphereCB().AC_LightPos.toVector3();
 	sunPosition *= Engine::GAPI->GetSky()->GetAtmosphereCB().AC_OuterRadius;
 	sunPosition += Engine::GAPI->GetCameraPosition(); // Maybe use cameraposition from sky?
 
-	D3DXMATRIX& view = Engine::GAPI->GetRendererState()->TransformState.TransformView;
-	D3DXMATRIX& proj = Engine::GAPI->GetProjectionMatrix();
+	DirectX::SimpleMath::Matrix& view = Engine::GAPI->GetRendererState()->TransformState.TransformView;
+	DirectX::SimpleMath::Matrix& proj = Engine::GAPI->GetProjectionMatrix();
 
-	D3DXMATRIX viewProj = proj * view;
-	D3DXMatrixTranspose(&viewProj, &viewProj);
-	D3DXMatrixTranspose(&view, &view);
+	DirectX::SimpleMath::Matrix viewProj = proj * view;
+	viewProj = viewProj.Transpose();
+	view = view.Transpose();
 
-	D3DXVECTOR3 sunViewPosition;
-	D3DXVec3TransformCoord(&sunViewPosition, &sunPosition, &view); // This is for checking if the light is behind the camera
-	D3DXVec3TransformCoord(&sunPosition, &sunPosition, &viewProj);
+	Vector3 sunViewPosition;
+	sunViewPosition = XMVector3TransformCoord(sunPosition, view); // This is for checking if the light is behind the camera
+	sunPosition = XMVector3TransformCoord(sunPosition, viewProj);
 
 	if (sunViewPosition.z < 0.0f)
 		return XR_SUCCESS; // Don't render the godrays when the sun is behind the camera

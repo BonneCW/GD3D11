@@ -5,8 +5,8 @@
 
 struct SimpleVertexStruct
 {
-	D3DXVECTOR3 Position;
-	D3DXVECTOR2 TexCoord;
+	DirectX::SimpleMath::Vector3 Position;
+	DirectX::SimpleMath::Vector2 TexCoord;
 };
 
 //This can draw a full screen quad

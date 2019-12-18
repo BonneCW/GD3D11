@@ -41,7 +41,7 @@ public:
 	}
 
 	/** Reads config stuff */
-	static void __fastcall hooked_oCNPCEnable(void * thisptr, void * unknwn, D3DXVECTOR3 & position)
+	static void __fastcall hooked_oCNPCEnable(void * thisptr, void * unknwn, DirectX::SimpleMath::Vector3 & position)
 	{
 		hook_infunc
 		HookedFunctions::OriginalFunctions.original_oCNPCEnable(thisptr, position);
@@ -65,7 +65,7 @@ public:
 		hook_outfunc
 	}
 
-	void ResetPos(const D3DXVECTOR3 & pos)
+	void ResetPos(const DirectX::SimpleMath::Vector3 & pos)
 	{
 		XCALL(GothicMemoryLocations::oCNPC::ResetPos);
 	}

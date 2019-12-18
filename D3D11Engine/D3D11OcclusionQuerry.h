@@ -32,7 +32,7 @@ private:
 	/** Marks the entire subtree visible */
 	void MarkTreeVisible(BspInfo* root, bool visible);
 
-	void DebugVisualizeNodeMesh(MeshInfo * m, const D3DXVECTOR4 & color);
+	void DebugVisualizeNodeMesh(MeshInfo * m, const DirectX::SimpleMath::Vector4 & color);
 
 	/** Simple box predicate */
 	std::vector<ID3D11Predicate*> Predicates;

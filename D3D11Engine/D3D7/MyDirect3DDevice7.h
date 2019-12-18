@@ -212,11 +212,11 @@ public:
 			
 		case D3DRENDERSTATE_ZENABLE            		: state->DepthState.DepthBufferEnabled = Value != 0; state->DepthState.SetDirty(); break;
 		case D3DRENDERSTATE_ALPHATESTENABLE    		: state->GraphicsState.SetGraphicsSwitch(GSWITCH_ALPHAREF, Value != 0);	break;
-		case D3DRENDERSTATE_SRCBLEND           		: state->BlendState.SrcBlend = (GothicBlendStateInfo::EBlendFunc)Value; state->BlendState.SetDirty(); break;
-		case D3DRENDERSTATE_DESTBLEND          		: state->BlendState.DestBlend = (GothicBlendStateInfo::EBlendFunc)Value; state->BlendState.SetDirty(); break;
-		case D3DRENDERSTATE_CULLMODE           		: state->RasterizerState.CullMode = (GothicRasterizerStateInfo::ECullMode)Value; state->RasterizerState.SetDirty(); break;
-		case D3DRENDERSTATE_ZFUNC              		: state->DepthState.DepthBufferCompareFunc = (GothicDepthBufferStateInfo::ECompareFunc)Value; state->DepthState.SetDirty(); break;
-		case D3DRENDERSTATE_ALPHAREF           		: state->GraphicsState.FF_AlphaRef = (float)Value / 255.0f; break; // Ref for masked
+		case D3DRENDERSTATE_SRCBLEND           		: state->BlendState.SrcBlend = static_cast<GothicBlendStateInfo::EBlendFunc>(Value); state->BlendState.SetDirty(); break;
+		case D3DRENDERSTATE_DESTBLEND          		: state->BlendState.DestBlend = static_cast<GothicBlendStateInfo::EBlendFunc>(Value); state->BlendState.SetDirty(); break;
+		case D3DRENDERSTATE_CULLMODE           		: state->RasterizerState.CullMode = static_cast<GothicRasterizerStateInfo::ECullMode>(Value); state->RasterizerState.SetDirty(); break;
+		case D3DRENDERSTATE_ZFUNC              		: state->DepthState.DepthBufferCompareFunc = static_cast<GothicDepthBufferStateInfo::ECompareFunc>(Value); state->DepthState.SetDirty(); break;
+		case D3DRENDERSTATE_ALPHAREF           		: state->GraphicsState.FF_AlphaRef = static_cast<float>(Value) / 255.0f; break; // Ref for masked
 		case D3DRENDERSTATE_ALPHABLENDENABLE   		: state->BlendState.BlendEnabled = Value != 0; state->BlendState.SetDirty(); break;	
 		case D3DRENDERSTATE_ZBIAS              		: state->RasterizerState.ZBias = Value; state->DepthState.SetDirty(); break;
 		case D3DRENDERSTATE_TEXTUREFACTOR      		: state->GraphicsState.FF_TextureFactor = float4(Value); break;
@@ -298,14 +298,11 @@ public:
         DebugWrite("MyDirect3DDevice7::SetTexture");
 		
 		// Bind the texture
-		MyDirectDrawSurface7 * surface = (MyDirectDrawSurface7 *)lplpTexture;
+		MyDirectDrawSurface7 * surface = static_cast<MyDirectDrawSurface7*>(lplpTexture);
 		
 		if (surface)
 		{
 			surface->BindToSlot(dwStage);
-		} else
-		{
-			//Engine::GraphicsEngine->UnbindTexture(dwStage);
 		}
 
         return S_OK; 
@@ -537,15 +534,15 @@ public:
 		switch(dtstTransformStateType)
 		{
 		case D3DTRANSFORMSTATE_WORLD:
-			D3DXMatrixTranspose(&state->TransformState.TransformWorld, (D3DXMATRIX *)lpD3DMatrix);
+			state->TransformState.TransformWorld = XMMatrixTranspose(*(DirectX::SimpleMath::Matrix *)lpD3DMatrix);
 			break;
 
 		case D3DTRANSFORMSTATE_VIEW:
-			D3DXMatrixTranspose(&state->TransformState.TransformView, (D3DXMATRIX *)lpD3DMatrix);
+			state->TransformState.TransformView = XMMatrixTranspose(*(DirectX::SimpleMath::Matrix *)lpD3DMatrix);
 			break;
 
 		case D3DTRANSFORMSTATE_PROJECTION:
-			D3DXMatrixTranspose(&state->TransformState.TransformProj, (D3DXMATRIX *)lpD3DMatrix);
+			state->TransformState.TransformProj = XMMatrixTranspose(*(DirectX::SimpleMath::Matrix *)lpD3DMatrix);
 			break;
 		}
 
@@ -570,17 +567,6 @@ public:
 		vp.Width = (unsigned int)(lpViewport->dwWidth * scale);
 		vp.MinZ = lpViewport->dvMinZ;
 		vp.MaxZ = lpViewport->dvMaxZ;
-
-		// Viewport is sometimes off by a few pixels when using scaling
-		/*if (abs((int)vp.Height - Engine::GraphicsEngine->GetResolution().y) < 10)
-		{
-			vp.Height = Engine::GraphicsEngine->GetResolution().y;
-		}
-
-		if (abs((int)vp.Width - Engine::GraphicsEngine->GetResolution().x) < 10)
-		{
-			vp.Width = Engine::GraphicsEngine->GetResolution().x;
-		}*/
 
 		Engine::GraphicsEngine->SetViewport(vp);
 
@@ -656,12 +642,7 @@ public:
         DebugWrite("MyDirect3DDevice7::DrawIndexedPrimitiveVB");
         
 		if (d3dptPrimitiveType == D3DPRIMITIVETYPE::D3DPT_TRIANGLEFAN)
-			return S_OK;
-
-		//DrawPrimIndexBuffer->UpdateBuffer(lpwIndices, dwIndexCount * sizeof(VERTEX_INDEX));
-
-		//Engine::GraphicsEngine->DrawVOBDirect(((MyDirect3DVertexBuffer7 *)lpd3dVertexBuffer)->GetVertexBuffer(), DrawPrimIndexBuffer, dwIndexCount, dwStartVertex);
-			
+			return S_OK;			
         return S_OK;
     }
 
@@ -719,9 +700,6 @@ public:
 				return S_OK;
 			}
 
-		
-		/*Engine::GAPI->GetRendererState()->DepthState.DepthBufferEnabled = false;
-		Engine::GAPI->GetRendererState()->DepthState.SetDirty();*/
 
 		Engine::GraphicsEngine->SetActivePixelShader("PS_FixedFunctionPipe");
 
@@ -788,35 +766,6 @@ public:
 		Engine::GraphicsEngine->OnEndFrame();
 
 		hook_outfunc
-	/*} catch (...) { 
-		LogInfo() << "Exception caught!"; 
-		//RESET_STACK			
-
-		{	
-			UINT32 pStack; 	
-			UINT32 pBase; 
-			
-			__asm{	mov pStack, esp} 
-			__asm{mov pBase, ebp} 
-			
-			CONTEXT* context = nullptr;
-			for(UINT32 i = pStack; i > pStack - 0x1000; i--)
-			{
-				if (*(UINT32 *)i == 0x0001003f || *(UINT32 *)i == 0x0001001f)
-				{
-					context = (CONTEXT *)i;
-					break;
-				}
-			}
-			
-			//MyStackWalker sw;		
-			//sw.ShowCallstack(GetCurrentThread(), context);
-			
-			
-		}
-
-
-	} */
 	//hook_outfunc
 	return S_OK;
     }
@@ -848,9 +797,6 @@ public:
 
     HRESULT STDMETHODCALLTYPE EnumTextureFormats(LPD3DENUMPIXELFORMATSCALLBACK lpd3dEnumPixelProc, LPVOID lpArg) {
         DebugWrite("MyDirect3DDevice7::EnumTextureFormats");
-
-		//FILE* f = fopen("system\\GD3D11\\data\\FormatEnum.bin", "wb");
-		//fclose(f);
 
 		// Gothic only calls this once, so saving the working format is fine
 		FILE* f = fopen("system\\GD3D11\\data\\FormatEnum.bin", "rb");

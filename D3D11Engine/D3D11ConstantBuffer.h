@@ -7,7 +7,7 @@ public:
 	~D3D11ConstantBuffer();
 
 	/** Updates the buffer */
-	void UpdateBuffer(void * data);
+	void UpdateBuffer(const void * data);
 
 	/** Binds the buffer */
 	void BindToVertexShader(int slot);

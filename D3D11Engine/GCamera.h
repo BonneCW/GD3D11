@@ -13,22 +13,22 @@ public:
 	void RecreateViewMatrix(){};
 
 	/** Returns the View-Matrix*/
-	D3DXMATRIX& GetView(){return View;}
+	DirectX::SimpleMath::Matrix& GetView(){return View;}
 
 	/** Returns the WorldPosition */
-	D3DXVECTOR3 & GetWorldPosition(){return WorldPosition;}
+	DirectX::SimpleMath::Vector3 & GetWorldPosition(){return WorldPosition;}
 
 	/** Returns the WorldPosition */
-	D3DXVECTOR3 & GetLookAt(){return LookAt;}
+	DirectX::SimpleMath::Vector3 & GetLookAt(){return LookAt;}
 
 protected:
 	/** Cameras view matrix */
-	D3DXMATRIX View;
+	DirectX::SimpleMath::Matrix View;
 
 	/** Cameras position */
-	D3DXVECTOR3 WorldPosition;
+	DirectX::SimpleMath::Vector3 WorldPosition;
 
 	/** Cameras Look-At position */
-	D3DXVECTOR3 LookAt;
+	DirectX::SimpleMath::Vector3 LookAt;
 };
 

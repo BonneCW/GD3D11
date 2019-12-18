@@ -7,6 +7,9 @@
 #include "Toolbox.h"
 #include "zCCamera.h"
 
+using namespace DirectX;
+using namespace DirectX::SimpleMath;
+
 // Delay to recheck visible objects for occlusion
 const int VISIBLE_RECHECK_FRAME_DELAY = 1;
 
@@ -61,7 +64,7 @@ void D3D11OcclusionQuerry::DoOcclusionForBSP(BspInfo* root)
 		CreateOcclusionNodeMeshFor(root);
 	}
 
-	D3DXVECTOR4 c = D3DXVECTOR4(1, 1, 1, 1);
+	Vector4 c = Vector4::One;
 
 	// Check last frustum-culling state
 	int clipFlags = 63;
@@ -116,7 +119,7 @@ void D3D11OcclusionQuerry::DoOcclusionForBSP(BspInfo* root)
 		if (root->OcclusionInfo.LastVisitedFrameID != 0 && // Always do the first query
 			S_OK != g->GetContext()->GetData(p, nullptr, 0, D3D11_ASYNC_GETDATA_DONOTFLUSH))
 		{
-			c = D3DXVECTOR4(0, 0, 1, 1);
+			c = Vector4(0, 0, 1, 1);
 
 			// Query is in progress and still not done, wait for it...
 			if (!root->OcclusionInfo.VisibleLastFrame)
@@ -146,9 +149,9 @@ void D3D11OcclusionQuerry::DoOcclusionForBSP(BspInfo* root)
 			}
 
 			if (data > 0)
-				c = D3DXVECTOR4(0, 1, 0, 1);
+				c = Vector4(0, 1, 0, 1);
 			else
-				c = D3DXVECTOR4(1, 0, 0, 1);
+				c = Vector4(1, 0, 0, 1);
 
 			// Issue the new query
 			MeshInfo * mi = root->OcclusionInfo.NodeMesh;
@@ -250,16 +253,16 @@ void D3D11OcclusionQuerry::CreateOcclusionNodeMeshFor(BspInfo* node)
 	node->OcclusionInfo.NodeMesh = mi;
 }
 
-void D3D11OcclusionQuerry::DebugVisualizeNodeMesh(MeshInfo * m, const D3DXVECTOR4 & color)
+void D3D11OcclusionQuerry::DebugVisualizeNodeMesh(MeshInfo * m, const Vector4 & color)
 {
 	for(unsigned int i=0;i<m->Indices.size();i+=3)
 	{
-		D3DXVECTOR3 tri[3];
+		Vector3 tri[3];
 		float edge[3];
 
-		tri[0] = *m->Vertices[m->Indices[i]].Position.toD3DXVECTOR3();
-		tri[1] = *m->Vertices[m->Indices[i+1]].Position.toD3DXVECTOR3();
-		tri[2] = *m->Vertices[m->Indices[i+2]].Position.toD3DXVECTOR3();
+		tri[0] = *m->Vertices[m->Indices[i]].Position.toVector3();
+		tri[1] = *m->Vertices[m->Indices[i+1]].Position.toVector3();
+		tri[2] = *m->Vertices[m->Indices[i+2]].Position.toVector3();
 
 		edge[0] = m->Vertices[m->Indices[i]].TexCoord2.x;
 		edge[1] = m->Vertices[m->Indices[i+1]].TexCoord2.x;

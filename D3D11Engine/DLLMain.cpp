@@ -13,7 +13,6 @@
 #include <signal.h>
 #include "VersionCheck.h"
 
-#pragma comment(lib, "d3dx.lib")
 #pragma comment(lib, "d3dx11.lib")
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -22,9 +21,10 @@
 
 //#pragma pack(1)
 
-// Signal nvidia drivers that we want the high-performance card on laptops
+// Signal NVIDIA/AMD drivers that we want the high-performance card on laptops
 extern "C" {
 	_declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
+	_declspec(dllexport) DWORD AmdPowerXpressRequestHighPerformance = 0x00000001;
 }
 
 static HINSTANCE hLThis = 0;

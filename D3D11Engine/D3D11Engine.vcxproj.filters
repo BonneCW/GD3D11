@@ -640,6 +640,9 @@
     </ClInclude>
     <ClInclude Include="GMeshSimple.h" />
     <ClInclude Include="BaseShadowedPointLight.h" />
+    <ClInclude Include="zCClassDef.h">
+      <Filter>ZenGin\Classes</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
@@ -934,5 +937,6 @@
     <None Include="assimp--3.0.1270-sdk\include\assimp\vector3.inl">
       <Filter>Librarys\Assimp</Filter>
     </None>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>

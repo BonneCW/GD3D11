@@ -4,10 +4,12 @@
 #include "zCMaterial.h"
 #include "zCVisual.h"
 
+
+
 struct DecalSettings {
 	zCMaterial * DecalMaterial;
-	D3DXVECTOR2 DecalSize;
-	D3DXVECTOR2 DecalOffset;
+	DirectX::SimpleMath::Vector2 DecalSize;
+	DirectX::SimpleMath::Vector2 DecalOffset;
 	BOOL DecalTwoSided;
 	BOOL IgnoreDayLight;
 	BOOL DecalOnTop;

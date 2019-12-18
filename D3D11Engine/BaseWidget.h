@@ -32,23 +32,23 @@ public:
 	virtual void OnSelectionAdded(zCVob * vob);
 
 	/** Widget primitives */
-	void CreateArrowCone(int Detail, int Axis, D3DXVECTOR4 * Color, EditorLinePrimitive * Prim);
-	void CreateArrowCube(D3DXVECTOR3 * Offset, float Extends, D3DXVECTOR4 * Color, EditorLinePrimitive * Prim);
+	void CreateArrowCone(int Detail, int Axis, DirectX::SimpleMath::Vector4 * Color, EditorLinePrimitive * Prim);
+	void CreateArrowCube(DirectX::SimpleMath::Vector3 * Offset, float Extends, DirectX::SimpleMath::Vector4 * Color, EditorLinePrimitive * Prim);
 
 	/** Returns whether this widget is active or not */
 	virtual bool IsActive() const { return false; }
 
 protected:
 	/** Captures the mouse in the middle of the screen and returns the delta since last frame */
-	D3DXVECTOR2 GetMouseDelta() const;
+	DirectX::SimpleMath::Vector2 GetMouseDelta() const;
 
 	/** Hides/Shows the mouse */
 	void SetMouseVisibility(bool visible);
 
 	/** Transforms of the widget */
-	D3DXVECTOR3 Position;
-	D3DXMATRIX Rotation;
-	D3DXVECTOR3 Scale;
+	DirectX::SimpleMath::Vector3 Position;
+	DirectX::SimpleMath::Matrix Rotation;
+	DirectX::SimpleMath::Vector3 Scale;
 
 	/** Owning widgetcontainer */
 	WidgetContainer * OwningContainer;

@@ -64,7 +64,6 @@ float CalcBlinnPhongLighting(float3 N, float3 H )
 
 float GetShadow(float2 uv)
 {
-	//return 1;
 	// Get light direction
 	float2 lightDir = PL_LightScreenPos.xy - uv;
 	float distance = length(lightDir);
@@ -77,7 +76,6 @@ float GetShadow(float2 uv)
 	//float depthLight = TX_Depth.Sample(SS_Linear, PL_LightScreenPos).r;
 	float depthTarget = TX_Depth.Sample(SS_Linear, uv).r;
 	
-	//return depthTarget;
 	float dx = ddx(uv.xy);
 	float dy = ddy(uv.xy);
 	
@@ -120,14 +118,6 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	float expDepth = TX_Depth.Sample(SS_Linear, uv).r;
 	float3 vsPosition = VSPositionFromDepth(expDepth, uv);
 	
-	// Compute flat normal
-	//float3 flatNormal = normalize(cross(ddx(vsPosition),ddy(vsPosition)));
-	
-	//if(Input.vPosition.z > expDepth)
-	//	discard;
-	
-	//return float4(Pl_PositionView, 1);
-	
 	// Get direction and distance from the light to that position 
 	float3 lightDir = Pl_PositionView - vsPosition;
 	float distance = length(lightDir);
@@ -135,10 +125,7 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	
 	// Do some simple NdL-Lighting
 	float ndl = max(0, dot(lightDir, normal));
-	
-	// Get rid of lighting on the backfaces of normalmapped surfaces
-	//ndl *= saturate(dot(lightDir, flatNormal)  / 0.00001f);
-	
+		
 	// Compute range falloff
 	float falloff = pow(saturate(1.0f - (distance / PL_Range)), 1.2f); 
 	//float falloff = saturate(1.0f / (pow(distance / PL_Range * 2, 2)));
@@ -158,16 +145,6 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	// Also apply specular lighting
 	float3 lighting = color * diffuse.rgb + specColored;
 	
-	//lighting = GetShadow(uv);
-	
-	// If this is an indoor-light, and this pixel already gets light from the sun, don't light it here.
-	//float indoor = 1.0f - PL_Outdoor;
-	//float indoorPixel = diffuse.a < 0.5f ? 1.0f : 0.0f;
-	//lighting *= saturate(PL_Outdoor + indoor * indoorPixel);
-	//lighting = indoorPixel;
-	
-	//return float4(0.2f,0.2f,0.2f,1);
-	//return float4(ndl.rrr,1);
 	return float4(saturate(lighting),1);
 }
 

@@ -54,7 +54,8 @@ XRESULT D3D11NVHBAO::Render(ID3D11RenderTargetView* rtv)
 	Input.DepthData.DepthTextureType = GFSDK_SSAO_HARDWARE_DEPTHS;
 	Input.DepthData.pFullResDepthTextureSRV = engine->GetDepthBuffer()->GetShaderResView();
 	Input.DepthData.pViewport = &vp;
-	Input.DepthData.pProjectionMatrix = Engine::GAPI->GetProjectionMatrix();
+	// TODO: Check this, conversion might throw!
+	Input.DepthData.pProjectionMatrix =  (float*)&Engine::GAPI->GetProjectionMatrix();
 	Input.DepthData.ProjectionMatrixLayout = GFSDK_SSAO_COLUMN_MAJOR_ORDER;
 	Input.DepthData.MetersToViewSpaceUnits = settings.MetersToViewSpaceUnits;
 

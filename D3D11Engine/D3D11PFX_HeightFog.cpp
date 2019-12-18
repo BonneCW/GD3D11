@@ -12,6 +12,9 @@
 #include "GothicAPI.h"
 #include "GSky.h"
 
+using namespace DirectX;
+using namespace DirectX::SimpleMath;
+
 D3D11PFX_HeightFog::D3D11PFX_HeightFog(D3D11PfxRenderer* rnd) : D3D11PFX_Effect(rnd)
 {
 }
@@ -38,37 +41,37 @@ XRESULT D3D11PFX_HeightFog::Render(RenderToTextureBuffer * fxbuffer)
 	vs->Apply();
 
 	HeightfogConstantBuffer cb;
-	D3DXMatrixInverse(&cb.InvProj, nullptr, &Engine::GAPI->GetProjectionMatrix());
+	cb.InvProj = XMMatrixInverse(nullptr, Engine::GAPI->GetProjectionMatrix());
 
 	Engine::GAPI->GetViewMatrix(&cb.InvView);
-	D3DXMatrixInverse(&cb.InvView, nullptr, &cb.InvView);
+	cb.InvView = XMMatrixInverse(nullptr, cb.InvView);
 	cb.CameraPosition = Engine::GAPI->GetCameraPosition();
 	float NearPlane=Engine::GAPI->GetRendererState()->RendererInfo.NearPlane;
 	float FarPlane=Engine::GAPI->GetRendererState()->RendererInfo.FarPlane;
 
-	D3DXMATRIX invViewProj, view;
+	DirectX::SimpleMath::Matrix invViewProj, view;
 	Engine::GAPI->GetViewMatrix(&view);
-	D3DXMatrixMultiply(&invViewProj, &Engine::GAPI->GetProjectionMatrix(), &view);
-	D3DXMatrixInverse(&invViewProj, nullptr, &invViewProj);
+	invViewProj = XMMatrixMultiply(Engine::GAPI->GetProjectionMatrix(), view);
+	invViewProj = XMMatrixInverse(nullptr, invViewProj);
 
-	D3DXVECTOR3 vecFrustum[4];
+	Vector3 vecFrustum[4];
 	/*vecFrustum[0] = D3DXVECTOR3(-1.0f, -1.0f,  0.0f); // xyz
 	vecFrustum[1] = D3DXVECTOR3(1.0f, -1.0f,  0.0f); // Xyz
 	vecFrustum[2] = D3DXVECTOR3(-1.0f,  1.0f,  0.0f); // xYz
 	vecFrustum[3] = D3DXVECTOR3(1.0f,  1.0f,  0.0f); // XYz*/
-	vecFrustum[0] = D3DXVECTOR3(-1.0f, -1.0f,  1.0f); // xyZ
-	vecFrustum[1] = D3DXVECTOR3(1.0f, -1.0f,  1.0f); // XyZ
-	vecFrustum[2] = D3DXVECTOR3(-1.0f,  1.0f,  1.0f); // xYZ
-	vecFrustum[3] = D3DXVECTOR3(1.0f,  1.0f,  1.0f); // XYZ
+	vecFrustum[0] = Vector3(-1.0f, -1.0f, 1.0f); // xyZ
+	vecFrustum[1] = Vector3(1.0f, -1.0f, 1.0f); // XyZ
+	vecFrustum[2] = Vector3(-1.0f, 1.0f, 1.0f); // xYZ
+	vecFrustum[3] = Vector3(1.0f, 1.0f, 1.0f); // XYZ
 
 	// Get world space frustum corners
 	PFXVS_ConstantBuffer vcb;
-	for(int i = 0; i < 4; i++)
+	for (int i = 0; i < 4; i++)
 	{
-		D3DXVec3TransformCoord(&vecFrustum[i], &vecFrustum[i], &cb.InvProj);
-		D3DXVec3Normalize(&vecFrustum[i], &vecFrustum[i]);
-		D3DXVec3TransformNormal(&vecFrustum[i], &vecFrustum[i], &cb.InvView);
-		
+		vecFrustum[i] = XMVector3TransformCoord(vecFrustum[i], cb.InvProj);
+		vecFrustum[i] = XMVector3Normalize(vecFrustum[i]);
+		vecFrustum[i] = XMVector3TransformNormal(vecFrustum[i], cb.InvView);
+
 	}
 
 	/*vcb.PFXVS_FrustumCorners[0] = D3DXVECTOR4(vecFrustum[0].x, vecFrustum[0].y, vecFrustum[0].z, 0.0f);
@@ -81,9 +84,9 @@ XRESULT D3D11PFX_HeightFog::Render(RenderToTextureBuffer * fxbuffer)
 
 	cb.HF_GlobalDensity = Engine::GAPI->GetRendererState()->RendererSettings.FogGlobalDensity;
 	cb.HF_HeightFalloff = Engine::GAPI->GetRendererState()->RendererSettings.FogHeightFalloff;
-	
+
 	float height = Engine::GAPI->GetRendererState()->RendererSettings.FogHeight;
-	D3DXVECTOR3 color = *Engine::GAPI->GetRendererState()->RendererSettings.FogColorMod.toD3DXVECTOR3();
+	auto color = *Engine::GAPI->GetRendererState()->RendererSettings.FogColorMod.toVector3();
 
 	float fnear = 15000.0f;
 	float ffar = 60000.0f;
@@ -91,8 +94,8 @@ XRESULT D3D11PFX_HeightFog::Render(RenderToTextureBuffer * fxbuffer)
 
 	cb.HF_WeightZNear = std::max(0.0f, WORLD_SECTION_SIZE * ((secScale - 0.5f) * 0.7f) - (ffar - fnear)); // Keep distance from original fog but scale the near-fog up to section draw distance
 	cb.HF_WeightZFar = WORLD_SECTION_SIZE * ((secScale - 0.5f) * 0.8f);
-	
-	float atmoMax = 83200.0f; // Fixme: Calculate!	
+
+	float atmoMax = 83200.0f; // TODO: Calculate!	
 	float atmoMin = 27799.9922f;
 
 	cb.HF_WeightZFar = std::min(cb.HF_WeightZFar, atmoMax);
@@ -102,7 +105,7 @@ XRESULT D3D11PFX_HeightFog::Render(RenderToTextureBuffer * fxbuffer)
 	{
 		// Make sure the camera is inside the fog when in fog zone
 		height = Toolbox::lerp(height, Engine::GAPI->GetCameraPosition().y + 10000, Engine::GAPI->GetFogOverride()); // TODO: Get this from the actual fog-distance in the fogzone!
-		
+
 		// Override fog color when in fog zone
 		color = Engine::GAPI->GetFogColor();
 
@@ -129,7 +132,7 @@ XRESULT D3D11PFX_HeightFog::Render(RenderToTextureBuffer * fxbuffer)
 	cb.HF_WeightZNear = s_smoothZN;
 	cb.HF_WeightZFar = s_smoothZF;*/
 
-	//static D3DXVECTOR3 s_smoothColor = *Engine::GAPI->GetRendererState()->RendererSettings.FogColorMod.toD3DXVECTOR3();
+	//static D3DXVECTOR3 s_smoothColor = *Engine::GAPI->GetRendererState()->RendererSettings.FogColorMod.toVector3();
 
 	// Fade fog height in case it changes
 	//s_smoothHeight = Toolbox::lerp(s_smoothHeight, height, std::min(Engine::GAPI->GetFrameTimeSec() * 5.0f, 1.0f));
@@ -145,17 +148,17 @@ XRESULT D3D11PFX_HeightFog::Render(RenderToTextureBuffer * fxbuffer)
 
 
 	//cb.HF_FogColorMod = Engine::GAPI->GetRendererState()->GraphicsState.FF_FogColor;
-	cb.HF_ProjAB = float2(	Engine::GAPI->GetProjectionMatrix()._33,
-							Engine::GAPI->GetProjectionMatrix()._34);
+	cb.HF_ProjAB = float2(Engine::GAPI->GetProjectionMatrix()._33,
+		Engine::GAPI->GetProjectionMatrix()._34);
 
 
 	// Modify fog when raining
 	float rain = Engine::GAPI->GetRainFXWeight();
 
 	// Color
-	D3DXVec3Lerp(cb.HF_FogColorMod.toD3DXVECTOR3(), 
-		cb.HF_FogColorMod.toD3DXVECTOR3(), 
-		&Engine::GAPI->GetRendererState()->RendererSettings.RainFogColor, 
+	cb.HF_FogColorMod = Vector3::Lerp(
+		*cb.HF_FogColorMod.toVector3(),
+		Engine::GAPI->GetRendererState()->RendererSettings.RainFogColor,
 		std::min(1.0f, rain * 2.0f)); // Scale color faster here, so it looks better on light rain
 
 	// Raining Density, only when not in fogzone
@@ -190,7 +193,7 @@ XRESULT D3D11PFX_HeightFog::Render(RenderToTextureBuffer * fxbuffer)
 
 	// Restore rendertargets
 	ID3D11ShaderResourceView * srv = nullptr;
-	engine->GetContext()->PSSetShaderResources(1, 1,&srv);
+	engine->GetContext()->PSSetShaderResources(1, 1, &srv);
 
 	engine->GetContext()->OMSetRenderTargets(1, &oldRTV, oldDSV);
 	if (oldRTV)oldRTV->Release();

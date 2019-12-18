@@ -6,45 +6,60 @@
 #include "GothicAPI.h"
 #include "zCObject.h"
 
+struct zCPolyStripInstance {
+	zCMaterial* material;
+
+	zCVertex* vertList;
+	zCPolygon* polyList;
+
+	int numPoly;
+	int numVert;
+
+	float3* centerPointList;
+	float* alphaList;
+	float width;
+	zCVob* connectedVob;
+	zTBBox3D bbox3D;
+	int camAlign;
+#ifdef BUILD_GOTHIC_2_6_fix
+	int heightCheck;
+	int everyFrameUpdate;
+	float heightBound;
+#endif
+	int firstSeg;
+	int lastSeg;
+	int numSeg;
+
+	float visLastFrac;
+	float visFirstFrac;
+
+	float alphaFadeSpeed;
+	float newAlphaFadeSpeed;
+	float newAlpha;
+	int lastDirSeg;
+	float3 lastDirNormal;
+
+	unsigned char localFOR : 1;
+};
+
+
+
 class zCPolyStrip : public zCObject
 {
 public:
-#ifndef BUILD_GOTHIC_1_08k
-	zCPolygon* GetPolyList()
-	{
-		return *(zCPolygon**)THISPTR_OFFSET(GothicMemoryLocations::zCPolyStrip::Offset_PolyList);
+	zCPolyStripInstance GetInstanceData() {
+		return *(zCPolyStripInstance*)THISPTR_OFFSET(GothicMemoryLocations::zCPolyStrip::Offset_Material);
 	}
 
-	int GetNumPolys()
-	{
-		return *(int *)THISPTR_OFFSET(GothicMemoryLocations::zCPolyStrip::Offset_NumPolys);
+	void SetVisibleSegments(float visibleFirst, float visibleLast) {
+		XCALL(GothicMemoryLocations::zCPolyStrip::SetVisibleSegments);
 	}
 
-
-	/** Generates a vertex-buffer from the poly-list */
-	void GenerateVertexBuffer(std::vector<ExVertexStruct> & vx)
-	{
-		int num = GetNumPolys();
-		zCPolygon* polyArray = GetPolyList();
-
-		for(int i=0;i<num;i++)
-		{
-			zCPolygon* poly = &polyArray[i];
-
-			std::vector<ExVertexStruct> polyFan;
-			for(int v=0;v<poly->GetNumPolyVertices();v++)
-			{
-				ExVertexStruct t;
-				t.Position = poly->getVertices()[v]->Position;
-				t.TexCoord = poly->getFeatures()[v]->texCoord;
-				t.Normal = poly->getFeatures()[v]->normal;
-				t.Color = poly->getFeatures()[v]->lightStatic;
-			}
-
-			// Make a triangle list
-			if (!polyFan.empty())
-				WorldConverter::TriangleFanToList(&polyFan[0], polyFan.size(), &vx);
-		}
+	void AlighToCamera() {
+		XCALL(GothicMemoryLocations::zCPolyStrip::AlignToCamera);
 	}
-#endif
+
+	void Render(void*) {
+		XCALL(GothicMemoryLocations::zCPolyStrip::Render);
+	}
 };

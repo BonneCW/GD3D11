@@ -120,7 +120,8 @@ public:
 	static long __fastcall Do_hooked_zOptionReadInt(void * thisptr, zSTRING const& section, char const* var, int def)
 	{
 		BaseGraphicsEngine* engine = Engine::GraphicsEngine;
-		LogInfo() << "Reading Gothic-Config: " << var;
+		// TODO: Make Option checkable
+		// LogInfo() << "Reading Gothic-Config: " << var;
 
 		if (!engine)
 		{
@@ -168,7 +169,8 @@ public:
 	static unsigned long __fastcall hooked_zOptionReadDWORD(void * thisptr, void * unknwn, zSTRING const& section, char const* var, unsigned long def)
 	{
 		BaseGraphicsEngine* engine = Engine::GraphicsEngine;
-		LogInfo() << "Reading Gothic-Config: " << var;
+		// TODO: Make Option checkable
+		// LogInfo() << "Reading Gothic-Config: " << var;
 
 		if (_stricmp(var, "zTexCacheOutTimeMSec") == 0) // Following values are from Marcellos L'Hiver config
 		{

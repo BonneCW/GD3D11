@@ -25,8 +25,14 @@ struct GothicMemoryLocations
 
 	struct zCPolyStrip
 	{
-		static const unsigned int Offset_PolyList = 0x3C;
-		static const unsigned int Offset_NumPolys = 0x40;
+
+		static const unsigned int Offset_Material = 0x34;
+
+		static const unsigned int SetVisibleSegments = 0x005BDB90;
+		static const unsigned int AlignToCamera = 0x005BE800;
+		static const unsigned int Render = 0x005BDC70;
+
+		static const unsigned int RenderDrawPolyReturn = 0x005BE190;
 	};
 
 	struct zCThread
@@ -64,6 +70,7 @@ struct GothicMemoryLocations
 	{
 		static const unsigned int VidSetScreenMode = 0x00658BA0;
 		static const unsigned int DrawLineZ = 0x0064DB00;
+		static const unsigned int DrawPoly = 0x0064B260;
 		static const unsigned int Vid_GetGammaCorrection = 0x00659610;
 	};
 

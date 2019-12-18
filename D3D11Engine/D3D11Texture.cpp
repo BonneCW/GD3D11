@@ -6,6 +6,9 @@
 #include <D3DX11.h>
 #include "RenderToTextureBuffer.h"
 
+using namespace DirectX;
+using namespace DirectX::SimpleMath;
+
 D3D11Texture::D3D11Texture() {
 	Texture = nullptr;
 	ShaderResourceView = nullptr;
@@ -223,7 +226,7 @@ XRESULT D3D11Texture::CreateThumbnail()
 	if (!tempRTV)
 		return XR_FAILED;
 
-	engine->GetContext()->ClearRenderTargetView(tempRTV, (float *)&D3DXVECTOR4(1, 0, 0, 1));
+	engine->GetContext()->ClearRenderTargetView(tempRTV, (float *)&Vector4(1, 0, 0, 1));
 
 	// Copy main texture to it
 	engine->GetContext()->PSSetShaderResources(0, 1, &ShaderResourceView);

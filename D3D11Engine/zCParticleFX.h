@@ -22,17 +22,17 @@ struct zTParticle
 	zTParticle* Next;
 
 #ifdef BUILD_GOTHIC_2_6_fix
-	D3DXVECTOR3	PositionLocal;
+	DirectX::SimpleMath::Vector3	PositionLocal;
 #endif
-	D3DXVECTOR3	PositionWS;
-	D3DXVECTOR3	Vel;
+	DirectX::SimpleMath::Vector3	PositionWS;
+	DirectX::SimpleMath::Vector3	Vel;
 	float LifeSpan;
 	float Alpha;
 	float AlphaVel;
-	D3DXVECTOR2	Size;
-	D3DXVECTOR2	SizeVel;
-	D3DXVECTOR3	Color;
-	D3DXVECTOR3	ColorVel;
+	DirectX::SimpleMath::Vector2	Size;
+	DirectX::SimpleMath::Vector2	SizeVel;
+	DirectX::SimpleMath::Vector3	Color;
+	DirectX::SimpleMath::Vector3	ColorVel;
 
 #ifdef BUILD_GOTHIC_1_08k
 	float TexAniFrame;
@@ -143,7 +143,7 @@ public:
 
 	static float SinEase(float value)
 	{
-		return (float)((sin(value * D3DX_PI - D3DX_PI / 2.0) + 1.0) / 2.0);
+		return (float)((sin(value * DirectX::XM_PI - DirectX::XM_PI / 2.0) + 1.0) / 2.0);
 	}
 
 	static float SinSmooth(float value)

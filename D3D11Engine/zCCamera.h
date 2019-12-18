@@ -29,12 +29,16 @@ public:
 #endif
 	}
 
-	D3DXMATRIX const& GetTransform(const ETransformType type)
+	DirectX::SimpleMath::Matrix const& GetTransform(const ETransformType type)
+	{
+		XCALL(GothicMemoryLocations::zCCamera::GetTransform);
+	}
+	DirectX::XMFLOAT4X4 const& GetTransformDX(const ETransformType type)
 	{
 		XCALL(GothicMemoryLocations::zCCamera::GetTransform);
 	}
 
-	void SetTransform(const ETransformType type, const D3DXMATRIX& mat)
+	void SetTransform(const ETransformType type, const DirectX::SimpleMath::Matrix& mat)
 	{
 		XCALL(GothicMemoryLocations::zCCamera::SetTransform);
 	}

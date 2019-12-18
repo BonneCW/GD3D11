@@ -23,6 +23,18 @@ struct GothicMemoryLocations
 		static const unsigned int zCOption = 0x00869694;
 	};
 
+	struct zCPolyStrip
+	{
+		// TODO: this one is wrong, need to boot up union, hook on to some zCPolyStrip function and check mem location of this
+		static const unsigned int Offset_Material = 0x34;
+
+		static const unsigned int SetVisibleSegments = 0x0059BE80;
+		static const unsigned int AlignToCamera = 0x0059C980;
+		static const unsigned int Render = 0x0059BF50;
+
+		static const unsigned int RenderDrawPolyReturn = 0x0059C370;
+	};
+
 	struct zCQuadMark
 	{
 		static const unsigned int Constructor = 0x005AB810;
@@ -38,6 +50,7 @@ struct GothicMemoryLocations
 	{
 		static const unsigned int VidSetScreenMode = 0x0071FC70;
 		static const unsigned int DrawLineZ = 0x00716D20;
+		static const unsigned int DrawPoly = 0x00714B60;
 	};
 
 	struct zCOption
