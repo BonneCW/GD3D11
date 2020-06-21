@@ -18,54 +18,54 @@ public:
 
 	/** Hooks the functions of this Class */
 	static void Hook() {
-		HookedFunctions::OriginalFunctions.original_zCVisualDestructor = (GenericDestructor)DetourFunction((BYTE *)GothicMemoryLocations::zCVisual::Destructor, (BYTE *)zCVisual::Hooked_Destructor);
+		XHook( HookedFunctions::OriginalFunctions.original_zCVisualDestructor, GothicMemoryLocations::zCVisual::Destructor, zCVisual::Hooked_Destructor );
 	}
 
-	static void __fastcall Hooked_Destructor(void * thisptr, void * unknwn) {
+	static void __fastcall Hooked_Destructor( void* thisptr, void* unknwn ) {
 		hook_infunc
-		// Notify the world
-		if (Engine::GAPI)
-			Engine::GAPI->OnVisualDeleted((zCVisual *)thisptr);
+			// Notify the world
+			if ( Engine::GAPI )
+				Engine::GAPI->OnVisualDeleted( (zCVisual*)thisptr );
 
-		HookedFunctions::OriginalFunctions.original_zCVisualDestructor(thisptr);
+		HookedFunctions::OriginalFunctions.original_zCVisualDestructor( thisptr );
 		hook_outfunc
 	}
 
 	/** File extension this visual uses. Handy for finding out what class this is */
-	const char * GetFileExtension(int i) {
-		const zSTRING * extension = __GetFileExtension(i);
-		if (extension)
+	const char* GetFileExtension( int i ) {
+		const zSTRING* extension = __GetFileExtension( i );
+		if ( extension )
 			return extension->ToChar();
 
 		return "";
 	}
 
-	const char * GetObjectName() {
+	const char* GetObjectName() {
 		return __GetObjectName().ToChar();
 	}
 
 	/** Returns the class-type of this visual */
 	EVisualType GetVisualType() {
 		std::vector<std::string> extv;
-	
+
 		int e = 0;
-		while (strlen(GetFileExtension(e)) > 0) {
-			extv.push_back(GetFileExtension(e));
+		while ( strlen( GetFileExtension( e ) ) > 0 ) {
+			extv.push_back( GetFileExtension( e ) );
 			e++;
 		}
 
-		for (unsigned int i = 0; i < extv.size(); i++) {
+		for ( unsigned int i = 0; i < extv.size(); i++ ) {
 			std::string ext = extv[i];
 
-			if (ext == ".3DS")
+			if ( ext == ".3DS" )
 				return VT_PROGMESHPROTO;
-			else if (ext == ".MMS")
+			else if ( ext == ".MMS" )
 				return VT_MORPHMESH;
-			else if (ext == ".MDS" || ext == ".ASC")
+			else if ( ext == ".MDS" || ext == ".ASC" )
 				return VT_MODEL;
-			else if (ext == ".PFX")
+			else if ( ext == ".PFX" )
 				return VT_PARTICLE_FX;
-			else if (ext == ".TGA")
+			else if ( ext == ".TGA" )
 				return VT_DECAL;
 		}
 
@@ -73,14 +73,14 @@ public:
 	}
 
 private:
-	zSTRING & __GetObjectName() {
-		XCALL(GothicMemoryLocations::zCObject::GetObjectName);
+	zSTRING& __GetObjectName() {
+		XCALL( GothicMemoryLocations::zCObject::GetObjectName );
 	}
 
-	const zSTRING * __GetFileExtension(int i) {
-		int * vtbl = (int *)((int *)this)[0];
+	const zSTRING* __GetFileExtension( int i ) {
+		int* vtbl = (int*)((int*)this)[0];
 
 		zCVisualGetFileExtension fn = (zCVisualGetFileExtension)vtbl[GothicMemoryLocations::zCVisual::VTBL_GetFileExtension];
-		return fn(this, i);
+		return fn( this, i );
 	}
 };

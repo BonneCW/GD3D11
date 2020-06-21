@@ -1,13 +1,14 @@
 #include "pch.h"
 #include "D3D11PShader.h"
 #include "D3D11GraphicsEngineBase.h"
-#include <D3DX11.h>
 #include "Engine.h"
 #include "GothicAPI.h"
 #include "D3D11ConstantBuffer.h"
+#include <d3dcompiler.h>
 
-D3D11PShader::D3D11PShader()
-{
+using namespace DirectX;
+
+D3D11PShader::D3D11PShader() {
 	PixelShader = nullptr;
 
 	// Insert into state-map
@@ -16,15 +17,13 @@ D3D11PShader::D3D11PShader()
 	D3D11ObjectIDs::PShadersByID[ID] = this;
 }
 
-D3D11PShader::~D3D11PShader()
-{
+D3D11PShader::~D3D11PShader() {
 	// Remove from state map
-	Toolbox::EraseByElement(D3D11ObjectIDs::PShadersByID, this);
+	Toolbox::EraseByElement( D3D11ObjectIDs::PShadersByID, this );
 
-	if (PixelShader)PixelShader->Release();
+	if ( PixelShader )PixelShader->Release();
 
-	for (unsigned int i = 0; i < ConstantBuffers.size(); i++)
-	{
+	for ( unsigned int i = 0; i < ConstantBuffers.size(); i++ ) {
 		delete ConstantBuffers[i];
 	}
 }
@@ -32,13 +31,12 @@ D3D11PShader::~D3D11PShader()
 //--------------------------------------------------------------------------------------
 // Find and compile the specified shader
 //--------------------------------------------------------------------------------------
-HRESULT D3D11PShader::CompileShaderFromFile(const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, std::vector<D3D10_SHADER_MACRO> & makros)
-{
+HRESULT D3D11PShader::CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, std::vector<D3D_SHADER_MACRO>& makros ) {
 	HRESULT hr = S_OK;
 
 	char dir[260];
-	GetCurrentDirectoryA(260, dir);
-	SetCurrentDirectoryA(Engine::GAPI->GetStartDirectory().c_str());
+	GetCurrentDirectoryA( 260, dir );
+	SetCurrentDirectoryA( Engine::GAPI->GetStartDirectory().c_str() );
 
 	DWORD dwShaderFlags = 0;
 #if defined(DEBUG) || defined(_DEBUG)
@@ -47,67 +45,56 @@ HRESULT D3D11PShader::CompileShaderFromFile(const CHAR* szFileName, LPCSTR szEnt
 	// the shaders to be optimized and to run exactly the way they will run in 
 	// the release configuration of this program.
 	//dwShaderFlags |= D3DCOMPILE_DEBUG;
+#else
+	dwShaderFlags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
 #endif
 
 	// Construct makros
-	std::vector<D3D10_SHADER_MACRO> m;
-	D3D11GraphicsEngineBase::ConstructShaderMakroList(m);
-	
-	// Push these to the front
-	m.insert(m.begin(), makros.begin(), makros.end());
+	std::vector<D3D_SHADER_MACRO> m;
+	D3D11GraphicsEngineBase::ConstructShaderMakroList( m );
 
-	ID3DBlob* pErrorBlob;
-	hr = D3DX11CompileFromFileA(szFileName, &m[0], nullptr, szEntryPoint, szShaderModel,
-		dwShaderFlags, 0, nullptr, ppBlobOut, &pErrorBlob, nullptr);
-	if (FAILED(hr))
-	{
+	// Push these to the front
+	m.insert( m.begin(), makros.begin(), makros.end() );
+
+	Microsoft::WRL::ComPtr<ID3DBlob> pErrorBlob;
+	hr = D3DCompileFromFile( Toolbox::ToWideChar( szFileName ).c_str(), &m[0], D3D_COMPILE_STANDARD_FILE_INCLUDE, szEntryPoint, szShaderModel, dwShaderFlags, 0, ppBlobOut, &pErrorBlob );
+
+	if ( FAILED( hr ) ) {
 		LogInfo() << "Shader compilation failed!";
-		if (pErrorBlob != nullptr)
-		{
+		if ( pErrorBlob.Get() ) {
 
 			LogErrorBox() << (char*)pErrorBlob->GetBufferPointer() << "\n\n (You can ignore the next error from Gothic about too small video memory!)";
-			pErrorBlob->Release();
 		}
 
-		SetCurrentDirectoryA(dir);
+		SetCurrentDirectoryA( dir );
 		return hr;
 	}
-	if (pErrorBlob)
-	{
-		/*if (Engine->SwapchainCreated())
-		Engine->GetConsole()->PostConsoleMessage((char*)pErrorBlob->GetBufferPointer());
-		else
-		LogWarnBox() << (char*)pErrorBlob->GetBufferPointer() << "\n\n (You can ignore the next error from Gothic about too small video memory!)";
-		*/
-		pErrorBlob->Release();
-	}
 
-	SetCurrentDirectoryA(dir);
+	SetCurrentDirectoryA( dir );
 	return S_OK;
 }
 
 /** Loads both shaders at the same time */
-XRESULT D3D11PShader::LoadShader(const char* pixelShader, std::vector<D3D10_SHADER_MACRO> & makros)
-{
+XRESULT D3D11PShader::LoadShader( const char* pixelShader, std::vector<D3D_SHADER_MACRO>& makros ) {
 	HRESULT hr;
-	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase *)Engine::GraphicsEngine;
+	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
 	ID3DBlob* psBlob;
 
-	LogInfo() << "Compilling pixel shader: " << pixelShader;
+	if ( Engine::GAPI->GetRendererState()->RendererSettings.EnableDebugLog )
+		LogInfo() << "Compilling pixel shader: " << pixelShader;
 	File = pixelShader;
 
 	// Compile shaders
-	if (FAILED(CompileShaderFromFile(pixelShader, "PSMain", "ps_4_0", &psBlob, makros)))
-	{
+	if ( FAILED( CompileShaderFromFile( pixelShader, "PSMain", "ps_5_0", &psBlob, makros ) ) ) {
 		return XR_FAILED;
 	}
 
 	// Create the shader
-	LE(engine->GetDevice()->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &PixelShader));
+	LE( engine->GetDevice()->CreatePixelShader( psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &PixelShader ) );
 
 #ifndef PUBLIC_RELEASE
-	PixelShader->SetPrivateData(WKPDID_D3DDebugObjectName, strlen(pixelShader), pixelShader);
+	PixelShader->SetPrivateData( WKPDID_D3DDebugObjectName, strlen( pixelShader ), pixelShader );
 #endif
 
 	psBlob->Release();
@@ -116,17 +103,15 @@ XRESULT D3D11PShader::LoadShader(const char* pixelShader, std::vector<D3D10_SHAD
 }
 
 /** Applys the shaders */
-XRESULT D3D11PShader::Apply()
-{
-	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase *)Engine::GraphicsEngine;
+XRESULT D3D11PShader::Apply() {
+	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
-	engine->GetContext()->PSSetShader(PixelShader, nullptr, 0);
+	engine->GetContext()->PSSetShader( PixelShader, nullptr, 0 );
 
 	return XR_SUCCESS;
 }
 
 /** Returns a reference to the constantBuffer vector*/
-std::vector<D3D11ConstantBuffer*> & D3D11PShader::GetConstantBuffer()
-{
+std::vector<D3D11ConstantBuffer*>& D3D11PShader::GetConstantBuffer() {
 	return ConstantBuffers;
 }

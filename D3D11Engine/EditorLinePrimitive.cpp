@@ -8,18 +8,16 @@
 #include "D3D11ShaderManager.h"
 
 using namespace DirectX;
-using namespace DirectX::SimpleMath;
 
-EditorLinePrimitive::EditorLinePrimitive()
-{
+EditorLinePrimitive::EditorLinePrimitive() {
 	Vertices = nullptr;
 	PrimVB = nullptr;
 	PrimShader = nullptr;
-	Location = Vector3::Zero;
-	Rotation = Vector3::Zero;
-	Scale = Vector3::One;
+	Location = XMFLOAT3( 0, 0, 0 );
+	Rotation = XMFLOAT3( 0, 0, 0 );
+	Scale = XMFLOAT3( 1, 1, 1 );
 	RecalcTransforms();
-	bHidden=false;
+	bHidden = false;
 
 	SolidPrimShader = nullptr;
 	SolidVertices = nullptr;
@@ -28,306 +26,302 @@ EditorLinePrimitive::EditorLinePrimitive()
 
 	NumVertices = 0;
 
-	RotationMatrixAngles=Vector3::Zero;
-	RotationMatrix = Matrix::Identity;
-	bLocalRotation=false;
+	RotationMatrixAngles = XMFLOAT3( 0, 0, 0 );
+	XMStoreFloat4x4( &RotationMatrix, XMMatrixIdentity() );
+	bLocalRotation = false;
 
-	bJustUseRotationMatrix=false;
+	bJustUseRotationMatrix = false;
 
-	SetSolidShader(((D3D11GraphicsEngineBase *)Engine::GraphicsEngine)->GetShaderManager()->GetPShader("PS_Lines"));
-	SetShader(((D3D11GraphicsEngineBase *)Engine::GraphicsEngine)->GetShaderManager()->GetPShader("PS_Lines"));
+	SetSolidShader( ((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetShaderManager()->GetPShader( "PS_Lines" ) );
+	SetShader( ((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetShaderManager()->GetPShader( "PS_Lines" ) );
 }
 
 
-EditorLinePrimitive::~EditorLinePrimitive()
-{
-	delete[] Vertices;
-	delete[] SolidVertices;
-	if (PrimVB)PrimVB->Release();
-	if (SolidPrimVB)SolidPrimVB->Release();
+EditorLinePrimitive::~EditorLinePrimitive() {
+	delete [] Vertices;
+	delete [] SolidVertices;
+	if ( PrimVB )PrimVB->Release();
+	if ( SolidPrimVB )SolidPrimVB->Release();
 }
 
 /** Deletes all content */
-void EditorLinePrimitive::DeleteContent()
-{
-	delete[] Vertices;
-	delete[] SolidVertices;
-	if (PrimVB)PrimVB->Release();
-	if (SolidPrimVB)SolidPrimVB->Release();
+void EditorLinePrimitive::DeleteContent() {
+	delete [] Vertices;
+	delete [] SolidVertices;
+	if ( PrimVB )PrimVB->Release();
+	if ( SolidPrimVB )SolidPrimVB->Release();
 }
 
 /** Creates a grid of lines */
-HRESULT EditorLinePrimitive::CreateLineGrid(int LinesX,int LinesY,Vector2 * Middle, Vector4 * Color)
-{
+HRESULT EditorLinePrimitive::CreateLineGrid( int LinesX, int LinesY, XMFLOAT2* Middle, const float4& Color ) {
 	HRESULT hr;
-	LineVertex * vx = new LineVertex[(LinesX+1)*(LinesY+1)*4];
-	UINT CurVertex=0;
+	LineVertex* vx = new LineVertex[(LinesX + 1) * (LinesY + 1) * 4];
+	UINT CurVertex = 0;
 
 	//Fill X based lines
 	float x;
-	float SpacingX=(1.0f/LinesX);
-	for(x= -0.5; x<=0.5f+SpacingX; x+=SpacingX)
-	{
-
-		vx[CurVertex].Position=Vector3(x, 0,-0.5)+ Vector3(Middle->x, 0,Middle->y);
-		EncodeColor(&vx[CurVertex], Color);
+	float SpacingX = (1.0f / LinesX);
+	for ( x = -0.5; x <= 0.5f + SpacingX; x += SpacingX ) {
+		vx[CurVertex].Position.x = x + Middle->x;
+		vx[CurVertex].Position.z = -0.5 + Middle->y;
+		EncodeColor( &vx[CurVertex], Color );
 		CurVertex++;
-		vx[CurVertex].Position=Vector3(x, 0, 0.5)+ Vector3(Middle->x, 0,Middle->y);
-		EncodeColor(&vx[CurVertex], Color);
+		vx[CurVertex].Position.x = x + Middle->x;
+		vx[CurVertex].Position.z = 0.5 + Middle->y;
+		EncodeColor( &vx[CurVertex], Color );
 		CurVertex++;
 	}
 
 	//Fill Z based lines
 	float z;
-	float SpacingY=(1.0f/LinesY);
-	for(z= -0.5; z<=0.5f+SpacingY; z+=SpacingY)
-	{
-		vx[CurVertex].Position=Vector3(-0.5, 0,z)+ Vector3(Middle->x, 0,Middle->y);
-		EncodeColor(&vx[CurVertex], Color);
+	float SpacingY = (1.0f / LinesY);
+	for ( z = -0.5; z <= 0.5f + SpacingY; z += SpacingY ) {
+		vx[CurVertex].Position.x = -0.5 + Middle->x;
+		vx[CurVertex].Position.z = z + Middle->y;
+		EncodeColor( &vx[CurVertex], Color );
 		CurVertex++;
-		vx[CurVertex].Position=Vector3(0.5, 0,z)+ Vector3(Middle->x, 0,Middle->y);
-		EncodeColor(&vx[CurVertex], Color);
+		vx[CurVertex].Position.x = 0.5 + Middle->x;
+		vx[CurVertex].Position.z = z + Middle->y;
+		EncodeColor( &vx[CurVertex], Color );
 		CurVertex++;
 	}
 
 
-	LE(CreatePrimitive(vx, (LinesX+1)*(LinesY+1)*4));
+	LE( CreatePrimitive( vx, (LinesX + 1) * (LinesY + 1) * 4 ) );
 
-	delete[] vx;
+	delete [] vx;
 	return hr;
 }
 
 /** Creates a box of lines */
-HRESULT EditorLinePrimitive::CreateLineBoxPrimitive(Vector4 * Color)
-{
+HRESULT EditorLinePrimitive::CreateLineBoxPrimitive( float4& Color ) {
 	LineVertex vx[24];
 
 	// Bottom
-	vx[0].Position = Vector3(-1,-1,-1);
-	EncodeColor(&vx[0], Color);
-	vx[1].Position = Vector3(1,-1,-1);
-	EncodeColor(&vx[1], Color);
+	vx[0].Position = float3( -1, -1, -1 );
+	EncodeColor( &vx[0], Color );
+	vx[1].Position = float3( 1, -1, -1 );
+	EncodeColor( &vx[1], Color );
 
-	vx[2].Position = Vector3(1,-1,-1);
-	EncodeColor(&vx[2], Color);
-	vx[3].Position = Vector3(1,-1, 1);
-	EncodeColor(&vx[3], Color);
+	vx[2].Position = float3( 1, -1, -1 );
+	EncodeColor( &vx[2], Color );
+	vx[3].Position = float3( 1, -1, 1 );
+	EncodeColor( &vx[3], Color );
 
-	vx[4].Position = Vector3(1,-1, 1);
-	EncodeColor(&vx[4], Color);
-	vx[5].Position = Vector3(-1,-1, 1);
-	EncodeColor(&vx[5], Color);
+	vx[4].Position = float3( 1, -1, 1 );
+	EncodeColor( &vx[4], Color );
+	vx[5].Position = float3( -1, -1, 1 );
+	EncodeColor( &vx[5], Color );
 
-	vx[6].Position = Vector3(-1,-1, 1);
-	EncodeColor(&vx[6], Color);
-	vx[7].Position = Vector3(-1,-1,-1);
-	EncodeColor(&vx[7], Color);
+	vx[6].Position = float3( -1, -1, 1 );
+	EncodeColor( &vx[6], Color );
+	vx[7].Position = float3( -1, -1, -1 );
+	EncodeColor( &vx[7], Color );
 
 	// Sides | | | |
 
-	vx[8].Position = Vector3(-1,-1,-1);
-	EncodeColor(&vx[8], Color);
-	vx[9].Position = Vector3(-1, 1,-1);
-	EncodeColor(&vx[9], Color);
+	vx[8].Position = float3( -1, -1, -1 );
+	EncodeColor( &vx[8], Color );
+	vx[9].Position = float3( -1, 1, -1 );
+	EncodeColor( &vx[9], Color );
 
-	vx[10].Position = Vector3(1,-1,-1);
-	EncodeColor(&vx[10], Color);
-	vx[11].Position = Vector3(1, 1,-1);
-	EncodeColor(&vx[11], Color);
+	vx[10].Position = float3( 1, -1, -1 );
+	EncodeColor( &vx[10], Color );
+	vx[11].Position = float3( 1, 1, -1 );
+	EncodeColor( &vx[11], Color );
 
-	vx[12].Position = Vector3(1,-1, 1);
-	EncodeColor(&vx[12], Color);
-	vx[13].Position = Vector3(1, 1, 1);
-	EncodeColor(&vx[13], Color);
+	vx[12].Position = float3( 1, -1, 1 );
+	EncodeColor( &vx[12], Color );
+	vx[13].Position = float3( 1, 1, 1 );
+	EncodeColor( &vx[13], Color );
 
-	vx[14].Position = Vector3(-1,-1, 1);
-	EncodeColor(&vx[14], Color);
-	vx[15].Position = Vector3(-1, 1, 1);
-	EncodeColor(&vx[15], Color);
+	vx[14].Position = float3( -1, -1, 1 );
+	EncodeColor( &vx[14], Color );
+	vx[15].Position = float3( -1, 1, 1 );
+	EncodeColor( &vx[15], Color );
 
 	// Top
-	vx[16].Position = Vector3(-1, 1,-1);
-	EncodeColor(&vx[16], Color);
-	vx[17].Position = Vector3(1, 1,-1);
-	EncodeColor(&vx[17], Color);
+	vx[16].Position = float3( -1, 1, -1 );
+	EncodeColor( &vx[16], Color );
+	vx[17].Position = float3( 1, 1, -1 );
+	EncodeColor( &vx[17], Color );
 
-	vx[18].Position = Vector3(1, 1,-1);
-	EncodeColor(&vx[18], Color);
-	vx[19].Position = Vector3(1, 1, 1);
-	EncodeColor(&vx[19], Color);
+	vx[18].Position = float3( 1, 1, -1 );
+	EncodeColor( &vx[18], Color );
+	vx[19].Position = float3( 1, 1, 1 );
+	EncodeColor( &vx[19], Color );
 
-	vx[20].Position = Vector3(1, 1, 1);
-	EncodeColor(&vx[20], Color);
-	vx[21].Position = Vector3(-1, 1, 1);
-	EncodeColor(&vx[21], Color);
+	vx[20].Position = float3( 1, 1, 1 );
+	EncodeColor( &vx[20], Color );
+	vx[21].Position = float3( -1, 1, 1 );
+	EncodeColor( &vx[21], Color );
 
-	vx[22].Position = Vector3(-1, 1, 1);
-	EncodeColor(&vx[22], Color);
-	vx[23].Position = Vector3(-1, 1,-1);
-	EncodeColor(&vx[23], Color);
+	vx[22].Position = float3( -1, 1, 1 );
+	EncodeColor( &vx[22], Color );
+	vx[23].Position = float3( -1, 1, -1 );
+	EncodeColor( &vx[23], Color );
 
 	HRESULT hr;
-	LE(CreatePrimitive(vx, 24));
+	LE( CreatePrimitive( vx, 24 ) );
 
 	return hr;
 }
 
 /** Creates a solid box */
-HRESULT EditorLinePrimitive::CreateSolidBoxPrimitive(Vector4 * Color, float Extends)
-{
+HRESULT EditorLinePrimitive::CreateSolidBoxPrimitive( float4& Color, float Extends ) {
 	LineVertex vx[36];
-	int i=0;
+	int i = 0;
 
-	vx[i].Position = Vector3(-1,-1,-1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( -1, -1, -1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(1,-1, 1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( 1, -1, 1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(-1,-1, 1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( -1, -1, 1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(-1,-1,-1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( -1, -1, -1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(1,-1,-1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( 1, -1, -1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(1,-1, 1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( 1, -1, 1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(-1, 1,-1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( -1, 1, -1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(-1, 1, 1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( -1, 1, 1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(1, 1, 1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( 1, 1, 1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(-1, 1,-1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( -1, 1, -1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(1, 1, 1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( 1, 1, 1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(1, 1,-1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( 1, 1, -1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(-1,-1,-1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( -1, -1, -1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(-1,-1, 1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( -1, -1, 1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(-1, 1, 1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( -1, 1, 1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(-1,-1,-1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( -1, -1, -1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(-1, 1, 1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( -1, 1, 1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(-1, 1,-1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( -1, 1, -1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(1,-1,-1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( 1, -1, -1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(1, 1, 1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( 1, 1, 1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(1,-1, 1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( 1, -1, 1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(1,-1,-1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( 1, -1, -1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(1, 1,-1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( 1, 1, -1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(1, 1, 1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( 1, 1, 1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(-1,-1,-1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( -1, -1, -1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(1, 1,-1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( 1, 1, -1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(1,-1,-1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( 1, -1, -1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(-1,-1,-1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( -1, -1, -1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(-1, 1,-1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( -1, 1, -1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(1, 1,-1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( 1, 1, -1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(-1,-1, 1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( -1, -1, 1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(1,-1, 1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( 1, -1, 1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(1, 1, 1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( 1, 1, 1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(-1,-1, 1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( -1, -1, 1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(1, 1, 1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( 1, 1, 1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
-	vx[i].Position = Vector3(-1, 1, 1);
-	EditorLinePrimitive::EncodeColor(&vx[i++], Color);
+	vx[i].Position = float3( -1, 1, 1 );
+	EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
 	// Loop through all vertices and apply the extends
-	for(i = 0; i < 36; i++)
-	{
-		*(Vector4 *)&vx[i].Position *= Extends;
+	for ( i = 0; i < 36; i++ ) {
+		vx[i].Position.x *= Extends;
+		vx[i].Position.y *= Extends;
+		vx[i].Position.z *= Extends;
 	}
 
 	HRESULT hr;
-	LE(CreateSolidPrimitive(&vx[0], 36));
+	LE( CreateSolidPrimitive( &vx[0], 36 ) );
 
 	return hr;
 }
 
 /** Creates the buffers and sets up the rest od the object */
-HRESULT EditorLinePrimitive::CreateSolidPrimitive(LineVertex * PrimVerts, UINT NumVertices, D3D11_PRIMITIVE_TOPOLOGY Topology)
-{
-	HRESULT hr=S_OK;
+HRESULT EditorLinePrimitive::CreateSolidPrimitive( LineVertex* PrimVerts, UINT NumVertices, D3D11_PRIMITIVE_TOPOLOGY Topology ) {
+	HRESULT hr = S_OK;
 
 	// Clean up previous data
-	delete[] SolidVertices;
-	if (SolidPrimVB)SolidPrimVB->Release();
+	delete [] SolidVertices;
+	if ( SolidPrimVB )SolidPrimVB->Release();
 
 	// Copy over the new data
 	SolidVertices = new LineVertex[NumVertices];
-	memcpy(SolidVertices, PrimVerts, sizeof(LineVertex)*NumVertices);
+	memcpy( SolidVertices, PrimVerts, sizeof( LineVertex ) * NumVertices );
 	this->NumSolidVertices = NumVertices;
-	
+
 	//Create the vertex buffer
 	D3D11_BUFFER_DESC bufferDesc;
-    bufferDesc.ByteWidth = NumVertices * sizeof(LineVertex);
-    bufferDesc.Usage = D3D11_USAGE_DEFAULT;
-    bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    bufferDesc.CPUAccessFlags = 0;
-    bufferDesc.MiscFlags = 0;
+	bufferDesc.ByteWidth = NumVertices * sizeof( LineVertex );
+	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bufferDesc.CPUAccessFlags = 0;
+	bufferDesc.MiscFlags = 0;
 
 	D3D11_SUBRESOURCE_DATA InitData;
-    InitData.pSysMem = &SolidVertices[0];
+	InitData.pSysMem = &SolidVertices[0];
 	InitData.SysMemPitch = 0;
 	InitData.SysMemSlicePitch = 0;
 
 	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
-	LE(engine->GetDevice()->CreateBuffer(&bufferDesc,&InitData,&SolidPrimVB));
+	LE( engine->GetDevice()->CreateBuffer( &bufferDesc, &InitData, &SolidPrimVB ) );
 
 	SolidPrimitiveTopology = Topology;
 
@@ -336,302 +330,279 @@ HRESULT EditorLinePrimitive::CreateSolidPrimitive(LineVertex * PrimVerts, UINT N
 
 
 /** Creates a plate, not of lines. Can't use intersection on this*/
-HRESULT EditorLinePrimitive::CreateFilledCirclePrimitive(float Radius, UINT Detail, const Vector4 * Color, int Axis)
-{
-	UINT NumVerts = Detail*3;
-	LineVertex * vx = new LineVertex[NumVerts];
+HRESULT EditorLinePrimitive::CreateFilledCirclePrimitive( float Radius, UINT Detail, const float4& Color, int Axis ) {
+	UINT NumVerts = Detail * 3;
+	LineVertex* vx = new LineVertex[NumVerts];
 
-	float Step = (XM_PI*2)/((float)(Detail)-1);
+	float Step = XM_2PI / ((float)(Detail)-1);
 	float s = 0;
 
-	size_t i=0;
-	while(i < NumVerts)
-	{
-		switch(Axis)
-		{
+	size_t i = 0;
+	while ( i < NumVerts ) {
+		switch ( Axis ) {
 		case 0:
 			// XZ-Axis
-			vx[i].Position = Vector3(sinf(s), 0, cosf(s));
+			vx[i].Position = float3( sinf( s ), 0, cosf( s ) );
 			break;
-		
+
 		case 1:
 			// YZ-Axis
-			vx[i].Position = Vector3(0, sinf(s), cosf(s));
+			vx[i].Position = float3( 0, sinf( s ), cosf( s ) );
 			break;
 
 		case 2:
 			// ZY-Axis
-			vx[i].Position = Vector3(sinf(s), cosf(s), 0);
+			vx[i].Position = float3( sinf( s ), cosf( s ), 0 );
 			break;
 		}
-		EncodeColor(&vx[i], Color);
-		s+=Step;
+		EncodeColor( &vx[i], Color );
+		s += Step;
 		i++;
 
 
-		switch(Axis)
-		{
+		switch ( Axis ) {
 		case 0:
 			// XZ-Axis
-			vx[i].Position = Vector3(sinf(s), 0, cosf(s));
+			vx[i].Position = float3( sinf( s ), 0, cosf( s ) );
 			break;
-		
+
 		case 1:
 			// YZ-Axis
-			vx[i].Position = Vector3(0, sinf(s), cosf(s));
+			vx[i].Position = float3( 0, sinf( s ), cosf( s ) );
 			break;
 
 		case 2:
 			// ZY-Axis
-			vx[i].Position = Vector3(sinf(s), cosf(s), 0);
+			vx[i].Position = float3( sinf( s ), cosf( s ), 0 );
 			break;
 		}
-		EncodeColor(&vx[i], Color);
+		EncodeColor( &vx[i], Color );
 		//s+=Step;
 		i++;
 
-		vx[i].Position = Vector3::Zero;
-		EncodeColor(&vx[i], Color);
+		vx[i].Position = float3( 0, 0, 0 );
+		EncodeColor( &vx[i], Color );
 		i++;
 
 	}
 
-	HRESULT hr = CreatePrimitive(vx, NumVerts, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	HRESULT hr = CreatePrimitive( vx, NumVerts, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
 
-	delete[] vx;
+	delete [] vx;
 	return hr;
 }
 
 /** Creates a circle of lines */
-HRESULT EditorLinePrimitive::CreateCirclePrimitive(float Radius, UINT Detail, const Vector4 * Color, int Axis)
-{
-	LineVertex * vx = new LineVertex[Detail];
+HRESULT EditorLinePrimitive::CreateCirclePrimitive( float Radius, UINT Detail, const float4& Color, int Axis ) {
+	LineVertex* vx = new LineVertex[Detail];
 
-	float Step = (XM_PI*2)/((float)Detail-1);
+	float Step = XM_2PI / ((float)Detail - 1);
 	float s = 0;
 
-	for(UINT i = 0; i < Detail; i++)
-	{
-		switch(Axis)
-		{
+	for ( UINT i = 0; i < Detail; i++ ) {
+		switch ( Axis ) {
 		case 0:
 			// XZ-Axis
-			vx[i].Position = Vector3(sinf(s), 0, cosf(s));
+			vx[i].Position = float3( sinf( s ), 0, cosf( s ) );
 			break;
-		
+
 		case 1:
 			// YZ-Axis
-			vx[i].Position = Vector3(0, sinf(s), cosf(s));
+			vx[i].Position = float3( 0, sinf( s ), cosf( s ) );
 			break;
 
 		case 2:
 			// ZY-Axis
-			vx[i].Position = Vector3(sinf(s), cosf(s), 0);
+			vx[i].Position = float3( sinf( s ), cosf( s ), 0 );
 			break;
 		}
-		
-		EncodeColor(&vx[i], Color);
 
-		s+=Step;
+		EncodeColor( &vx[i], Color );
+
+		s += Step;
 	}
 
-	HRESULT hr = CreatePrimitive(vx, Detail, D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP);
+	HRESULT hr = CreatePrimitive( vx, Detail, D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP );
 
-	delete[] vx;
+	delete [] vx;
 	return hr;
 }
 
 /** Creates a ball of lines.*/
-HRESULT EditorLinePrimitive::CreateLineBallPrimitive(UINT Detail, const Vector4 * Color)
-{
+HRESULT EditorLinePrimitive::CreateLineBallPrimitive( UINT Detail, const float4& Color ) {
 	// Allocate enough memory for all 3 slices
-	LineVertex * vx = new LineVertex[(Detail*3)];
+	LineVertex* vx = new LineVertex[(Detail * 3)];
 
-	float Step = (XM_PI*2)/((float)Detail-1);
+	float Step = XM_2PI / ((float)Detail - 1);
 	float s = 0;
 
 	// Create first
-	for(UINT i = 0; i < Detail; i++)
-	{
-		vx[i].Position = Vector3(sinf(s), 0, cosf(s));
-			
-		EncodeColor(&vx[i], Color);
+	for ( UINT i = 0; i < Detail; i++ ) {
+		vx[i].Position = float3( sinf( s ), 0, cosf( s ) );
 
-		s+=Step;
+		EncodeColor( &vx[i], Color );
+
+		s += Step;
 	}
 
-	s=0;
+	s = 0;
 
 	// Create second
-	for(UINT i = Detail; i < Detail*2; i++)
-	{
-		vx[i].Position = Vector3(0, sinf(s), cosf(s));
-			
-		EncodeColor(&vx[i], Color);
+	for ( UINT i = Detail; i < Detail * 2; i++ ) {
+		vx[i].Position = float3( 0, sinf( s ), cosf( s ) );
 
-		s+=Step;
+		EncodeColor( &vx[i], Color );
+
+		s += Step;
 	}
 
-	s=0;
+	s = 0;
 
 	// Create third
-	for(UINT i = Detail*2; i < Detail*3; i++)
-	{
-		vx[i].Position = Vector3(sinf(s), cosf(s), 0);
-			
-		EncodeColor(&vx[i], Color);
+	for ( UINT i = Detail * 2; i < Detail * 3; i++ ) {
+		vx[i].Position = float3( sinf( s ), cosf( s ), 0 );
 
-		s+=Step;
+		EncodeColor( &vx[i], Color );
+
+		s += Step;
 	}
 
 	// Fix the last position
-	//vx[(Detail*3)].Position = Vector3(sinf(s), cosf(s), 0);
+	//vx[(Detail*3)].Position = XMFLOAT3(sinf(s), cosf(s), 0);
 
-	HRESULT hr = CreatePrimitive(vx, (Detail*3), D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP);
-	delete[] vx;
+	HRESULT hr = CreatePrimitive( vx, (Detail * 3), D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP );
+	delete [] vx;
 
 	return hr;
 }
 
 
 /** Creates an arrow of lines */
-HRESULT EditorLinePrimitive::CreateArrowPrimitive(const Vector4 * Color,float ArrowRadius, float ArrowOffset)
-{
+HRESULT EditorLinePrimitive::CreateArrowPrimitive( const float4& Color, float ArrowRadius, float ArrowOffset ) {
 	LineVertex vx[10];
 
-	
+
 
 	// Middle streak
-	vx[0].Position = Vector3::Zero;
-	vx[1].Position = Vector3::Right;
+	vx[0].Position = float3( 0, 0, 0 );
+	vx[1].Position = float3( 1, 0, 0 );
 
 	// Outer lines
-	vx[2].Position = Vector3::Right;
-	vx[3].Position = Vector3(ArrowOffset, ArrowRadius, ArrowRadius);
+	vx[2].Position = float3( 1, 0, 0 );
+	vx[3].Position = float3( ArrowOffset, ArrowRadius, ArrowRadius );
 
-	vx[4].Position = Vector3::Right;
-	vx[5].Position = Vector3(ArrowOffset, ArrowRadius, -ArrowRadius);
+	vx[4].Position = float3( 1, 0, 0 );
+	vx[5].Position = float3( ArrowOffset, ArrowRadius, -ArrowRadius );
 
-	vx[6].Position = Vector3::Right;
-	vx[7].Position = Vector3(ArrowOffset, -ArrowRadius, ArrowRadius);
+	vx[6].Position = float3( 1, 0, 0 );
+	vx[7].Position = float3( ArrowOffset, -ArrowRadius, ArrowRadius );
 
-	vx[8].Position = Vector3::Right;
-	vx[9].Position = Vector3(ArrowOffset, -ArrowRadius, -ArrowRadius);
+	vx[8].Position = float3( 1, 0, 0 );
+	vx[9].Position = float3( ArrowOffset, -ArrowRadius, -ArrowRadius );
 
-	for(int i=0; i< 10; i++)
-	{
-		EncodeColor(&vx[i], Color);
+	for ( int i = 0; i < 10; i++ ) {
+		EncodeColor( &vx[i], Color );
 	}
-	HRESULT hr = CreatePrimitive(vx, 10);
+	HRESULT hr = CreatePrimitive( vx, 10 );
 	return hr;
 }
 
 /** Creates a cone of lines */
-HRESULT EditorLinePrimitive::CreateSimpleConePrimitive(float Length, float Radius, UINT Detail, const Vector4 * Color)
-{
+HRESULT EditorLinePrimitive::CreateSimpleConePrimitive( float Length, float Radius, UINT Detail, const float4& Color ) {
 	UINT NumVerts;
-	NumVerts = Detail*2; // Two for each connection line
-	NumVerts += Detail*2; // Two for each circle line
+	NumVerts = Detail * 2; // Two for each connection line
+	NumVerts += Detail * 2; // Two for each circle line
 
-	LineVertex * vx = new LineVertex[NumVerts];
+	LineVertex* vx = new LineVertex[NumVerts];
 
-	float Step = (XM_PI*2)/((float)Detail-1);
+	float Step = XM_2PI / ((float)Detail - 1);
 	float s = 0;
 
 	UINT i = 0;
-	while(i < NumVerts)
-	{
+	while ( i < NumVerts ) {
 		// First vertex of the circle-line
-		vx[i].Position = Vector3(Length, (sinf(s)*Radius), cosf(s)*Radius);	
-		EncodeColor(&vx[i], Color);
+		vx[i].Position = float3( Length, (sinf( s ) * Radius), cosf( s ) * Radius );
+		EncodeColor( &vx[i], Color );
 		i++;
 
-		s+=Step;
+		s += Step;
 
 		// Second vertex of the circle-line
-		vx[i].Position = Vector3(Length, (sinf(s)*Radius), cosf(s)*Radius);	
-		EncodeColor(&vx[i], Color);
+		vx[i].Position = float3( Length, (sinf( s ) * Radius), cosf( s ) * Radius );
+		EncodeColor( &vx[i], Color );
 
 		i++;
-		
+
 		// Connector line #1
-		vx[i].Position = vx[i-2].Position;
-		EncodeColor(&vx[i], Color);
+		vx[i].Position = vx[i - 2].Position;
+		EncodeColor( &vx[i], Color );
 		i++;
 
 		// Connector line #2
-		vx[i].Position = Vector3::Zero;
-		EncodeColor(&vx[i], Color);
+		vx[i].Position = float3( 0, 0, 0 );
+		EncodeColor( &vx[i], Color );
 		i++;
 
-		
 
-		
+
+
 	}
 
-	HRESULT hr = CreatePrimitive(vx, NumVerts);
+	HRESULT hr = CreatePrimitive( vx, NumVerts );
 
-	delete[] vx;
+	delete [] vx;
 
 	return hr;
 }
 
 /** Puts the color into the Normal and TexCoord channels */
-void EditorLinePrimitive::EncodeColor(LineVertex * vx,const DirectX::SimpleMath::Vector4 * Color)
-{
-	vx->Color = *Color;
+void EditorLinePrimitive::EncodeColor( LineVertex* vx, const float4& Color ) {
+	vx->Color = Color;
 }
 
 
 /** Intersects the whole primitive. If hit, it returns a distance other than -1 */
-float EditorLinePrimitive::IntersectPrimitive(Vector3 * RayOrigin, Vector3 * RayDirection, float Epsilon)
-{
+float __vectorcall EditorLinePrimitive::IntersectPrimitive( FXMVECTOR RayOrigin, FXMVECTOR RayDirection, float Epsilon ) {
 	UINT i;
 	float Shortest = -1;
 
 	// Bring the ray into object space
-	DirectX::SimpleMath::Matrix invWorld = DirectX::XMMatrixInverse(nullptr, WorldMatrix);
+	XMMATRIX wld = XMLoadFloat4x4( &WorldMatrix );
+	XMMATRIX invWorld = XMMatrixInverse( nullptr, wld );
 
-	Vector3 Origin = XMVector3TransformCoord(*RayOrigin, invWorld);
-	Vector3 Dir = XMVector3TransformNormal(*RayDirection, invWorld);
+	XMVECTOR Origin = XMVector3TransformCoord( RayOrigin, invWorld );
+	XMVECTOR Dir = XMVector3TransformCoord( RayDirection, invWorld );
 
 	// Go through all line segments and intersect them
-	for(i = 0; i < NumVertices; i+=2)
-	{	
-		Vector3 vx[2];
-		vx[0] = XMVector3TransformCoord(*Vertices[i].Position.toVector3(), WorldMatrix);
-		vx[1] = XMVector3TransformCoord(*Vertices[i+1].Position.toVector3(), WorldMatrix);
+	for ( i = 0; i < NumVertices; i += 2 ) {
+		XMVECTOR vx[2];
+		vx[0] = XMVector3TransformCoord( XMLoadFloat3( Vertices[i].Position.toXMFLOAT3() ), wld );
+		vx[1] = XMVector3TransformCoord( XMLoadFloat3( Vertices[i + 1].Position.toXMFLOAT3() ), wld );
 
-		//float Dist = IntersectLineSegment(&Origin, &Dir, Vertices[i].Position.toVector3(), Vertices[i+1].Position.toVector3(), Epsilon);
-		float Dist = IntersectLineSegment(RayOrigin, RayDirection, &vx[0], &vx[1], Epsilon);
-		if (Dist < Shortest || Shortest == -1)
-		{
+		float Dist = IntersectLineSegment( RayOrigin, RayDirection, vx[0], vx[1], Epsilon );
+		if ( Dist < Shortest || Shortest == -1 ) {
 			Shortest = Dist / Scale.x;
 		}
 	}
 
-	if (NumSolidVertices>0)
-	{
+	if ( NumSolidVertices > 0 ) {
 		FLOAT fBary1, fBary2;
 		FLOAT fDist;
-		int NumIntersections=0;
+		int NumIntersections = 0;
 		Shortest = FLT_MAX;
-		
-		for(DWORD i = 0; i < NumSolidVertices; i+=3)
-		{
-			Vector3 v0 = *SolidVertices[i + 0].Position.toVector3();
-			Vector3 v1 = *SolidVertices[i + 1].Position.toVector3();
-			Vector3 v2 = *SolidVertices[i + 2].Position.toVector3();
+
+		for ( DWORD i = 0; i < NumSolidVertices; i += 3 ) {
+			XMVECTOR v0 = XMLoadFloat3( SolidVertices[i + 0].Position.toXMFLOAT3() );
+			XMVECTOR v1 = XMLoadFloat3( SolidVertices[i + 1].Position.toXMFLOAT3() );
+			XMVECTOR v2 = XMLoadFloat3( SolidVertices[i + 2].Position.toXMFLOAT3() );
 
 			// Check if the pick ray passes through this point
-			if (IntersectTriangle(&Origin, &Dir, v0, v1, v2,
-				&fDist, &fBary1, &fBary2))
-			{
-				if (fDist < Shortest  || Shortest == -1)
-				{
+			if ( IntersectTriangle( Origin, Dir, v0, v1, v2,
+				&fDist, &fBary1, &fBary2 ) ) {
+				if ( fDist < Shortest || Shortest == -1 ) {
 					NumIntersections++;
-					Shortest=0;
-								
+					Shortest = 0;
+
 					//if (NumIntersections == MAX_INTERSECTIONS)
 					//	break;
 				}
@@ -642,107 +613,103 @@ float EditorLinePrimitive::IntersectPrimitive(Vector3 * RayOrigin, Vector3 * Ray
 	return Shortest;
 }
 
-bool EditorLinePrimitive::IntersectTriangle(const Vector3 * orig, const Vector3 * dir,
-                        Vector3 & v0, Vector3 & v1, Vector3 & v2,
-                        FLOAT* t, FLOAT* u, FLOAT* v)
-{
-    // Find vectors for two edges sharing vert0
-    Vector3 edge1 = v1 - v0;
-    Vector3 edge2 = v2 - v0;
+bool __vectorcall EditorLinePrimitive::IntersectTriangle( FXMVECTOR orig, FXMVECTOR dir,
+	FXMVECTOR v0, GXMVECTOR v1, HXMVECTOR v2,
+	FLOAT* t, FLOAT* u, FLOAT* v ) {
+	// Find vectors for two edges sharing vert0
+	XMVECTOR edge1 = v1 - v0;
+	XMVECTOR edge2 = v2 - v0;
 
-    // Begin calculating determinant - also used to calculate U parameter
-	Vector3 pvec = dir->Cross(edge2);
+	// Begin calculating determinant - also used to calculate U parameter
+	XMVECTOR pvec = XMVector3Cross( dir, edge2 );
 
-    // If determinant is near zero, ray lies in plane of triangle
-    FLOAT det = edge1.Dot(pvec);
+	// If determinant is near zero, ray lies in plane of triangle
+	float det; XMStoreFloat( &det, XMVector3Dot( edge1, pvec ) );
 
-    Vector3 tvec;
-    if (det > 0)
-    {
-        tvec = (*orig) - v0;
-    }
-    else
-    {
-        tvec = v0 - (*orig);
-        det = -det;
-    }
+	XMVECTOR tvec;
+	if ( det > 0 ) {
+		tvec = (orig)-v0;
+	} else {
+		tvec = v0 - (orig);
+		det = -det;
+	}
 
-    if (det < 0.0001f)
-        return FALSE;
+	if ( det < 0.0001f )
+		return FALSE;
 
-    // Calculate U parameter and test bounds
-    *u = tvec.Dot(pvec);
-    if (*u < 0.0f || *u > det)
-        return FALSE;
+	// Calculate U parameter and test bounds
+	XMStoreFloat( u, XMVector3Dot( tvec, pvec ) );
 
-    // Prepare to test V parameter
-    Vector3 qvec = tvec.Cross(edge1);
+	if ( *u < 0.0f || *u > det )
+		return FALSE;
 
-    // Calculate V parameter and test bounds
-    *v = dir->Dot(qvec);
-    if (*v < 0.0f || *u + *v > det)
-        return FALSE;
+	// Prepare to test V parameter
+	XMVECTOR qvec = XMVector3Cross( tvec, edge1 );
 
-    // Calculate t, scale parameters, ray intersects triangle
-    *t = edge2.Dot(qvec);
-    FLOAT fInvDet = 1.0f / det;
-    *t *= fInvDet;
-    *u *= fInvDet;
-    *v *= fInvDet;
+	// Calculate V parameter and test bounds
+	XMStoreFloat( v, XMVector3Dot( dir, qvec ) );
 
-    return TRUE;
+	if ( *v < 0.0f || *u + *v > det )
+		return FALSE;
+
+	// Calculate t, scale parameters, ray intersects triangle
+	XMStoreFloat( t, XMVector3Dot( edge2, qvec ) );
+
+	FLOAT fInvDet = 1.0f / det;
+	*t *= fInvDet;
+	*u *= fInvDet;
+	*v *= fInvDet;
+
+	return TRUE;
 }
 
 
-float EditorLinePrimitive::IntersectLineSegment(const Vector3 * rayOrigin,const Vector3 * rayVec,const Vector3 * lineStart,const Vector3 * lineEnd, float Epsilon)
-{
-	
-	Vector3 u = *rayVec;
-	Vector3 v = (*lineEnd) - (*lineStart);
-	Vector3 w = (*rayOrigin) - (*lineStart);
+float EditorLinePrimitive::IntersectLineSegment( FXMVECTOR rayOrigin, FXMVECTOR rayVec, FXMVECTOR lineStart, GXMVECTOR lineEnd, float Epsilon ) {
 
-	
-	float a = u.Dot(u);	// always >= 0
-	float b = u.Dot(v);
-	float c = v.Dot(v);	// always >= 0
-	float d = u.Dot(w);
-	float e = v.Dot(w);
-	float D = a*c - b*b;	// always >= 0
+	XMVECTOR u = rayVec;
+	XMVECTOR v = (lineEnd)-(lineStart);
+	XMVECTOR w = (rayOrigin)-(lineStart);
+
+
+	float a; XMStoreFloat( &a, XMVector3Dot( u, u ) ); // always >= 0
+	float b; XMStoreFloat( &b, XMVector3Dot( u, v ) );
+	float c; XMStoreFloat( &c, XMVector3Dot( v, v ) ); // always >= 0
+	float d; XMStoreFloat( &d, XMVector3Dot( u, w ) );
+	float e; XMStoreFloat( &e, XMVector3Dot( v, w ) );
+	float D = a * c - b * b;	// always >= 0
 	float sc, sN, sD = D;	// sc = sN / sD, default sD = D >= 0
 	float tc, tN, tD = D;	// tc = tN / tD, default tD = D >= 0
 
 
 	// compute the line parameters of the two closest points
-	if (D < Epsilon) {	// the lines are almost parallel
+	if ( D < Epsilon ) {	// the lines are almost parallel
 		sN = 0.0;			// force using point P0 on segment S1
 		sD = 1.0;			// to prevent possible division by 0.0 later
 		tN = e;
 		tD = c;
-	}
-	else {				// get the closest points on the infinite lines
-		sN = (b*e - c*d);
-		tN = (a*e - b*d);
-		if (sN < 0.0) {	// sc < 0 => the s=0 edge is visible
+	} else {				// get the closest points on the infinite lines
+		sN = (b * e - c * d);
+		tN = (a * e - b * d);
+		if ( sN < 0.0 ) {	// sc < 0 => the s=0 edge is visible
 			sN = 0.0;
 			tN = e;
 			tD = c;
 		}
 	}
 
-	if (tN < 0.0) {		// tc < 0 => the t=0 edge is visible
+	if ( tN < 0.0 ) {		// tc < 0 => the t=0 edge is visible
 		tN = 0.0;
 		// recompute sc for this edge
-		if (-d < 0.0)
+		if ( -d < 0.0 )
 			sN = 0.0;
 		else {
 			sN = -d;
 			sD = a;
 		}
-	}
-	else if (tN > tD) {	  // tc > 1 => the t=1 edge is visible
+	} else if ( tN > tD ) {	  // tc > 1 => the t=1 edge is visible
 		tN = tD;
 		// recompute sc for this edge
-		if ((-d + b) < 0.0)
+		if ( (-d + b) < 0.0 )
 			sN = 0;
 		else {
 			sN = (-d + b);
@@ -750,145 +717,142 @@ float EditorLinePrimitive::IntersectLineSegment(const Vector3 * rayOrigin,const 
 		}
 	}
 	// finally do the division to get sc and tc
-	sc = (abs(sN) < Epsilon ? 0.0f : sN / sD);
-	tc = (abs(tN) < Epsilon ? 0.0f : tN / tD);
+	sc = (abs( sN ) < Epsilon ? 0.0f : sN / sD);
+	tc = (abs( tN ) < Epsilon ? 0.0f : tN / tD);
 
 	// get the difference of the two closest points
-	Vector3 dP = w + (sc * u) - (tc * v);	// = S1(sc) - S2(tc)
+	XMVECTOR dP = w + (sc * u) - (tc * v);	// = S1(sc) - S2(tc)
 	//info.iFracRay = sc;
 	//info.iFracLine = tc;
-	return dP.Length();	// return the closest distance
+
+	return Toolbox::XMVector3LengthFloat( dP );	// return the closest distance
 }
 
-void EditorLinePrimitive::SetWorldMatrix(const DirectX::SimpleMath::Matrix* World,const Vector3 * Loc,const Vector3 * Rot,const Vector3 * Scale)
-{
-	Location=*Loc;
-	Rotation=*Rot;
-	this->Scale=*Scale;
-	WorldMatrix = *World;
+void __vectorcall EditorLinePrimitive::SetWorldMatrix( XMMATRIX World, FXMVECTOR Loc, FXMVECTOR Rot, GXMVECTOR Scale ) {
+	XMStoreFloat4x4( &WorldMatrix, World );
+	XMStoreFloat3( &Location, Loc );
+	XMStoreFloat3( &Rotation, Rot );
+	XMStoreFloat3( &this->Scale, Scale );
 }
 
-void EditorLinePrimitive::SetLocation(const Vector3 & NewLoc)
-{
-	Location=NewLoc;
+void __vectorcall EditorLinePrimitive::SetLocation( FXMVECTOR NewLoc ) {
+	XMStoreFloat3( &Location, NewLoc );
 	RecalcTransforms();
 }
 
-void EditorLinePrimitive::SetRotation(const Vector3 & NewRotation)
-{
-	Rotation=NewRotation;
+void __vectorcall EditorLinePrimitive::SetRotation( FXMVECTOR NewRotation ) {
+	XMStoreFloat3( &Rotation, NewRotation );
 	RecalcTransforms();
 }
 
-void EditorLinePrimitive::SetScale(const Vector3 & NewScale)
-{
-	Scale=NewScale;
+void __vectorcall EditorLinePrimitive::SetScale( FXMVECTOR NewScale ) {
+	XMStoreFloat3( &Scale, NewScale );
 	RecalcTransforms();
 }
 
-void EditorLinePrimitive::RecalcTransforms()
-{
+void EditorLinePrimitive::RecalcTransforms() {
 	//Matrices we need
-	DirectX::SimpleMath::Matrix matWorld,matScale,MatRot,MatTemp;
+	XMMATRIX matWorld, matScale, MatRot, MatTemp;
 
 	//Temporary translation
-	Vector3 Trans;
+	XMVECTOR Trans;
 
 
 	//Copy from the original location, 
 	//so we can modify it without hurting anything
-	Trans=Location;
+	Trans = XMLoadFloat3( &Location );
 
 	//Devide Trans through Scale
 	/*Trans.x/=Scale.x;
 	Trans.y/=Scale.y;
 	Trans.z/=Scale.z;*/
 
-
 	//Apply translation to the WorldMatrix
-	matWorld = XMMatrixTranslation(Trans.x,Trans.y,Trans.z);
+	matWorld = XMMatrixTranslationFromVector( Trans );
 
 	//Now scale another matrix
-	matScale = XMMatrixScaling(Scale.x, Scale.y, Scale.z);
+	matScale = XMMatrixScalingFromVector( XMLoadFloat3( &Scale ) );
+
+
 
 	//Apply rotation
-	MatRot = Matrix::Identity;
-	Vector3 DeltaRot = Rotation - RotationMatrixAngles;
+	MatRot = XMMatrixIdentity();
 
-	if (Rotation != Vector3::Zero)
-	{
+	XMFLOAT3 DeltaRot; XMStoreFloat3( &DeltaRot, XMLoadFloat3( &Rotation ) - XMLoadFloat3( &RotationMatrixAngles ) );
+
+	XMMATRIX xmRotationMatrix = XMLoadFloat4x4( &RotationMatrix );
+	XMFLOAT3 zero = XMFLOAT3( 0, 0, 0 );
+
+	if ( memcmp( &Rotation, &zero, sizeof( XMFLOAT3 ) ) != 0 ) {
 		// Calculate matrix with the new angles
-		if (bLocalRotation)
-		{
-			Vector3 Up(0, 1, 0);
-			Vector3 Front(1, 0, 0);
-			Vector3 Right;
-			
-			Up = XMVector3TransformNormal(Up, RotationMatrix);
-			Front = XMVector3TransformNormal(Front, RotationMatrix);
-			Right = Up.Cross(Front);
+		XMVECTOR Up = XMVectorSet( 0, 1, 0, 0 );
+		XMVECTOR Front = XMVectorSet( 1, 0, 0, 0 );
+		if ( bLocalRotation ) {
+			XMVECTOR Right;
 
-			DirectX::SimpleMath::Matrix X = XMMatrixRotationAxis(Front, DeltaRot.x);
-			DirectX::SimpleMath::Matrix Y = XMMatrixRotationAxis(Up, DeltaRot.y);
-			DirectX::SimpleMath::Matrix Z = XMMatrixRotationAxis(Right, DeltaRot.z);
+			Up = XMVector3TransformNormal( Up, xmRotationMatrix );
+			Front = XMVector3TransformNormal( Front, xmRotationMatrix );
+			Right = XMVector3Cross( Up, Front );
 
-			RotationMatrix *= X * Y * Z;
-		} else
-		{
-			MatRot = Matrix::Identity;
+			auto X = XMMatrixRotationAxis( Front, DeltaRot.x );
+			auto Y = XMMatrixRotationAxis( Up, DeltaRot.y );
+			auto Z = XMMatrixRotationAxis( Right, DeltaRot.z );
 
-			MatTemp = XMMatrixRotationAxis(Vector3(1, 0, 0), Rotation.x);        // Pitch
-			MatRot = XMMatrixMultiply(MatRot, MatTemp);
-			MatTemp = XMMatrixRotationAxis(Vector3(0, 1, 0), Rotation.y);         // Yaw
-			MatRot = XMMatrixMultiply(MatRot, MatTemp);
-			MatTemp = XMMatrixRotationAxis(Vector3(0, 0, 1), Rotation.z);       // Roll
-			RotationMatrix = XMMatrixMultiply(MatRot, MatTemp);
+			xmRotationMatrix *= X * Y * Z;
+			XMStoreFloat4x4( &RotationMatrix, xmRotationMatrix );
 
-			//RotationMatrix = X * Y * Z;
+		} else {
+
+			MatTemp = XMMatrixRotationAxis( Front, Rotation.x );                   // Pitch
+			MatRot = MatRot * MatTemp;
+			MatTemp = XMMatrixRotationAxis( Up, Rotation.y );                      // Yaw
+			MatRot = MatRot * MatTemp;
+			MatTemp = XMMatrixRotationAxis( XMVectorSet( 0, 0, 1, 0 ), Rotation.z ); // Roll
+			xmRotationMatrix = MatRot * MatTemp;
+			XMStoreFloat4x4( &RotationMatrix, xmRotationMatrix );
 		}
 
 		RotationMatrixAngles = Rotation;
-	} else if (!bJustUseRotationMatrix)
-	{
+	} else if ( !bJustUseRotationMatrix ) {
 		// Reset matrix to identity (Todo: ROTATION! Ò.ó Y U NO WORK!? (As I want))
-		RotationMatrix = Matrix::Identity;
-		RotationMatrixAngles = Vector3::Zero;
+		xmRotationMatrix = XMMatrixIdentity();
+		XMStoreFloat4x4( &RotationMatrix, xmRotationMatrix );
+
+		RotationMatrixAngles = XMFLOAT3( 0, 0, 0 );
 	}
 
 
-	WorldMatrix = matScale * RotationMatrix * matWorld;
-	
+	XMStoreFloat4x4( &WorldMatrix, matScale * xmRotationMatrix * matWorld );
 }
 
 /** Creates the buffers and sets up the rest od the object */
-HRESULT EditorLinePrimitive::CreatePrimitive(LineVertex * PrimVerts, UINT NumVertices, D3D11_PRIMITIVE_TOPOLOGY Topology)
-{
-	HRESULT hr=S_OK;
+HRESULT EditorLinePrimitive::CreatePrimitive( LineVertex* PrimVerts, UINT NumVertices, D3D11_PRIMITIVE_TOPOLOGY Topology ) {
+	HRESULT hr = S_OK;
 
 	// Clean up previous data
 	DeleteContent();
 
 	// Copy over the new data
 	Vertices = new LineVertex[NumVertices];
-	memcpy(Vertices, PrimVerts, sizeof(LineVertex)*NumVertices);
+	memcpy( Vertices, PrimVerts, sizeof( LineVertex ) * NumVertices );
 	this->NumVertices = NumVertices;
-	
+
 	//Create the vertex buffer
 	D3D11_BUFFER_DESC bufferDesc;
-    bufferDesc.ByteWidth = NumVertices * sizeof(LineVertex);
-    bufferDesc.Usage = D3D11_USAGE_DEFAULT;
-    bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    bufferDesc.CPUAccessFlags = 0;
-    bufferDesc.MiscFlags = 0;
+	bufferDesc.ByteWidth = NumVertices * sizeof( LineVertex );
+	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bufferDesc.CPUAccessFlags = 0;
+	bufferDesc.MiscFlags = 0;
 
 	D3D11_SUBRESOURCE_DATA InitData;
-    InitData.pSysMem = &Vertices[0];
+	InitData.pSysMem = &Vertices[0];
 	InitData.SysMemPitch = 0;
 	InitData.SysMemSlicePitch = 0;
 
 	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
-	LE(engine->GetDevice()->CreateBuffer(&bufferDesc,&InitData,&PrimVB));
+	LE( engine->GetDevice()->CreateBuffer( &bufferDesc, &InitData, &PrimVB ) );
 
 	PrimitiveTopology = Topology;
 
@@ -896,28 +860,25 @@ HRESULT EditorLinePrimitive::CreatePrimitive(LineVertex * PrimVerts, UINT NumVer
 }
 
 /** Sets the shader to render with */
-void EditorLinePrimitive::SetShader(D3D11PShader * Shader)
-{
+void EditorLinePrimitive::SetShader( D3D11PShader* Shader ) {
 	PrimShader = Shader;
 }
 
 /** Sets the solid shader to render with */
-void EditorLinePrimitive::SetSolidShader(D3D11PShader * SolidShader)
-{
+void EditorLinePrimitive::SetSolidShader( D3D11PShader* SolidShader ) {
 	SolidPrimShader = SolidShader;
 }
 
 /** Renders a vertexbuffer with the given shader */
-void EditorLinePrimitive::RenderVertexBuffer(ID3D11Buffer* VB, UINT NumVertices, D3D11PShader * Shader, D3D11_PRIMITIVE_TOPOLOGY Topology, int Pass)
-{
+void EditorLinePrimitive::RenderVertexBuffer( ID3D11Buffer* VB, UINT NumVertices, D3D11PShader* Shader, D3D11_PRIMITIVE_TOPOLOGY Topology, int Pass ) {
 	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
-	DirectX::SimpleMath::Matrix tr = WorldMatrix.Transpose();
-	Engine::GAPI->SetWorldTransform(tr);
+	XMMATRIX tr = XMMatrixTranspose( XMLoadFloat4x4( &WorldMatrix ) );;
+	Engine::GAPI->SetWorldTransformXM( tr );
 
-	engine->SetActiveVertexShader("VS_Lines");
-	engine->SetActivePixelShader("PS_Lines");
-	
+	engine->SetActiveVertexShader( "VS_Lines" );
+	engine->SetActivePixelShader( "PS_Lines" );
+
 	engine->SetupVS_ExMeshDrawCall();
 	engine->SetupVS_ExConstantBuffer();
 	engine->SetupVS_ExPerInstanceConstantBuffer();
@@ -930,37 +891,32 @@ void EditorLinePrimitive::RenderVertexBuffer(ID3D11Buffer* VB, UINT NumVertices,
 	Shader->Apply();
 
 	// Set vertex buffer
-	UINT stride = sizeof(LineVertex);
+	UINT stride = sizeof( LineVertex );
 	UINT offset = 0;
-	engine->GetContext()->IASetVertexBuffers(0, 1, &VB, &stride, &offset);
-	engine->GetContext()->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
-	
-	engine->GetContext()->IASetPrimitiveTopology(Topology);
+	engine->GetContext()->IASetVertexBuffers( 0, 1, &VB, &stride, &offset );
+	engine->GetContext()->IASetIndexBuffer( nullptr, DXGI_FORMAT_UNKNOWN, 0 );
 
-	engine->GetContext()->Draw(NumVertices, 0);
+	engine->GetContext()->IASetPrimitiveTopology( Topology );
+
+	engine->GetContext()->Draw( NumVertices, 0 );
 }
 
-HRESULT EditorLinePrimitive::RenderPrimitive(int Pass)
-{
-	if (!PrimShader && !SolidPrimShader)
-	{
+HRESULT EditorLinePrimitive::RenderPrimitive( int Pass ) {
+	if ( !PrimShader && !SolidPrimShader ) {
 		return E_FAIL;
 	}
 
-	if (bHidden)
-	{
+	if ( bHidden ) {
 		return S_OK;
 	}
 
-	if (NumVertices > 0 && PrimShader)
-	{
-		RenderVertexBuffer(PrimVB, NumVertices, PrimShader, PrimitiveTopology, Pass);
+	if ( NumVertices > 0 && PrimShader ) {
+		RenderVertexBuffer( PrimVB, NumVertices, PrimShader, PrimitiveTopology, Pass );
 	}
 
-	if (NumSolidVertices > 0 && SolidPrimShader)
-	{
-		RenderVertexBuffer(SolidPrimVB, NumSolidVertices, SolidPrimShader, SolidPrimitiveTopology, Pass);
+	if ( NumSolidVertices > 0 && SolidPrimShader ) {
+		RenderVertexBuffer( SolidPrimVB, NumSolidVertices, SolidPrimShader, SolidPrimitiveTopology, Pass );
 	}
-	
+
 	return S_OK;
 }

@@ -5,32 +5,28 @@
 #include "Engine.h"
 #include "GothicAPI.h"
 
-struct zCMeshData
-{
+struct zCMeshData {
 	int				numPoly;
 	int				numVert;
-    int             numFeat;
+	int             numFeat;
 
-	zCVertex		**vertList;
-	zCPolygon		**polyList;
-    zCVertFeature   **featList;
+	zCVertex** vertList;
+	zCPolygon** polyList;
+	zCVertFeature** featList;
 
-    zCVertex        *vertArray;
-    zCPolygon       *polyArray;
-    zCVertFeature   *featArray;
+	zCVertex* vertArray;
+	zCPolygon* polyArray;
+	zCVertFeature* featArray;
 };
 
-class zCMesh
-{
+class zCMesh {
 public:
-	zCPolygon** GetPolygons()
-	{
-		return *(zCPolygon ***)THISPTR_OFFSET(GothicMemoryLocations::zCMesh::Offset_Polygons);
+	zCPolygon** GetPolygons() {
+		return *(zCPolygon***)THISPTR_OFFSET( GothicMemoryLocations::zCMesh::Offset_Polygons );
 	}
 
-	int GetNumPolygons()
-	{
-		return *(int *)THISPTR_OFFSET(GothicMemoryLocations::zCMesh::Offset_NumPolygons);
+	int GetNumPolygons() {
+		return *(int*)THISPTR_OFFSET( GothicMemoryLocations::zCMesh::Offset_NumPolygons );
 	}
 
 	/*zCPolygon* GetPolyArray()
@@ -40,7 +36,7 @@ public:
 
 	zCPolygon* SharePoly(int i)
 	{
-		if (GetPolyArray()) 
+		if (GetPolyArray())
 			return GetPolyArray() + i;
 		else
 			return GetPolygons()[i];
@@ -51,7 +47,7 @@ public:
 		XCALL(GothicMemoryLocations::zCMesh::CreateListsFromArrays);
 	}
 
-	
+
 
 	zCMeshData* GetData()
 	{

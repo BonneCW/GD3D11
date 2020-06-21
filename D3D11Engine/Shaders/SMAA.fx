@@ -87,7 +87,7 @@ float cornerRounding;
 #if SMAA_HLSL_4_1 == 1
 #define PS_VERSION ps_4_1
 #else
-#define PS_VERSION ps_4_0
+#define PS_VERSION ps_5_0
 #endif
 
 
@@ -257,7 +257,7 @@ void DX10_SMAASeparatePS(float4 position : SV_POSITION,
  */
 technique10 LumaEdgeDetection {
     pass LumaEdgeDetection {
-        SetVertexShader(CompileShader(vs_4_0, DX10_SMAAEdgeDetectionVS()));
+        SetVertexShader(CompileShader(vs_5_0, DX10_SMAAEdgeDetectionVS()));
         SetGeometryShader(NULL);
         SetPixelShader(CompileShader(PS_VERSION, DX10_SMAALumaEdgeDetectionPS(colorTexGamma)));
 
@@ -268,7 +268,7 @@ technique10 LumaEdgeDetection {
 
 technique10 ColorEdgeDetection {
     pass ColorEdgeDetection {
-        SetVertexShader(CompileShader(vs_4_0, DX10_SMAAEdgeDetectionVS()));
+        SetVertexShader(CompileShader(vs_5_0, DX10_SMAAEdgeDetectionVS()));
         SetGeometryShader(NULL);
         SetPixelShader(CompileShader(PS_VERSION, DX10_SMAAColorEdgeDetectionPS(colorTexGamma)));
 
@@ -279,7 +279,7 @@ technique10 ColorEdgeDetection {
 
 technique10 DepthEdgeDetection {
     pass DepthEdgeDetection {
-        SetVertexShader(CompileShader(vs_4_0, DX10_SMAAEdgeDetectionVS()));
+        SetVertexShader(CompileShader(vs_5_0, DX10_SMAAEdgeDetectionVS()));
         SetGeometryShader(NULL);
         SetPixelShader(CompileShader(PS_VERSION, DX10_SMAADepthEdgeDetectionPS(depthTex)));
 
@@ -293,7 +293,7 @@ technique10 DepthEdgeDetection {
  */
 technique10 BlendingWeightCalculation {
     pass BlendingWeightCalculation {
-        SetVertexShader(CompileShader(vs_4_0, DX10_SMAABlendingWeightCalculationVS()));
+        SetVertexShader(CompileShader(vs_5_0, DX10_SMAABlendingWeightCalculationVS()));
         SetGeometryShader(NULL);
         SetPixelShader(CompileShader(PS_VERSION, DX10_SMAABlendingWeightCalculationPS(edgesTex, areaTex, searchTex)));
 
@@ -307,7 +307,7 @@ technique10 BlendingWeightCalculation {
  */
 technique10 NeighborhoodBlending {
     pass NeighborhoodBlending {
-        SetVertexShader(CompileShader(vs_4_0, DX10_SMAANeighborhoodBlendingVS()));
+        SetVertexShader(CompileShader(vs_5_0, DX10_SMAANeighborhoodBlendingVS()));
         SetGeometryShader(NULL);
         SetPixelShader(CompileShader(PS_VERSION, DX10_SMAANeighborhoodBlendingPS(colorTex, blendTex)));
 
@@ -324,7 +324,7 @@ technique10 NeighborhoodBlending {
  */
 technique10 Resolve {
     pass Resolve {
-        SetVertexShader(CompileShader(vs_4_0, DX10_SMAAResolveVS()));
+        SetVertexShader(CompileShader(vs_5_0, DX10_SMAAResolveVS()));
         SetGeometryShader(NULL);
         SetPixelShader(CompileShader(PS_VERSION, DX10_SMAAResolvePS(colorTex, colorTexPrev, velocityTex)));
 
@@ -338,7 +338,7 @@ technique10 Resolve {
  */
 technique10 Separate {
     pass Separate {
-        SetVertexShader(CompileShader(vs_4_0, DX10_SMAASeparateVS()));
+        SetVertexShader(CompileShader(vs_5_0, DX10_SMAASeparateVS()));
         SetGeometryShader(NULL);
         SetPixelShader(CompileShader(PS_VERSION, DX10_SMAASeparatePS(colorMSTex)));
 

@@ -1,11 +1,10 @@
 #pragma once
 #include "pch.h"
-
+#include <DirectXMath.h>
 
 /** Actual instance data for a vob */
-struct VobInstanceInfo
-{
-	DirectX::SimpleMath::Matrix world;
+struct VobInstanceInfo {
+	DirectX::XMFLOAT4X4 world;
 	DWORD color;
 
 	// General purpose slots
@@ -13,15 +12,12 @@ struct VobInstanceInfo
 };
 
 /** Remap-index for the static vobs */
-struct VobInstanceRemapInfo
-{
-	bool operator < (const VobInstanceRemapInfo& b) const
-	{
+struct VobInstanceRemapInfo {
+	bool operator < ( const VobInstanceRemapInfo& b ) const {
 		return InstanceRemapIndex < b.InstanceRemapIndex;
 	}
 
-	bool operator == (const VobInstanceRemapInfo& o) const
-	{
+	bool operator == ( const VobInstanceRemapInfo& o ) const {
 		return InstanceRemapIndex == o.InstanceRemapIndex;
 	}
 
@@ -32,24 +28,21 @@ struct VobInstanceRemapInfo
 
 
 #pragma pack (push, 1)	
-struct SkyConstantBuffer
-{
+struct SkyConstantBuffer {
 	float SC_TextureWeight;
 	float3 SC_pad1;
 };
 
-struct GammaCorrectConstantBuffer
-{
+struct GammaCorrectConstantBuffer {
 	float G_Gamma;
 	float G_Brightness;
 	float2 G_TextureSize;
-	
+
 	float G_SharpenStrength;
 	float3 G_pad1;
 };
 
-struct OceanSettingsConstantBuffer
-{
+struct OceanSettingsConstantBuffer {
 	float3 OS_CameraPosition;
 	float OS_SpecularPower;
 
@@ -65,7 +58,7 @@ struct OceanSettingsConstantBuffer
 	float			unused1;
 	float3			OS_SunColor;
 	float			unused2;
-	
+
 	// The parameter is used for fixing an artifact
 	float3			OS_BendParam;
 
@@ -84,8 +77,7 @@ struct OceanSettingsConstantBuffer
 	float2			unused5;
 };
 
-struct OceanPerPatchConstantBuffer
-{
+struct OceanPerPatchConstantBuffer {
 	float3 OPP_LocalEye;
 	float OPP_Pad1;
 
@@ -93,8 +85,7 @@ struct OceanPerPatchConstantBuffer
 	float OPP_Pad2;
 };
 
-struct BlurConstantBuffer
-{
+struct BlurConstantBuffer {
 	float2 B_PixelSize;
 	float B_BlurSize;
 	float B_Threshold;
@@ -102,21 +93,18 @@ struct BlurConstantBuffer
 	float4 B_ColorMod;
 };
 
-struct PerObjectState
-{
+struct PerObjectState {
 	float3 OS_AmbientColor;
 	float OS_Pad;
 };
 
-struct PFXVS_ConstantBuffer
-{
-	DirectX::SimpleMath::Matrix PFXVS_InvProj;
+struct PFXVS_ConstantBuffer {
+	DirectX::XMFLOAT4X4 PFXVS_InvProj;
 };
 
-struct HeightfogConstantBuffer
-{
-	DirectX::SimpleMath::Matrix InvProj;
-	DirectX::SimpleMath::Matrix InvView;
+struct HeightfogConstantBuffer {
+	DirectX::XMFLOAT4X4 InvProj;
+	DirectX::XMFLOAT4X4 InvView;
 	float3 CameraPosition;
 	float HF_FogHeight;
 
@@ -132,39 +120,34 @@ struct HeightfogConstantBuffer
 	float2 HF_Pad3;
 };
 
-struct LumAdaptConstantBuffer
-{
+struct LumAdaptConstantBuffer {
 	float LC_DeltaTime;
 	float3 LC_Pad;
 };
 
-struct GodRayZoomConstantBuffer
-{
+struct GodRayZoomConstantBuffer {
 	float GR_Decay;
 	float GR_Weight;
 	float2 GR_Center;
-	
+
 	float GR_Density;
 	float3 GR_ColorMod;
 };
 
-struct HDRSettingsConstantBuffer
-{
+struct HDRSettingsConstantBuffer {
 	float HDR_MiddleGray;
 	float HDR_LumWhite;
 	float HDR_Threshold;
 	float HDR_BloomStrength;
 };
 
-struct ViewportInfoConstantBuffer
-{
+struct ViewportInfoConstantBuffer {
 	float2 VPI_ViewportSize;
 	float2 VPI_pad;
 };
 
-struct DS_PointLightConstantBuffer
-{
-	float4 PL_Color;			
+struct DS_PointLightConstantBuffer {
+	float4 PL_Color;
 
 	float PL_Range;
 	float3 Pl_PositionWorld;
@@ -175,31 +158,30 @@ struct DS_PointLightConstantBuffer
 	float2 PL_ViewportSize;
 	float2 PL_Pad2;
 
-	DirectX::SimpleMath::Matrix PL_InvProj; // Optimize out!
-	DirectX::SimpleMath::Matrix PL_InvView;
+	DirectX::XMFLOAT4X4 PL_InvProj; // Optimize out!
+	DirectX::XMFLOAT4X4 PL_InvView;
 
 	float3 PL_LightScreenPos;
 	float PL_Pad3;
 };
 
-struct DS_ScreenQuadConstantBuffer
-{
-	DirectX::SimpleMath::Matrix SQ_InvProj; // Optimize out!
-	DirectX::SimpleMath::Matrix SQ_InvView;
-	DirectX::SimpleMath::Matrix SQ_View;
+struct DS_ScreenQuadConstantBuffer {
+	DirectX::XMFLOAT4X4 SQ_InvProj; // Optimize out!
+	DirectX::XMFLOAT4X4 SQ_InvView;
+	DirectX::XMFLOAT4X4 SQ_View;
 
-	DirectX::SimpleMath::Matrix SQ_RainViewProj;
+	DirectX::XMFLOAT4X4 SQ_RainViewProj;
 
 	float3 SQ_LightDirectionVS;
 	float SQ_ShadowmapSize;
 
 	float4 SQ_LightColor;
 
-	DirectX::SimpleMath::Matrix SQ_ShadowView;
-	DirectX::SimpleMath::Matrix SQ_ShadowProj;
+	DirectX::XMFLOAT4X4 SQ_ShadowView;
+	DirectX::XMFLOAT4X4 SQ_ShadowProj;
 
-	DirectX::SimpleMath::Matrix SQ_RainView;
-	DirectX::SimpleMath::Matrix SQ_RainProj;
+	DirectX::XMFLOAT4X4 SQ_RainView;
+	DirectX::XMFLOAT4X4 SQ_RainProj;
 
 	//float2 SQ_ProjAB;
 	//float2 SQ_Pad2;
@@ -209,8 +191,7 @@ struct DS_ScreenQuadConstantBuffer
 	float SQ_Pad;
 };
 
-struct CloudConstantBuffer
-{
+struct CloudConstantBuffer {
 	float3 C_LightDirection;
 	float C_Pad;
 
@@ -218,14 +199,13 @@ struct CloudConstantBuffer
 	float C_Pad2;
 };
 
-struct AdvanceRainConstantBuffer
-{
+struct AdvanceRainConstantBuffer {
 	float3 AR_LightPosition;
 	float AR_FPS;
-	
+
 	float3 AR_CameraPosition;
 	float AR_Radius;
-	
+
 	float AR_Height;
 	float3 AR_GlobalVelocity;
 
@@ -233,50 +213,37 @@ struct AdvanceRainConstantBuffer
 	float3 AR_Pad1;
 };
 
-struct VS_ExConstantBuffer_PerFrame
-{
-	DirectX::SimpleMath::Matrix View;
-	DirectX::SimpleMath::Matrix Projection;
-	DirectX::SimpleMath::Matrix ViewProj;
+struct VS_ExConstantBuffer_PerFrame {
+	DirectX::XMFLOAT4X4 View;
+	DirectX::XMFLOAT4X4 Projection;
+	DirectX::XMFLOAT4X4 ViewProj;
 };
 
-struct ParticlePointShadingConstantBuffer
-{
-	DirectX::SimpleMath::Matrix View;
-	DirectX::SimpleMath::Matrix Projection;
+struct ParticlePointShadingConstantBuffer {
+	DirectX::XMFLOAT4X4 View;
+	DirectX::XMFLOAT4X4 Projection;
 };
 
-struct VS_ExConstantBuffer_PerInstance
-{
-	DirectX::SimpleMath::Matrix World;
+struct VS_ExConstantBuffer_PerInstance {
+	DirectX::XMFLOAT4X4 World;
 	float4 Color;
 };
 
-struct VS_ExConstantBuffer_PerInstanceSkeletal
-{
-	DirectX::SimpleMath::Matrix World;
+struct VS_ExConstantBuffer_PerInstanceSkeletal {
+	DirectX::XMFLOAT4X4 World;
 	float PI_ModelFatness;
 	float3 PI_Pad1;
 };
 
 
-struct GrassConstantBuffer
-{
+struct GrassConstantBuffer {
 	float3 G_NormalVS;
 	float G_Time;
 	float G_WindStrength;
 	float3 G_Pad1;
 };
 
-struct WettnessConstantBuffer
-{
-	DirectX::SimpleMath::Matrix W_InvProj;
-	float W_Wettness;
-	float3 W_Pad1;
-};
-
-struct DefaultHullShaderConstantBuffer
-{
+struct DefaultHullShaderConstantBuffer {
 	float H_EdgesPerScreenHeight;
 	float H_Proj11;
 	float H_GlobalTessFactor;
@@ -285,23 +252,20 @@ struct DefaultHullShaderConstantBuffer
 	float2 h_pad2;
 };
 
-struct CubemapGSConstantBuffer
-{
-	DirectX::SimpleMath::Matrix PCR_View[6]; // View matrices for cube map rendering
-	DirectX::SimpleMath::Matrix PCR_ViewProj[6];
+struct CubemapGSConstantBuffer {
+	DirectX::XMFLOAT4X4 PCR_View[6]; // View matrices for cube map rendering
+	DirectX::XMFLOAT4X4 PCR_ViewProj[6];
 };
 
-struct ParticleGSInfoConstantBuffer
-{
+struct ParticleGSInfoConstantBuffer {
 	float3 CameraPosition;
-    float PGS_RainFxWeight;
+	float PGS_RainFxWeight;
 	float PGS_RainHeight;
 	float3 PGS_Pad;
 };
 
-struct PNAENConstantBuffer
-{
-	DirectX::SimpleMath::Matrix    f4x4Projection;           // Projection DirectX::SimpleMath::Matrix 
+struct PNAENConstantBuffer {
+	DirectX::XMFLOAT4X4    f4x4Projection;           // Projection matrix 
 	float4      f4Eye;                    // Eye 
 	float4      f4TessFactors;            // Tessellation factors 
 											// x=Edge  
@@ -313,9 +277,8 @@ struct PNAENConstantBuffer
 											// tests. 
 };
 
-struct RefractionInfoConstantBuffer
-{
-	DirectX::SimpleMath::Matrix RI_Projection;
+struct RefractionInfoConstantBuffer {
+	DirectX::XMFLOAT4X4 RI_Projection;
 	float2 RI_ViewportSize;
 	float RI_Time;
 	float RI_Far;
@@ -324,10 +287,9 @@ struct RefractionInfoConstantBuffer
 	float RI_Pad2;
 };
 
-struct AtmosphereConstantBuffer
-{
+struct AtmosphereConstantBuffer {
 	float AC_Kr4PI;
-	float AC_Km4PI;	
+	float AC_Km4PI;
 	float AC_g;
 	float AC_KrESun;
 

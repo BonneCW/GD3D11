@@ -7,8 +7,7 @@
 
 class D3D11VertexBuffer;
 struct RenderToDepthStencilBuffer;
-class D3D11Effect
-{
+class D3D11Effect {
 public:
 	D3D11Effect();
 	~D3D11Effect();
@@ -20,14 +19,14 @@ public:
 	XRESULT DrawRainShadowmap();
 
 	/** Returns the current rain-shadowmap camera replacement */
-	CameraReplacement& GetRainShadowmapCameraRepl(){return RainShadowmapCameraRepl;}
-	
+	CameraReplacement& GetRainShadowmapCameraRepl() { return RainShadowmapCameraRepl; }
+
 	/** Returns the rain shadowmap */
-	RenderToDepthStencilBuffer * GetRainShadowmap() { return RainShadowmap.get(); }
+	RenderToDepthStencilBuffer* GetRainShadowmap() { return RainShadowmap.get(); }
 protected:
 
 	/** Fills a vector of random raindrop data */
-	void FillRandomRaindropData(std::vector<ParticleInstanceInfo> & data);
+	void FillRandomRaindropData( std::vector<ParticleInstanceInfo>& data );
 
 	/** Rain */
 	D3D11VertexBuffer* RainBufferInitial;

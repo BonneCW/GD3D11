@@ -2,19 +2,16 @@
 #include "pch.h"
 #include "GothicMemoryLocations.h"
 
-class zSTRING
-{
+class zSTRING {
 public:
 
-	zSTRING(const char* str)
-	{
-		XCALL(GothicMemoryLocations::zSTRING::ConstructorCharPtr);
+	zSTRING( const char* str ) {
+		XCALL( GothicMemoryLocations::zSTRING::ConstructorCharPtr );
 	}
 
 
-	const char* ToChar() const
-	{
-		XCALL(GothicMemoryLocations::zSTRING::ToChar);
+	const char* ToChar() const {
+		XCALL( GothicMemoryLocations::zSTRING::ToChar );
 	}
 
 	char data[20];

@@ -5,22 +5,25 @@
 #include "Engine.h"
 #include "GothicAPI.h"
 
-class zCLightmap
-{
+
+class zCLightmap {
 public:
 
-	DirectX::SimpleMath::Vector2 GetLightmapUV(const DirectX::SimpleMath::Vector3 & worldPos)
-	{
-		DirectX::SimpleMath::Vector3 q = worldPos - LightmapOrigin;
-		return DirectX::SimpleMath::Vector2(q.Dot(LightmapUVRight), q.Dot(LightmapUVUp));
+	DirectX::XMFLOAT2 GetLightmapUV( const DirectX::XMFLOAT3& worldPos ) {
+		XMVECTOR q = XMLoadFloat3( &worldPos ) - XMLoadFloat3( &LightmapOrigin );
+
+		XMFLOAT2 lightmap;
+		lightmap.x = XMVectorGetX( DirectX::XMVector3Dot( q, XMLoadFloat3( &LightmapUVRight ) ) );
+		lightmap.y = XMVectorGetY( DirectX::XMVector3Dot( q, XMLoadFloat3( &LightmapUVUp ) ) );
+		return lightmap;
 	}
 
 
 	char data[0x24];
 
-	DirectX::SimpleMath::Vector3	LightmapOrigin;
-	DirectX::SimpleMath::Vector3	LightmapUVUp;
-	DirectX::SimpleMath::Vector3	LightmapUVRight;
+	DirectX::XMFLOAT3 LightmapOrigin;
+	DirectX::XMFLOAT3 LightmapUVUp;
+	DirectX::XMFLOAT3 LightmapUVRight;
 
-    zCTexture * Texture;
+	zCTexture* Texture;
 };

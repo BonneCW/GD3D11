@@ -4,8 +4,7 @@
 /** This class can handle the occlusion-querrys for the BSP-Tree */
 struct BspInfo;
 struct MeshInfo;
-class D3D11OcclusionQuerry
-{
+class D3D11OcclusionQuerry {
 public:
 	D3D11OcclusionQuerry();
 	~D3D11OcclusionQuerry();
@@ -17,7 +16,7 @@ public:
 	void BeginOcclusionPass();
 
 	/** Checks the BSP-Tree for visibility */
-	void DoOcclusionForBSP(BspInfo* root);
+	void DoOcclusionForBSP( BspInfo* root );
 
 	/** Ends the occlusion-checks */
 	void EndOcclusionPass();
@@ -26,13 +25,13 @@ public:
 	unsigned int AddPredicationObject();
 
 	/** Creates the occlusion-node-mesh for the specific bsp-node */
-	void CreateOcclusionNodeMeshFor(BspInfo* node);
+	void CreateOcclusionNodeMeshFor( BspInfo* node );
 private:
 
 	/** Marks the entire subtree visible */
-	void MarkTreeVisible(BspInfo* root, bool visible);
+	void MarkTreeVisible( BspInfo* root, bool visible );
 
-	void DebugVisualizeNodeMesh(MeshInfo * m, const DirectX::SimpleMath::Vector4 & color);
+	void DebugVisualizeNodeMesh( MeshInfo* m, const DirectX::XMFLOAT4& color );
 
 	/** Simple box predicate */
 	std::vector<ID3D11Predicate*> Predicates;

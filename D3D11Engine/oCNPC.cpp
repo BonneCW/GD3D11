@@ -2,11 +2,7 @@
 #include "oCNPC.h"
 
 
-oCNPC::oCNPC()
-{
-}
+oCNPC::oCNPC() {}
 
 
-oCNPC::~oCNPC()
-{
-}
+oCNPC::~oCNPC() {}

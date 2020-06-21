@@ -1,8 +1,7 @@
 #pragma once
 
-template <class T> 
-class zCTree 
-{
+template <class T>
+class zCTree {
 public:
 	zCTree* Parent;
 	zCTree* FirstChild;

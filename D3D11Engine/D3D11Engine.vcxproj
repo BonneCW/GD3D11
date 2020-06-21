@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Release_G1|Win32">
       <Configuration>Release_G1</Configuration>
@@ -85,57 +85,60 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(IncludePath);$(DXSDK_DIR)\include;squish-1.11;include</IncludePath>
-    <LibraryPath>$(DXSDK_DIR)\lib\x86;lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(IncludePath);$(DXSDK_DIR)\include;include</IncludePath>
+    <LibraryPath>$(fx11-LibPath)\..\Release;lib;$(LibraryPath);$(DXSDK_DIR)\lib\x86</LibraryPath>
     <TargetName>ddraw</TargetName>
     <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>true</RunCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_G1|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(IncludePath);$(DXSDK_DIR)\include;squish-1.11;include;;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include</IncludePath>
-    <LibraryPath>$(IncludePath);$(DXSDK_DIR)\lib\x86;lib;$(LibraryPath);C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Lib\x86</LibraryPath>
+    <IncludePath>$(IncludePath);$(DXSDK_DIR)\include;include</IncludePath>
+    <LibraryPath>$(fx11-LibPath)\..\Release;lib;$(LibraryPath);$(DXSDK_DIR)\lib\x86</LibraryPath>
     <TargetName>ddraw</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(IncludePath);$(DXSDK_DIR)\include;squish-1.11;include;;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include</IncludePath>
-    <LibraryPath>$(DXSDK_DIR)\lib\x86;lib;$(LibraryPath);C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Lib\x86</LibraryPath>
+    <IncludePath>$(IncludePath);$(DXSDK_DIR)\include;include</IncludePath>
+    <LibraryPath>$(fx11-LibPath)\..\Release;lib;$(LibraryPath);$(DXSDK_DIR)\lib\x86</LibraryPath>
     <TargetName>ddraw</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_Spacer|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(IncludePath);$(DXSDK_DIR)\include;squish-1.11;include;;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include</IncludePath>
-    <LibraryPath>$(DXSDK_DIR)\lib\x86;lib;$(LibraryPath);C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Lib\x86</LibraryPath>
+    <IncludePath>$(IncludePath);$(DXSDK_DIR)\include;include</IncludePath>
+    <LibraryPath>$(fx11-LibPath)\..\Release;lib;$(LibraryPath);$(DXSDK_DIR)\lib\x86</LibraryPath>
     <TargetName>ddraw</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_G1|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(IncludePath);$(DXSDK_DIR)\include;squish-1.11;include;;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include</IncludePath>
-    <LibraryPath>$(DXSDK_DIR)\lib\x86;lib;$(LibraryPath);C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Lib\x86</LibraryPath>
+    <IncludePath>$(IncludePath);$(DXSDK_DIR)\include;include</IncludePath>
+    <LibraryPath>$(fx11-LibPath)\..\Release;lib;$(LibraryPath);$(DXSDK_DIR)\lib\x86</LibraryPath>
     <TargetName>ddraw</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>PUBLIC_RELEASE;BUILD_GOTHIC_2_6_fix;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;_USRDLL;D3D11ENGINE_EXPORTS;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>PUBLIC_RELEASE;BUILD_GOTHIC_2_6_fix;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;_USRDLL;D3D11ENGINE_EXPORTS;NOMINMAX;%(PreprocessorDefinitions);WINVER=0x0601;_WIN32_WINNT=0x0601;NTDDI_VERSION=0x06010000;_WIN7_PLATFORM_UPDATE=1</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <ExceptionHandling>false</ExceptionHandling>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <OpenMPSupport>true</OpenMPSupport>
       <EnablePREfast>true</EnablePREfast>
-      <DisableSpecificWarnings>4530;4577;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4005;4530;4577;26812;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <AdditionalIncludeDirectories>
+      </AdditionalIncludeDirectories>
       <FloatingPointModel>Fast</FloatingPointModel>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
       <AdditionalOptions>/Zc:inline /Zc:throwingNew %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -146,7 +149,8 @@
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
-      <AdditionalLibraryDirectories>$(WindowsSDK_LibraryPath_x86)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <CustomBuildStep>
@@ -163,11 +167,15 @@ copy "$(OutDir)$(TargetName).pdb" "$(G2_SYSTEM_PATH)\ddraw.pdb"</Command>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>PUBLIC_RELEASE;BUILD_GOTHIC_1_08k;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;_USRDLL;D3D11ENGINE_EXPORTS;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>PUBLIC_RELEASE;BUILD_GOTHIC_1_08k;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;_USRDLL;D3D11ENGINE_EXPORTS;NOMINMAX;%(PreprocessorDefinitions);WINVER=0x0601;_WIN32_WINNT=0x0601;NTDDI_VERSION=0x06010000;_WIN7_PLATFORM_UPDATE=1</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <DisableSpecificWarnings>4530;4577;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4005;4530;4577;26812;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <FloatingPointModel>Fast</FloatingPointModel>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -178,7 +186,8 @@ copy "$(OutDir)$(TargetName).pdb" "$(G2_SYSTEM_PATH)\ddraw.pdb"</Command>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
-      <AdditionalLibraryDirectories>$(WindowsSDK_LibraryPath_x86);</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
     </Link>
     <CustomBuildStep>
       <Command>copy "shaders\*.*" "$(G1_SYSTEM_PATH)\GD3D11\shaders\"
@@ -194,12 +203,15 @@ copy "$(OutDir)$(TargetName).pdb" "$(G1_SYSTEM_PATH)\ddraw.pdb"</Command>
       <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BUILD_GOTHIC_2_6_fix;_USE_MATH_DEFINES;WIN32_LEAN_AND_MEAN;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;_USRDLL;D3D11ENGINE_EXPORTS;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BUILD_GOTHIC_2_6_fix;_USE_MATH_DEFINES;WIN32_LEAN_AND_MEAN;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;_USRDLL;D3D11ENGINE_EXPORTS;NOMINMAX;%(PreprocessorDefinitions);WINVER=0x0601;_WIN32_WINNT=0x0601;NTDDI_VERSION=0x06010000;_WIN7_PLATFORM_UPDATE=1</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <DisableSpecificWarnings>4530;4577;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4005;4530;4577;26812;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <FloatingPointModel>Fast</FloatingPointModel>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -210,7 +222,8 @@ copy "$(OutDir)$(TargetName).pdb" "$(G1_SYSTEM_PATH)\ddraw.pdb"</Command>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
-      <AdditionalLibraryDirectories>$(WindowsSDK_LibraryPath_x86);</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
     </Link>
     <CustomBuildStep>
       <Command>copy "shaders\*.*" "$(G2_SYSTEM_PATH)\GD3D11\shaders\"
@@ -226,12 +239,15 @@ copy "$(OutDir)$(TargetName).pdb" "$(G2_SYSTEM_PATH)\ddraw.pdb"</Command>
       <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BUILD_SPACER;BUILD_GOTHIC_2_6_fix;_USE_MATH_DEFINES;WIN32_LEAN_AND_MEAN;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;_USRDLL;D3D11ENGINE_EXPORTS;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BUILD_SPACER;BUILD_GOTHIC_2_6_fix;_USE_MATH_DEFINES;WIN32_LEAN_AND_MEAN;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;_USRDLL;D3D11ENGINE_EXPORTS;NOMINMAX;%(PreprocessorDefinitions);WINVER 0x0601;_WIN32_WINNT 0x0601;NTDDI_VERSION 0x06010000;_WIN7_PLATFORM_UPDATE 1</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <DisableSpecificWarnings>4530;4577;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4005;4530;4577;26812;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <FloatingPointModel>Fast</FloatingPointModel>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -257,10 +273,14 @@ copy "$(OutDir)$(TargetName).pdb" "$(G2_SYSTEM_PATH)\ddraw.pdb"</Command>
       <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BUILD_GOTHIC_1_08k;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;_USRDLL;D3D11ENGINE_EXPORTS;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BUILD_GOTHIC_1_08k;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;_USRDLL;D3D11ENGINE_EXPORTS;NOMINMAX;%(PreprocessorDefinitions);WINVER=0x0601;_WIN32_WINNT=0x0601;NTDDI_VERSION=0x06010000;_WIN7_PLATFORM_UPDATE=1</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <DisableSpecificWarnings>4530;4577;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4005;4530;4577;26812;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <FloatingPointModel>Fast</FloatingPointModel>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -269,8 +289,9 @@ copy "$(OutDir)$(TargetName).pdb" "$(G2_SYSTEM_PATH)\ddraw.pdb"</Command>
       <OptimizeReferences>true</OptimizeReferences>
       <ModuleDefinitionFile>ddraw.def</ModuleDefinitionFile>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
-      <DelayLoadDLLs>d3dcompiler_46.dll;FW1FontWrapper.dll;Assimp32.dll;AntTweakBar.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
-      <AdditionalLibraryDirectories>$(WindowsSDK_LibraryPath_x86);</AdditionalLibraryDirectories>
+      <DelayLoadDLLs>d3dcompiler_47.dll;assimp-vc142-mt.dll;AntTweakBar.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
     </Link>
     <CustomBuildStep>
       <Command>copy "shaders\*.*" "$(G1_SYSTEM_PATH)\GD3D11\shaders\"
@@ -283,40 +304,6 @@ copy "$(OutDir)$(TargetName).pdb" "$(G1_SYSTEM_PATH)\ddraw.pdb"</Command>
   <ItemGroup>
     <ClInclude Include="AlignedAllocator.h" />
     <ClInclude Include="AntTweakBar.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\ai_assert.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\anim.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\camera.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\cexport.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\cfileio.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\cimport.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\color4.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\Compiler\poppack1.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\Compiler\pushpack1.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\config.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\DefaultLogger.hpp" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\defs.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\Exporter.hpp" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\Importer.hpp" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\importerdesc.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\IOStream.hpp" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\IOSystem.hpp" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\light.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\Logger.hpp" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\LogStream.hpp" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\material.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\matrix3x3.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\matrix4x4.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\mesh.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\NullLogger.hpp" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\postprocess.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\ProgressHandler.hpp" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\quaternion.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\scene.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\texture.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\types.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\vector2.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\vector3.h" />
-    <ClInclude Include="assimp--3.0.1270-sdk\include\assimp\version.h" />
     <ClInclude Include="BaseAntTweakBar.h" />
     <ClInclude Include="BasePipelineStates.h" />
     <ClInclude Include="BaseLineRenderer.h" />
@@ -374,7 +361,6 @@ copy "$(OutDir)$(TargetName).pdb" "$(G1_SYSTEM_PATH)\ddraw.pdb"</Command>
     <ClInclude Include="D3D7\MyDirectDrawSurface7.h" />
     <ClInclude Include="EditorLinePrimitive.h" />
     <ClInclude Include="Engine.h" />
-    <ClInclude Include="GCamera.h" />
     <ClInclude Include="GFSDK_SSAO.h" />
     <ClInclude Include="GInventory.h" />
     <ClInclude Include="GMesh.h" />
@@ -393,7 +379,79 @@ copy "$(OutDir)$(TargetName).pdb" "$(G1_SYSTEM_PATH)\ddraw.pdb"</Command>
     <ClInclude Include="HookExceptionFilter.h" />
     <ClInclude Include="HookedFunctions.h" />
     <ClInclude Include="IkarusBindings.h" />
-    <ClInclude Include="lodepng.h" />
+    <ClInclude Include="include\assimp\aabb.h" />
+    <ClInclude Include="include\assimp\ai_assert.h" />
+    <ClInclude Include="include\assimp\anim.h" />
+    <ClInclude Include="include\assimp\BaseImporter.h" />
+    <ClInclude Include="include\assimp\Bitmap.h" />
+    <ClInclude Include="include\assimp\BlobIOSystem.h" />
+    <ClInclude Include="include\assimp\ByteSwapper.h" />
+    <ClInclude Include="include\assimp\camera.h" />
+    <ClInclude Include="include\assimp\cexport.h" />
+    <ClInclude Include="include\assimp\cfileio.h" />
+    <ClInclude Include="include\assimp\cimport.h" />
+    <ClInclude Include="include\assimp\color4.h" />
+    <ClInclude Include="include\assimp\config.h" />
+    <ClInclude Include="include\assimp\CreateAnimMesh.h" />
+    <ClInclude Include="include\assimp\DefaultIOStream.h" />
+    <ClInclude Include="include\assimp\DefaultIOSystem.h" />
+    <ClInclude Include="include\assimp\DefaultLogger.hpp" />
+    <ClInclude Include="include\assimp\Defines.h" />
+    <ClInclude Include="include\assimp\defs.h" />
+    <ClInclude Include="include\assimp\Exceptional.h" />
+    <ClInclude Include="include\assimp\Exporter.hpp" />
+    <ClInclude Include="include\assimp\fast_atof.h" />
+    <ClInclude Include="include\assimp\GenericProperty.h" />
+    <ClInclude Include="include\assimp\Hash.h" />
+    <ClInclude Include="include\assimp\Importer.hpp" />
+    <ClInclude Include="include\assimp\importerdesc.h" />
+    <ClInclude Include="include\assimp\IOStream.hpp" />
+    <ClInclude Include="include\assimp\IOStreamBuffer.h" />
+    <ClInclude Include="include\assimp\IOSystem.hpp" />
+    <ClInclude Include="include\assimp\irrXMLWrapper.h" />
+    <ClInclude Include="include\assimp\light.h" />
+    <ClInclude Include="include\assimp\LineSplitter.h" />
+    <ClInclude Include="include\assimp\LogAux.h" />
+    <ClInclude Include="include\assimp\Logger.hpp" />
+    <ClInclude Include="include\assimp\LogStream.hpp" />
+    <ClInclude Include="include\assimp\Macros.h" />
+    <ClInclude Include="include\assimp\material.h" />
+    <ClInclude Include="include\assimp\MathFunctions.h" />
+    <ClInclude Include="include\assimp\matrix3x3.h" />
+    <ClInclude Include="include\assimp\matrix4x4.h" />
+    <ClInclude Include="include\assimp\MemoryIOWrapper.h" />
+    <ClInclude Include="include\assimp\mesh.h" />
+    <ClInclude Include="include\assimp\metadata.h" />
+    <ClInclude Include="include\assimp\NullLogger.hpp" />
+    <ClInclude Include="include\assimp\ParsingUtils.h" />
+    <ClInclude Include="include\assimp\pbrmaterial.h" />
+    <ClInclude Include="include\assimp\postprocess.h" />
+    <ClInclude Include="include\assimp\Profiler.h" />
+    <ClInclude Include="include\assimp\ProgressHandler.hpp" />
+    <ClInclude Include="include\assimp\qnan.h" />
+    <ClInclude Include="include\assimp\quaternion.h" />
+    <ClInclude Include="include\assimp\RemoveComments.h" />
+    <ClInclude Include="include\assimp\scene.h" />
+    <ClInclude Include="include\assimp\SceneCombiner.h" />
+    <ClInclude Include="include\assimp\SGSpatialSort.h" />
+    <ClInclude Include="include\assimp\SkeletonMeshBuilder.h" />
+    <ClInclude Include="include\assimp\SmoothingGroups.h" />
+    <ClInclude Include="include\assimp\SpatialSort.h" />
+    <ClInclude Include="include\assimp\StandardShapes.h" />
+    <ClInclude Include="include\assimp\StreamReader.h" />
+    <ClInclude Include="include\assimp\StreamWriter.h" />
+    <ClInclude Include="include\assimp\StringComparison.h" />
+    <ClInclude Include="include\assimp\StringUtils.h" />
+    <ClInclude Include="include\assimp\Subdivision.h" />
+    <ClInclude Include="include\assimp\texture.h" />
+    <ClInclude Include="include\assimp\TinyFormatter.h" />
+    <ClInclude Include="include\assimp\types.h" />
+    <ClInclude Include="include\assimp\vector2.h" />
+    <ClInclude Include="include\assimp\vector3.h" />
+    <ClInclude Include="include\assimp\version.h" />
+    <ClInclude Include="include\assimp\Vertex.h" />
+    <ClInclude Include="include\assimp\XMLTools.h" />
+    <ClInclude Include="include\assimp\ZipArchiveIOSystem.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="MemoryTracker.h" />
     <ClInclude Include="MeshModifier.h" />
@@ -404,20 +462,6 @@ copy "$(OutDir)$(TargetName).pdb" "$(G1_SYSTEM_PATH)\ddraw.pdb"</Command>
     <ClInclude Include="pch.h" />
     <ClInclude Include="BaseShadowedPointLight.h" />
     <ClInclude Include="SV_GMeshInfoView.h" />
-    <ClInclude Include="squish-1.11\alpha.h" />
-    <ClInclude Include="squish-1.11\clusterfit.h" />
-    <ClInclude Include="squish-1.11\colourblock.h" />
-    <ClInclude Include="squish-1.11\colourfit.h" />
-    <ClInclude Include="squish-1.11\colourset.h" />
-    <ClInclude Include="squish-1.11\config.h" />
-    <ClInclude Include="squish-1.11\maths.h" />
-    <ClInclude Include="squish-1.11\rangefit.h" />
-    <ClInclude Include="squish-1.11\simd.h" />
-    <ClInclude Include="squish-1.11\simd_float.h" />
-    <ClInclude Include="squish-1.11\simd_sse.h" />
-    <ClInclude Include="squish-1.11\simd_ve.h" />
-    <ClInclude Include="squish-1.11\singlecolourfit.h" />
-    <ClInclude Include="squish-1.11\squish.h" />
     <ClInclude Include="StackWalker.h" />
     <ClInclude Include="SV_Border.h" />
     <ClInclude Include="SV_Button.h" />
@@ -476,9 +520,11 @@ copy "$(OutDir)$(TargetName).pdb" "$(G1_SYSTEM_PATH)\ddraw.pdb"</Command>
     <ClInclude Include="zCWorld.h" />
     <ClInclude Include="ZenGinTypes.h" />
     <ClInclude Include="zFILE.h" />
+    <ClInclude Include="zFont.h" />
     <ClInclude Include="ZipArchive.h" />
     <ClInclude Include="zSTRING.h" />
     <ClInclude Include="zTypes.h" />
+    <ClInclude Include="zViewTypes.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BaseAntTweakBar.cpp" />
@@ -559,7 +605,6 @@ copy "$(OutDir)$(TargetName).pdb" "$(G1_SYSTEM_PATH)\ddraw.pdb"</Command>
     </ClCompile>
     <ClCompile Include="EditorLinePrimitive.cpp" />
     <ClCompile Include="Engine.cpp" />
-    <ClCompile Include="GCamera.cpp" />
     <ClCompile Include="GInventory.cpp" />
     <ClCompile Include="GMesh.cpp" />
     <ClCompile Include="GMeshSimple.cpp" />
@@ -570,13 +615,6 @@ copy "$(OutDir)$(TargetName).pdb" "$(G1_SYSTEM_PATH)\ddraw.pdb"</Command>
     <ClCompile Include="GVegetationBox.cpp" />
     <ClCompile Include="HookedFunctions.cpp" />
     <ClCompile Include="IkarusBindings.cpp" />
-    <ClCompile Include="lodepng.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_Spacer|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_G1|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_G1|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="MeshModifier.cpp" />
     <ClCompile Include="ocean_simulator.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
@@ -600,69 +638,6 @@ copy "$(OutDir)$(TargetName).pdb" "$(G1_SYSTEM_PATH)\ddraw.pdb"</Command>
     </ClCompile>
     <ClCompile Include="BaseShadowedPointLight.cpp" />
     <ClCompile Include="SV_GMeshInfoView.cpp" />
-    <ClCompile Include="squish-1.11\alpha.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_Spacer|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_G1|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_G1|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="squish-1.11\clusterfit.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_Spacer|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_G1|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_G1|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="squish-1.11\colourblock.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_Spacer|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_G1|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_G1|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="squish-1.11\colourfit.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_Spacer|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_G1|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_G1|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="squish-1.11\colourset.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_Spacer|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_G1|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_G1|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="squish-1.11\maths.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_Spacer|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_G1|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_G1|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="squish-1.11\rangefit.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_Spacer|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_G1|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_G1|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="squish-1.11\singlecolourfit.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_Spacer|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_G1|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_G1|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="squish-1.11\squish.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_Spacer|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_NoOpt_G1|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_G1|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="StackWalker.cpp" />
     <ClCompile Include="SV_Border.cpp" />
     <ClCompile Include="SV_Button.cpp" />
@@ -697,29 +672,39 @@ copy "$(OutDir)$(TargetName).pdb" "$(G1_SYSTEM_PATH)\ddraw.pdb"</Command>
     <ClCompile Include="ZipArchive.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="assimp--3.0.1270-sdk\include\assimp\color4.inl" />
-    <None Include="assimp--3.0.1270-sdk\include\assimp\material.inl" />
-    <None Include="assimp--3.0.1270-sdk\include\assimp\matrix3x3.inl" />
-    <None Include="assimp--3.0.1270-sdk\include\assimp\matrix4x4.inl" />
-    <None Include="assimp--3.0.1270-sdk\include\assimp\quaternion.inl" />
-    <None Include="assimp--3.0.1270-sdk\include\assimp\vector2.inl" />
-    <None Include="assimp--3.0.1270-sdk\include\assimp\vector3.inl" />
     <None Include="ddraw.def" />
+    <None Include="include\assimp\.editorconfig" />
+    <None Include="include\assimp\color4.inl" />
+    <None Include="include\assimp\material.inl" />
+    <None Include="include\assimp\matrix3x3.inl" />
+    <None Include="include\assimp\matrix4x4.inl" />
+    <None Include="include\assimp\quaternion.inl" />
+    <None Include="include\assimp\SmoothingGroups.inl" />
+    <None Include="include\assimp\vector2.inl" />
+    <None Include="include\assimp\vector3.inl" />
     <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Effects11\Effects11_2015.vcxproj">
-      <Project>{df460eab-570d-4b50-9089-2e2fc801bf38}</Project>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="..\packages\directxtk_desktop_2015.2019.10.17.1\build\native\directxtk_desktop_2015.targets" Condition="Exists('..\packages\directxtk_desktop_2015.2019.10.17.1\build\native\directxtk_desktop_2015.targets')" />
+    <Import Project="..\packages\fx11_desktop_2015.2019.4.27.1\build\native\fx11_desktop_2015.targets" Condition="Exists('..\packages\fx11_desktop_2015.2019.4.27.1\build\native\fx11_desktop_2015.targets')" />
+    <Import Project="..\packages\Microsoft.XAudio2.Redist.1.2.1\build\native\Microsoft.XAudio2.Redist.targets" Condition="Exists('..\packages\Microsoft.XAudio2.Redist.1.2.1\build\native\Microsoft.XAudio2.Redist.targets')" />
+    <Import Project="..\packages\directxmath.2020.4.23.1\build\native\directxmath.targets" Condition="Exists('..\packages\directxmath.2020.4.23.1\build\native\directxmath.targets')" />
+    <Import Project="..\packages\directxtk_desktop_2017.2020.6.2.1\build\native\directxtk_desktop_2017.targets" Condition="Exists('..\packages\directxtk_desktop_2017.2020.6.2.1\build\native\directxtk_desktop_2017.targets')" />
+    <Import Project="..\packages\directxmesh_desktop_2017.2020.6.2.1\build\native\directxmesh_desktop_2017.targets" Condition="Exists('..\packages\directxmesh_desktop_2017.2020.6.2.1\build\native\directxmesh_desktop_2017.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>Dieses Projekt verweist auf mindestens ein NuGet-Paket, das auf diesem Computer fehlt. Verwenden Sie die Wiederherstellung von NuGet-Paketen, um die fehlenden Dateien herunterzuladen. Weitere Informationen finden Sie unter "http://go.microsoft.com/fwlink/?LinkID=322105". Die fehlende Datei ist "{0}".</ErrorText>
     </PropertyGroup>
-    <Error Condition="!Exists('..\packages\directxtk_desktop_2015.2019.10.17.1\build\native\directxtk_desktop_2015.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\directxtk_desktop_2015.2019.10.17.1\build\native\directxtk_desktop_2015.targets'))" />
+    <Error Condition="!Exists('..\packages\fx11_desktop_2015.2019.4.27.1\build\native\fx11_desktop_2015.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\fx11_desktop_2015.2019.4.27.1\build\native\fx11_desktop_2015.targets'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.XAudio2.Redist.1.2.1\build\native\Microsoft.XAudio2.Redist.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.XAudio2.Redist.1.2.1\build\native\Microsoft.XAudio2.Redist.targets'))" />
+    <Error Condition="!Exists('..\packages\directxmath.2020.4.23.1\build\native\directxmath.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\directxmath.2020.4.23.1\build\native\directxmath.targets'))" />
+    <Error Condition="!Exists('..\packages\directxtk_desktop_2017.2020.6.2.1\build\native\directxtk_desktop_2017.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\directxtk_desktop_2017.2020.6.2.1\build\native\directxtk_desktop_2017.targets'))" />
+    <Error Condition="!Exists('..\packages\directxmesh_desktop_2017.2020.6.2.1\build\native\directxmesh_desktop_2017.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\directxmesh_desktop_2017.2020.6.2.1\build\native\directxmesh_desktop_2017.targets'))" />
   </Target>
+  <!-- For NuGet! This is needed because we use different configuration names than the defaults -->
+  <PropertyGroup>
+    <directxtk-LibPath>$(directxtk-LibPath)\..\Release</directxtk-LibPath>
+    <fx11-LibPath>$(fx11-LibPath)\..\Release</fx11-LibPath>
+  </PropertyGroup>
 </Project>

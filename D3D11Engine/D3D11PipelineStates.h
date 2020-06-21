@@ -4,11 +4,9 @@
 #include "Engine.h"
 #include "D3D11GraphicsEngineBase.h"
 
-class D3D11DepthBufferState : public BaseDepthBufferState
-{
+class D3D11DepthBufferState : public BaseDepthBufferState {
 public:
-	D3D11DepthBufferState(const GothicDepthBufferStateInfo& state) : BaseDepthBufferState(state)
-	{
+	D3D11DepthBufferState( const GothicDepthBufferStateInfo& state ) : BaseDepthBufferState( state ) {
 		const GothicDepthBufferStateInfo& ds = state;
 		Values = ds;
 
@@ -17,11 +15,9 @@ public:
 		// Depth test parameters
 		depthStencilDesc.DepthEnable = ds.DepthBufferEnabled;
 
-		if (ds.DepthWriteEnabled)
-		{
+		if ( ds.DepthWriteEnabled ) {
 			depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-		} else
-		{
+		} else {
 			depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
 		}
 		depthStencilDesc.DepthFunc = (D3D11_COMPARISON_FUNC)ds.DepthBufferCompareFunc;
@@ -43,7 +39,7 @@ public:
 		depthStencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
 		depthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
 
-		((D3D11GraphicsEngineBase *)Engine::GraphicsEngine)->GetDevice()->CreateDepthStencilState(&depthStencilDesc, &State);
+		((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetDevice()->CreateDepthStencilState( &depthStencilDesc, &State );
 
 		// Insert into state-map
 		int id = D3D11ObjectIDs::Counters.DepthStateCounter++;
@@ -51,11 +47,10 @@ public:
 		D3D11ObjectIDs::DepthStateByID[id] = this;
 	}
 
-	virtual ~D3D11DepthBufferState()
-	{
-		if (State)State->Release();
+	virtual ~D3D11DepthBufferState() {
+		if ( State )State->Release();
 
-		Toolbox::EraseByElement<UINT8, D3D11DepthBufferState*>(D3D11ObjectIDs::DepthStateByID, this);
+		Toolbox::EraseByElement<UINT8, D3D11DepthBufferState*>( D3D11ObjectIDs::DepthStateByID, this );
 	}
 
 	ID3D11DepthStencilState* State;
@@ -64,11 +59,9 @@ public:
 
 };
 
-class D3D11BlendStateInfo : public BaseBlendStateInfo
-{
+class D3D11BlendStateInfo : public BaseBlendStateInfo {
 public:
-	D3D11BlendStateInfo(const GothicBlendStateInfo& state) : BaseBlendStateInfo(state)
-	{
+	D3D11BlendStateInfo( const GothicBlendStateInfo& state ) : BaseBlendStateInfo( state ) {
 		const GothicBlendStateInfo& bs = state;
 		Values = bs;
 
@@ -77,8 +70,8 @@ public:
 		blendDesc.AlphaToCoverageEnable = bs.AlphaToCoverage;
 		blendDesc.IndependentBlendEnable = FALSE;
 
-		blendDesc.RenderTarget[0].RenderTargetWriteMask = bs.ColorWritesEnabled ? (D3D11_COLOR_WRITE_ENABLE_RED | 
-			D3D11_COLOR_WRITE_ENABLE_BLUE | 
+		blendDesc.RenderTarget[0].RenderTargetWriteMask = bs.ColorWritesEnabled ? (D3D11_COLOR_WRITE_ENABLE_RED |
+			D3D11_COLOR_WRITE_ENABLE_BLUE |
 			D3D11_COLOR_WRITE_ENABLE_GREEN |
 			D3D11_COLOR_WRITE_ENABLE_ALPHA) : 0;
 
@@ -90,7 +83,7 @@ public:
 		blendDesc.RenderTarget[0].BlendOpAlpha = (D3D11_BLEND_OP)bs.BlendOpAlpha;
 		blendDesc.RenderTarget[0].BlendEnable = bs.BlendEnabled;
 
-		((D3D11GraphicsEngineBase *)Engine::GraphicsEngine)->GetDevice()->CreateBlendState(&blendDesc, &State);
+		((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetDevice()->CreateBlendState( &blendDesc, &State );
 
 		// Insert into state-map
 		int id = D3D11ObjectIDs::Counters.BlendStateCounter++;
@@ -98,31 +91,28 @@ public:
 		D3D11ObjectIDs::BlendStateByID[id] = this;
 	}
 
-	virtual ~D3D11BlendStateInfo()
-	{
-		if (State)State->Release();
+	virtual ~D3D11BlendStateInfo() {
+		if ( State )State->Release();
 
-		Toolbox::EraseByElement<UINT8, D3D11BlendStateInfo*>(D3D11ObjectIDs::BlendStateByID, this);
+		Toolbox::EraseByElement<UINT8, D3D11BlendStateInfo*>( D3D11ObjectIDs::BlendStateByID, this );
 	}
 
 	ID3D11BlendState* State;
 	GothicBlendStateInfo Values;
 
-	
+
 };
 
-class D3D11RasterizerStateInfo : public BaseRasterizerStateInfo
-{
+class D3D11RasterizerStateInfo : public BaseRasterizerStateInfo {
 public:
-	D3D11RasterizerStateInfo(const GothicRasterizerStateInfo& state) : BaseRasterizerStateInfo(state)
-	{
+	D3D11RasterizerStateInfo( const GothicRasterizerStateInfo& state ) : BaseRasterizerStateInfo( state ) {
 		const GothicRasterizerStateInfo& rs = state;
 		Values = rs;
 
 		D3D11_RASTERIZER_DESC rasterizerDesc;
 		rasterizerDesc.CullMode = (D3D11_CULL_MODE)rs.CullMode;
 
-		if (rs.Wireframe)
+		if ( rs.Wireframe )
 			rasterizerDesc.FillMode = D3D11_FILL_WIREFRAME;
 		else
 			rasterizerDesc.FillMode = D3D11_FILL_SOLID;
@@ -136,7 +126,7 @@ public:
 		rasterizerDesc.MultisampleEnable = false;
 		rasterizerDesc.AntialiasedLineEnable = true;
 
-		((D3D11GraphicsEngineBase *)Engine::GraphicsEngine)->GetDevice()->CreateRasterizerState(&rasterizerDesc, &State);
+		((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetDevice()->CreateRasterizerState( &rasterizerDesc, &State );
 
 		// Insert into state-map
 		int id = D3D11ObjectIDs::Counters.RasterizerCounter++;
@@ -144,11 +134,10 @@ public:
 		D3D11ObjectIDs::RasterizerStateByID[id] = this;
 	}
 
-	virtual ~D3D11RasterizerStateInfo()
-	{
-		if (State)State->Release();
+	virtual ~D3D11RasterizerStateInfo() {
+		if ( State )State->Release();
 
-		Toolbox::EraseByElement<UINT8, D3D11RasterizerStateInfo*>(D3D11ObjectIDs::RasterizerStateByID, this);
+		Toolbox::EraseByElement<UINT8, D3D11RasterizerStateInfo*>( D3D11ObjectIDs::RasterizerStateByID, this );
 	}
 
 	ID3D11RasterizerState* State;

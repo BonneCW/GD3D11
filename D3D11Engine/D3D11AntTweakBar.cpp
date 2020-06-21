@@ -4,25 +4,20 @@
 #include "Engine.h"
 #include "D3D11GraphicsEngineBase.h"
 
-D3D11AntTweakBar::D3D11AntTweakBar()
-{
-}
+D3D11AntTweakBar::D3D11AntTweakBar() {}
 
 
-D3D11AntTweakBar::~D3D11AntTweakBar()
-{
-}
+D3D11AntTweakBar::~D3D11AntTweakBar() {}
 
 /** Creates the resources */
-XRESULT D3D11AntTweakBar::Init()
-{
-	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase *)Engine::GraphicsEngine;
+XRESULT D3D11AntTweakBar::Init() {
+	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
 	LogInfo() << "Initializing AntTweakBar";
-	if (!TwInit(TW_DIRECT3D11, engine->GetDevice()))
+	if ( !TwInit( TW_DIRECT3D11, engine->GetDevice() ) )
 		return XR_FAILED;
 
-	TwWindowSize(engine->GetResolution().x, engine->GetResolution().y);
+	TwWindowSize( engine->GetResolution().x, engine->GetResolution().y );
 
 	return BaseAntTweakBar::Init();
 }

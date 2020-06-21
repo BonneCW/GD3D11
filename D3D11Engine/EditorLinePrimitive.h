@@ -24,79 +24,77 @@
 
 struct LineVertex;
 class D3D11PShader;
-class EditorLinePrimitive
-{
+class EditorLinePrimitive {
 public:
 	EditorLinePrimitive();
 	virtual ~EditorLinePrimitive();
 
 	/** Creates the buffers (Polygon-version) and sets up the rest of the object */
-	HRESULT CreateSolidPrimitive(LineVertex * PrimVerts, UINT NumVertices, D3D11_PRIMITIVE_TOPOLOGY Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	HRESULT CreateSolidPrimitive( LineVertex* PrimVerts, UINT NumVertices, D3D11_PRIMITIVE_TOPOLOGY Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
 
 	/** Creates the buffers (line-version) and sets up the rest of the object */
-	HRESULT CreatePrimitive(LineVertex * PrimVerts, UINT NumVertices, D3D11_PRIMITIVE_TOPOLOGY Topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+	HRESULT CreatePrimitive( LineVertex* PrimVerts, UINT NumVertices, D3D11_PRIMITIVE_TOPOLOGY Topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST );
 
 	/** Creates a circle of lines. Axis: 0=xz 1=yx 2=yz*/
-	HRESULT CreateCirclePrimitive(float Radius, UINT Detail, const DirectX::SimpleMath::Vector4 * Color, int Axis = 0);
+	HRESULT CreateCirclePrimitive( float Radius, UINT Detail, const float4& Color, int Axis = 0 );
 
 	/** Creates a plate, not of lines. Can't use intersection on this*/
-	HRESULT CreateFilledCirclePrimitive(float Radius, UINT Detail, const DirectX::SimpleMath::Vector4 * Color, int Axis = 0);
+	HRESULT CreateFilledCirclePrimitive( float Radius, UINT Detail, const float4& Color, int Axis = 0 );
 
 	/** Creates a ball of lines.*/
-	HRESULT CreateLineBallPrimitive(UINT Detail, const DirectX::SimpleMath::Vector4 * Color);
+	HRESULT CreateLineBallPrimitive( UINT Detail, const float4& Color );
 
 	/** Creates an arrow of lines */
-	HRESULT CreateArrowPrimitive(const DirectX::SimpleMath::Vector4 * Color, float ArrowRadius = 0.25, float ArrowOffset = 0.75);
+	HRESULT CreateArrowPrimitive( const float4& Color, float ArrowRadius = 0.25, float ArrowOffset = 0.75 );
 
 	/** Creates a cone of lines */
-	HRESULT CreateSimpleConePrimitive(float Length, float Radius, UINT Detail, const DirectX::SimpleMath::Vector4 * Color);
+	HRESULT CreateSimpleConePrimitive( float Length, float Radius, UINT Detail, const float4& Color );
 
 	/** Creates a box of lines */
-	HRESULT CreateLineBoxPrimitive(DirectX::SimpleMath::Vector4 * Color);
+	HRESULT CreateLineBoxPrimitive( float4& Color );
 
 	/** Creates a solid box */
-	HRESULT CreateSolidBoxPrimitive(DirectX::SimpleMath::Vector4 * Color, float Extends);
+	HRESULT CreateSolidBoxPrimitive( float4& Color, float Extends );
 
 	/** Creates a grid of lines (1x1)*/
-	HRESULT CreateLineGrid(int LinesX,int LinesY, DirectX::SimpleMath::Vector2 * Middle, DirectX::SimpleMath::Vector4 * Color);
+	HRESULT CreateLineGrid( int LinesX, int LinesY, DirectX::XMFLOAT2* Middle, const float4& Color );
 
 	/** Sets the shader to render with */
-	void SetShader(D3D11PShader * Shader);
-	void SetSolidShader(D3D11PShader * SolidShader);
+	void SetShader( D3D11PShader* Shader );
+	void SetSolidShader( D3D11PShader* SolidShader );
 
 	/** Sets the transforms */
-	void SetLocation(const DirectX::SimpleMath::Vector3 & NewLoc);
-	void SetRotation(const DirectX::SimpleMath::Vector3 & NewRotation);
-	void SetScale(const DirectX::SimpleMath::Vector3 & NewScale);
-	void SetWorldMatrix(const DirectX::SimpleMath::Matrix* World,const DirectX::SimpleMath::Vector3 * Loc,const DirectX::SimpleMath::Vector3 * Rot,const DirectX::SimpleMath::Vector3 * Scale);
+	void __vectorcall SetLocation( DirectX::FXMVECTOR NewLoc );
+	void __vectorcall SetRotation( DirectX::FXMVECTOR NewRotation );
+	void __vectorcall SetScale( DirectX::FXMVECTOR NewScale );
+	void __vectorcall SetWorldMatrix( DirectX::XMMATRIX World, DirectX::FXMVECTOR Loc, DirectX::FXMVECTOR Rot, DirectX::GXMVECTOR Scale );
 
 	/** Renders the primitive */
-	HRESULT RenderPrimitive(int Pass=-1);
+	HRESULT RenderPrimitive( int Pass = -1 );
 
 	/** If set to true, the primitive will ignore all drawcalls automatically */
-	void SetHidden(bool bIsHidden)
-	{
+	void SetHidden( bool bIsHidden ) {
 		bHidden = bIsHidden;
 	}
 
 	/** Intersects the whole primitive. If hit, it returns a distance other than -1 */
-	float IntersectPrimitive(DirectX::SimpleMath::Vector3 * RayOrigin, DirectX::SimpleMath::Vector3 * RayDirection, float Epsilon = 0.01);
+	float __vectorcall IntersectPrimitive( DirectX::FXMVECTOR RayOrigin, DirectX::FXMVECTOR RayDirection, float Epsilon = 0.01 );
 
-	bool IntersectTriangle(const DirectX::SimpleMath::Vector3 * orig, const DirectX::SimpleMath::Vector3 * dir,
-		DirectX::SimpleMath::Vector3 & v0, DirectX::SimpleMath::Vector3 & v1, DirectX::SimpleMath::Vector3 & v2,
-                        FLOAT* t, FLOAT* u, FLOAT* v);
+	bool __vectorcall IntersectTriangle( DirectX::FXMVECTOR orig, DirectX::FXMVECTOR dir,
+		DirectX::FXMVECTOR v0, DirectX::GXMVECTOR v1, DirectX::HXMVECTOR v2,
+		FLOAT* t, FLOAT* u, FLOAT* v );
 
 	/** Puts the color into the Normal and TexCoord channels */
-	static void EncodeColor(LineVertex * vx, const DirectX::SimpleMath::Vector4 * Color);
+	static void EncodeColor( LineVertex* vx, const float4& Color );
 
-	GETSET(DirectX::SimpleMath::Matrix, RotationMatrix);
-	GETSET(DirectX::SimpleMath::Vector3, RotationMatrixAngles);
-	
+	GETSET( DirectX::XMFLOAT4X4, RotationMatrix );
+	GETSET( DirectX::XMFLOAT3, RotationMatrixAngles );
 
-	GET_PTR(D3D11PShader *, PrimShader);
-	GET_PTR(D3D11PShader *, SolidPrimShader);
-	GETSET_MEMBER(bool, bLocalRotation);
-	GETSET_MEMBER(bool, bJustUseRotationMatrix); // If true we will just multiply the existing rotation matrix when creating a new world matrix
+
+	GET_PTR( D3D11PShader*, PrimShader );
+	GET_PTR( D3D11PShader*, SolidPrimShader );
+	GETSET_MEMBER( bool, bLocalRotation );
+	GETSET_MEMBER( bool, bJustUseRotationMatrix ); // If true we will just multiply the existing rotation matrix when creating a new world matrix
 private:
 
 	/** Deletes all content */
@@ -106,41 +104,41 @@ private:
 	void RecalcTransforms();
 
 	/** Intersects only one line segment */
-	float IntersectLineSegment(const DirectX::SimpleMath::Vector3 * rayOrigin,const DirectX::SimpleMath::Vector3 * rayVec,const DirectX::SimpleMath::Vector3 * lineStart,const DirectX::SimpleMath::Vector3 * lineEnd, float Epsilon);
+	float IntersectLineSegment( DirectX::FXMVECTOR rayOrigin, DirectX::FXMVECTOR rayVec, DirectX::FXMVECTOR lineStart, DirectX::GXMVECTOR lineEnd, float Epsilon );
 
-	
+
 
 	/** Renders a vertexbuffer with the given shader */
-	void RenderVertexBuffer(ID3D11Buffer* VB, UINT NumVertices, D3D11PShader * Shader, D3D11_PRIMITIVE_TOPOLOGY Topology, int Pass = -1);
+	void RenderVertexBuffer( ID3D11Buffer* VB, UINT NumVertices, D3D11PShader* Shader, D3D11_PRIMITIVE_TOPOLOGY Topology, int Pass = -1 );
 
 	/** The bunch of vertices we have */
-	LineVertex * Vertices;
+	LineVertex* Vertices;
 	UINT NumVertices;
 
 	/** Vertex buffer */
 	ID3D11Buffer* PrimVB;
 
 	/** Primitives shaders */
-	D3D11PShader * PrimShader;
-	D3D11PShader * SolidPrimShader;
+	D3D11PShader* PrimShader;
+	D3D11PShader* SolidPrimShader;
 
 
 	/** Solid vertices we have */
-	LineVertex * SolidVertices;
+	LineVertex* SolidVertices;
 	UINT NumSolidVertices;
 	ID3D11Buffer* SolidPrimVB;
 
 	/** Transforms */
-	DirectX::SimpleMath::Vector3 Location;
-	DirectX::SimpleMath::Vector3 Rotation;
-	DirectX::SimpleMath::Vector3 Scale;
+	DirectX::XMFLOAT3 Location;
+	DirectX::XMFLOAT3 Rotation;
+	DirectX::XMFLOAT3 Scale;
 
 	/** Transform matrix */
-	DirectX::SimpleMath::Matrix WorldMatrix;
+	DirectX::XMFLOAT4X4 WorldMatrix;
 
 	/* Matrix for rotation and it's angles */
-	DirectX::SimpleMath::Matrix RotationMatrix;
-	DirectX::SimpleMath::Vector3 RotationMatrixAngles;
+	DirectX::XMFLOAT4X4 RotationMatrix;
+	DirectX::XMFLOAT3 RotationMatrixAngles;
 
 	/** If true, ignore drawcalls */
 	bool bHidden;

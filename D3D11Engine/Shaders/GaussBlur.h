@@ -33,7 +33,7 @@ static const float GAUSS_BlurWeights[13] =
 	0.0048748912161282396, 
 };
 
-float BlurSimple(float2 pixelSize, float2 texCoord, Texture2D tx, SamplerState ss, float blurSize = 1.0f)
+float4 BlurSimple(float2 pixelSize, float2 texCoord, Texture2D tx, SamplerState ss, float blurSize = 1.0f)
 {
 	float4 c = 0;
 
@@ -73,10 +73,10 @@ float4 DoBlurPassSingle(float2 pixelSize, float2 texCoord, Texture2D tx, Texture
     }*/
 	
 	float4 center = tx.Sample(ss, texCoord);
-	float centerDepth = depth.Sample(ss, texCoord);
+	float4 centerDepth = depth.Sample(ss, texCoord);
 	
 	int i=0;
-	for(int x = -5; x < 5; x++) 
+	[unroll] for(int x = -5; x < 5; x++) 
 	{
 		for(int y = -5; y < 5; y++) 
 		{
@@ -84,9 +84,9 @@ float4 DoBlurPassSingle(float2 pixelSize, float2 texCoord, Texture2D tx, Texture
 						
 			float2 uv = texCoord + (px * pixelSize * blurSize);
 			
-			float d = depth.Sample(ss, uv);
+			float4 d = depth.Sample(ss, uv);
 			
-			if(centerDepth > d + 0.0018f)
+			if((float)centerDepth > (float)d + 0.0018f)
 				continue;
 			else
 				c += tx.Sample(ss, uv);

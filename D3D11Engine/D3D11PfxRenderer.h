@@ -10,17 +10,16 @@ class D3D11PFX_HDR;
 class D3D11PFX_SMAA;
 class D3D11PFX_GodRays;
 class D3D11NVHBAO;
-class D3D11PfxRenderer
-{
+class D3D11PfxRenderer {
 public:
 	D3D11PfxRenderer();
 	~D3D11PfxRenderer();
 
 	/** Called on resize */
-	XRESULT OnResize(const INT2 & newResolution);
+	XRESULT OnResize( const INT2& newResolution );
 
 	/** Blurs the given texture */
-	XRESULT BlurTexture(RenderToTextureBuffer * texture, bool leaveResultInD4_2 = false, float scale = 1.0f, const DirectX::SimpleMath::Vector4 & colorMod = DirectX::SimpleMath::Vector4::One, const std::string & finalCopyShader = "PS_PFX_Simple");
+	XRESULT BlurTexture( RenderToTextureBuffer* texture, bool leaveResultInD4_2 = false, float scale = 1.0f, const DirectX::XMFLOAT4& colorMod = DirectX::XMFLOAT4( 1, 1, 1, 1 ), const std::string& finalCopyShader = "PS_PFX_Simple" );
 
 	/** Renders the heightfog */
 	XRESULT RenderHeightfog();
@@ -38,21 +37,21 @@ public:
 	XRESULT RenderGodRays();
 
 	/** Copies the given texture to the given RTV */
-	XRESULT CopyTextureToRTV(ID3D11ShaderResourceView * texture, ID3D11RenderTargetView* rtv, INT2 targetResolution = INT2(0, 0), bool useCustomPS = false, INT2 offset = INT2(0, 0));
+	XRESULT CopyTextureToRTV( ID3D11ShaderResourceView* texture, ID3D11RenderTargetView* rtv, INT2 targetResolution = INT2( 0, 0 ), bool useCustomPS = false, INT2 offset = INT2( 0, 0 ) );
 
 	/** Unbinds texturesamplers from the pixel-shader */
-	XRESULT UnbindPSResources(int num);
+	XRESULT UnbindPSResources( int num );
 
 	/** Draws a fullscreenquad */
 	XRESULT DrawFullScreenQuad();
 
 	/** Draws the HBAO-Effect to the given buffer */
-	XRESULT DrawHBAO(ID3D11RenderTargetView* rtv);
+	XRESULT DrawHBAO( ID3D11RenderTargetView* rtv );
 
 	/** Accessors */
-	RenderToTextureBuffer * GetTempBuffer() { return TempBuffer.get(); }
-	RenderToTextureBuffer * GetTempBufferDS4_1() { return TempBufferDS4_1.get(); }
-	RenderToTextureBuffer * GetTempBufferDS4_2() { return TempBufferDS4_2.get(); }
+	RenderToTextureBuffer* GetTempBuffer() { return TempBuffer.get(); }
+	RenderToTextureBuffer* GetTempBufferDS4_1() { return TempBufferDS4_1.get(); }
+	RenderToTextureBuffer* GetTempBufferDS4_2() { return TempBufferDS4_2.get(); }
 
 private:
 	/** Temporary buffer in the same size/format as the backbuffer */

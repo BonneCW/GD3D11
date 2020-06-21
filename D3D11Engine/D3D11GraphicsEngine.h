@@ -2,7 +2,9 @@
 
 #include "D3D11GraphicsEngineBase.h"
 #include "fpslimiter.h"
-#include <wrl.h>
+#include <SpriteFont.h>
+#include <SpriteBatch.h>
+#include <CommonStates.h>
 
 struct RenderToDepthStencilBuffer;
 
@@ -17,9 +19,19 @@ enum D3D11ENGINE_RENDER_STAGE {
 	DES_SHADOWMAP_CUBE
 };
 
-const int DRAWVERTEXARRAY_BUFFER_SIZE = 2048 * sizeof(ExVertexStruct);
+
+struct simpleTextBuffer {
+	std::string str;
+	float x;
+	float y;
+	float4 color;
+	uint8_t fontSize;
+	zTRnd_AlphaBlendFunc blendState;
+};
+
+const int DRAWVERTEXARRAY_BUFFER_SIZE = 2048 * sizeof( ExVertexStruct );
 const int NUM_MAX_BONES = 96;
-const int INSTANCING_BUFFER_SIZE = sizeof(VobInstanceInfo) * 2048;
+const int INSTANCING_BUFFER_SIZE = sizeof( VobInstanceInfo ) * 2048;
 
 const int POINTLIGHT_SHADOWMAP_SIZE = 64;
 
@@ -49,10 +61,10 @@ public:
 	virtual XRESULT Init() override;
 
 	/** Called when the game created its window */
-	virtual XRESULT SetWindow(HWND hWnd) override;
+	virtual XRESULT SetWindow( HWND hWnd ) override;
 
 	/** Called on window resize/resolution change */
-	virtual XRESULT OnResize(INT2 newSize) override;
+	virtual XRESULT OnResize( INT2 newSize ) override;
 
 	/** Called when the game wants to render a new frame */
 	virtual XRESULT OnBeginFrame() override;
@@ -61,22 +73,22 @@ public:
 	virtual XRESULT OnEndFrame() override;
 
 	/** Called to set the current viewport */
-	virtual XRESULT SetViewport(const ViewportInfo& viewportInfo) override;
+	virtual XRESULT SetViewport( const ViewportInfo& viewportInfo ) override;
 
 	/** Called when the game wants to clear the bound rendertarget */
-	virtual XRESULT Clear(const float4 & color);
+	virtual XRESULT Clear( const float4& color );
 
 	/** Creates a vertexbuffer object (Not registered inside) */
-	virtual XRESULT CreateVertexBuffer(D3D11VertexBuffer** outBuffer);
+	virtual XRESULT CreateVertexBuffer( D3D11VertexBuffer** outBuffer );
 
 	/** Creates a texture object (Not registered inside) */
-	virtual XRESULT CreateTexture(D3D11Texture ** outTexture);
+	virtual XRESULT CreateTexture( D3D11Texture** outTexture );
 
 	/** Creates a constantbuffer object (Not registered inside) */
-	virtual XRESULT CreateConstantBuffer(D3D11ConstantBuffer** outCB, void * data, int size);
+	virtual XRESULT CreateConstantBuffer( D3D11ConstantBuffer** outCB, void* data, int size );
 
 	/** Returns a list of available display modes */
-	virtual XRESULT GetDisplayModeList(std::vector<DisplayModeInfo>* modeList, bool includeSuperSampling = false);
+	virtual XRESULT GetDisplayModeList( std::vector<DisplayModeInfo>* modeList, bool includeSuperSampling = false );
 
 	/** Presents the current frame to the screen */
 	virtual XRESULT Present() override;
@@ -84,18 +96,25 @@ public:
 	/** Saves a screenshot */
 	virtual void SaveScreenshot() override;
 
-	/** Draws a vertexbuffer, non-indexed */
-	virtual XRESULT DrawVertexBuffer(D3D11VertexBuffer* vb, unsigned int numVertices, unsigned int stride = sizeof(ExVertexStruct)) override;
+	virtual void DrawString( std::string str, float x, float y, float4 color, zTRnd_AlphaBlendFunc blendState ) override;
+
+	//virtual int MeasureString(std::string str, zFont* zFont) override;
 
 	/** Draws a vertexbuffer, non-indexed */
-	virtual XRESULT DrawVertexBufferIndexed(D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, unsigned int indexOffset = 0) override;
-	virtual XRESULT DrawVertexBufferIndexedUINT(D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, unsigned int indexOffset) override;
+	virtual XRESULT DrawVertexBuffer( D3D11VertexBuffer* vb, unsigned int numVertices, unsigned int stride = sizeof( ExVertexStruct ) ) override;
+
+	/** Draws a vertexbuffer, non-indexed */
+	virtual XRESULT DrawVertexBufferIndexed( D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, unsigned int indexOffset = 0 ) override;
+	virtual XRESULT DrawVertexBufferIndexedUINT( D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, unsigned int indexOffset ) override;
 
 	/** Draws a vertexbuffer, non-indexed, binding the FF-Pipe values */
-	virtual XRESULT DrawVertexBufferFF(D3D11VertexBuffer* vb, unsigned int numVertices, unsigned int startVertex, unsigned int stride = sizeof(ExVertexStruct)) override;
+	virtual XRESULT DrawVertexBufferFF( D3D11VertexBuffer* vb, unsigned int numVertices, unsigned int startVertex, unsigned int stride = sizeof( ExVertexStruct ) ) override;
 
 	/** Binds viewport information to the given constantbuffer slot */
-	virtual XRESULT BindViewportInformation(const std::string & shader, int slot) override;
+	virtual XRESULT BindViewportInformation( const std::string& shader, int slot ) override;
+
+	virtual int MeasureString( const std::string& str, int font = 0 ) override;
+
 
 	/** Sets up a draw call for a VS_Ex-Mesh */
 	void SetupVS_ExMeshDrawCall();
@@ -103,7 +122,7 @@ public:
 	void SetupVS_ExPerInstanceConstantBuffer();
 
 	/** Puts the current world matrix into a CB and binds it to the given slot */
-	void SetupPerInstanceConstantBuffer(int slot=1);
+	void SetupPerInstanceConstantBuffer( int slot = 1 );
 
 	enum EPNAENRenderMode {
 		PNAEN_Default,
@@ -112,31 +131,31 @@ public:
 	};
 
 	/** Sets up everything for a PNAEN-Mesh */
-	void Setup_PNAEN(EPNAENRenderMode mode = PNAEN_Default);
+	void Setup_PNAEN( EPNAENRenderMode mode = PNAEN_Default );
 
 	/** Draws a skeletal mesh */
-	virtual XRESULT DrawSkeletalMesh(D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, const std::vector<DirectX::SimpleMath::Matrix> & transforms, float fatness = 1.0f) override;
+	virtual XRESULT DrawSkeletalMesh( D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, const std::vector<DirectX::XMFLOAT4X4>& transforms, float fatness = 1.0f ) override;
 
 	/** Draws a vertexarray, non-indexed */
-	virtual XRESULT DrawVertexArray(ExVertexStruct* vertices, unsigned int numVertices, unsigned int startVertex = 0, unsigned int stride = sizeof(ExVertexStruct)) override;
+	virtual XRESULT DrawVertexArray( ExVertexStruct* vertices, unsigned int numVertices, unsigned int startVertex = 0, unsigned int stride = sizeof( ExVertexStruct ) ) override;
 
 	/** Draws a vertexarray, indexed */
-	virtual XRESULT DrawIndexedVertexArray(ExVertexStruct* vertices, unsigned int numVertices, D3D11VertexBuffer* ib, unsigned int numIndices, unsigned int stride = sizeof(ExVertexStruct)) override;
+	virtual XRESULT DrawIndexedVertexArray( ExVertexStruct* vertices, unsigned int numVertices, D3D11VertexBuffer* ib, unsigned int numIndices, unsigned int stride = sizeof( ExVertexStruct ) ) override;
 
 	/** Draws a batch of instanced geometry */
-	virtual XRESULT DrawInstanced(D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, void * instanceData, unsigned int instanceDataStride, unsigned int numInstances, unsigned int vertexStride = sizeof(ExVertexStruct));
-	virtual XRESULT DrawInstanced(D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, D3D11VertexBuffer* instanceData, unsigned int instanceDataStride, unsigned int numInstances, unsigned int vertexStride = sizeof(ExVertexStruct), unsigned int startInstanceNum = 0, unsigned int indexOffset = 0);
+	virtual XRESULT DrawInstanced( D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, void* instanceData, unsigned int instanceDataStride, unsigned int numInstances, unsigned int vertexStride = sizeof( ExVertexStruct ) );
+	virtual XRESULT DrawInstanced( D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, D3D11VertexBuffer* instanceData, unsigned int instanceDataStride, unsigned int numInstances, unsigned int vertexStride = sizeof( ExVertexStruct ), unsigned int startInstanceNum = 0, unsigned int indexOffset = 0 );
 
 	/** Called when a vob was removed from the world */
-	virtual XRESULT OnVobRemovedFromWorld(zCVob * vob);
+	virtual XRESULT OnVobRemovedFromWorld( zCVob* vob );
 
 	/** Called when a key got pressed */
-	virtual XRESULT OnKeyDown(unsigned int key) override;
+	virtual XRESULT OnKeyDown( unsigned int key ) override;
 
 	/** Sets the active pixel shader object */
-	virtual XRESULT SetActivePixelShader(const std::string & shader);
-	virtual XRESULT SetActiveVertexShader(const std::string & shader);
-	XRESULT SetActiveHDShader(const std::string & shader);
+	virtual XRESULT SetActivePixelShader( const std::string& shader );
+	virtual XRESULT SetActiveVertexShader( const std::string& shader );
+	XRESULT SetActiveHDShader( const std::string& shader );
 
 	/** Binds the active PixelShader */
 	virtual XRESULT BindActivePixelShader();
@@ -146,28 +165,28 @@ public:
 	void DrawQuadMarks();
 
 	/** Draws the ocean */
-	XRESULT DrawOcean(GOcean* ocean);
+	XRESULT DrawOcean( GOcean* ocean );
 
 	/** Gets the depthbuffer */
-	RenderToDepthStencilBuffer * GetDepthBuffer() { return DepthStencilBuffer.get(); }
+	RenderToDepthStencilBuffer* GetDepthBuffer() { return DepthStencilBuffer.get(); }
 
 	/** Returns the Backbuffers shader resource view */
-	ID3D11ShaderResourceView * GetBackbufferSRV() { return BackbufferSRV.Get(); }
+	ID3D11ShaderResourceView* GetBackbufferSRV() { return BackbufferSRV.Get(); }
 
 	/** Returns the first GBuffer */
-	RenderToTextureBuffer * GetGBuffer0() { return GBuffer0_Diffuse.get(); }
+	RenderToTextureBuffer* GetGBuffer0() { return GBuffer0_Diffuse.get(); }
 
 	/** Returns the second GBuffer */
-	RenderToTextureBuffer * GetGBuffer1() { return GBuffer1_Normals_SpecIntens_SpecPower.get(); }
+	RenderToTextureBuffer* GetGBuffer1() { return GBuffer1_Normals_SpecIntens_SpecPower.get(); }
 
 	/** Returns the HDRBackbuffer */
-	RenderToTextureBuffer * GetHDRBackBuffer() { return HDRBackBuffer.get(); }
+	RenderToTextureBuffer* GetHDRBackBuffer() { return HDRBackBuffer.get(); }
 
 	/** Unbinds the texture at the given slot */
-	virtual XRESULT UnbindTexture(int slot);
+	virtual XRESULT UnbindTexture( int slot );
 
 	/** Sets up the default rendering state */
-	void SetDefaultStates(bool force = false);
+	void SetDefaultStates( bool force = false );
 
 	/** Returns the current resolution (Maybe supersampled)*/
 	INT2 GetResolution();
@@ -176,7 +195,7 @@ public:
 	INT2 GetBackbufferResolution();
 
 	/** Returns the data of the backbuffer */
-	void GetBackbufferData(byte** data, int& pixelsize);
+	void GetBackbufferData( byte** data, int& pixelsize );
 
 	/** Returns the line renderer object */
 	BaseLineRenderer* GetLineRenderer();
@@ -184,36 +203,39 @@ public:
 	/** ---------------- Gothic rendering functions -------------------- */
 
 	/** Draws the world mesh */
-	virtual XRESULT DrawWorldMesh(bool noTextures=false);
+	virtual XRESULT DrawWorldMesh( bool noTextures = false );
 
 	/** Draws a list of mesh infos */
-	XRESULT DrawMeshInfoListAlphablended(const std::vector<std::pair<MeshKey, MeshInfo *>> & list);
+	XRESULT DrawMeshInfoListAlphablended( const std::vector<std::pair<MeshKey, MeshInfo*>>& list );
 
-	XRESULT DrawWorldMeshW(bool noTextures=false);
+	XRESULT DrawWorldMeshW( bool noTextures = false );
 
 	/** Draws the static VOBs */
-	virtual XRESULT DrawVOBs(bool noTextures=false);
+	virtual XRESULT DrawVOBs( bool noTextures = false );
 
 	/** Draws PolyStrips (weapon and particle trails) */
-	XRESULT DrawPolyStrips(bool noTextures = false);
+	XRESULT DrawPolyStrips( bool noTextures = false );
 
 	/** Draws a single VOB */
-	virtual void DrawVobSingle(VobInfo* vob);
+	virtual void DrawVobSingle( VobInfo* vob ) override;
+
+	/** Draws a multiple VOBs (used for inventory) */
+	virtual void DrawVobsList( const std::list<VobInfo*>& vobs, zCCamera& camera ) override;
 
 	/** Draws everything around the given position */
-	void DrawWorldAround(const DirectX::SimpleMath::Vector3 & position, int sectionRange, float vobXZRange, bool cullFront = true, bool dontCull = false);
-	void DrawWorldAround(const DirectX::SimpleMath::Vector3 & position,
+	void XM_CALLCONV DrawWorldAround( DirectX::FXMVECTOR position, int sectionRange, float vobXZRange, bool cullFront = true, bool dontCull = false );
+	void XM_CALLCONV DrawWorldAround( DirectX::FXMVECTOR position,
 		float range,
 		bool cullFront = true,
 		bool indoor = false,
 		bool noNPCs = false,
-		std::list<VobInfo*>* renderedVobs = nullptr, std::list<SkeletalVobInfo*>* renderedMobs = nullptr, std::map<MeshKey, WorldMeshInfo*, cmpMeshKey>* worldMeshCache = nullptr);
+		std::list<VobInfo*>* renderedVobs = nullptr, std::list<SkeletalVobInfo*>* renderedMobs = nullptr, std::map<MeshKey, WorldMeshInfo*, cmpMeshKey>* worldMeshCache = nullptr );
 
 	/** Draws the static vobs instanced */
 	XRESULT DrawVOBsInstanced();
 
 	/** Applys the lighting to the scene */
-	XRESULT DrawLighting(std::vector<VobLightInfo*> & lights);
+	XRESULT DrawLighting( std::vector<VobLightInfo*>& lights );
 
 	/** Called when we started to render the world */
 	virtual XRESULT OnStartWorldRendering();
@@ -222,18 +244,18 @@ public:
 	virtual XRESULT DrawSky();
 
 	/** Renders the shadowmaps for the sun */
-	void RenderShadowmaps(const DirectX::SimpleMath::Vector3 & cameraPosition, RenderToDepthStencilBuffer * target = nullptr, bool cullFront = true, bool dontCull = false, ID3D11DepthStencilView* dsvOverwrite = nullptr, ID3D11RenderTargetView* debugRTV = nullptr);
+	void XM_CALLCONV RenderShadowmaps( DirectX::FXMVECTOR cameraPosition, RenderToDepthStencilBuffer* target = nullptr, bool cullFront = true, bool dontCull = false, ID3D11DepthStencilView* dsvOverwrite = nullptr, ID3D11RenderTargetView* debugRTV = nullptr );
 
 	/** Renders the shadowmaps for a pointlight */
-	void RenderShadowCube(const DirectX::SimpleMath::Vector3 & position,
+	void XM_CALLCONV RenderShadowCube( DirectX::FXMVECTOR position,
 		float range,
-		RenderToDepthStencilBuffer * targetCube,
+		RenderToDepthStencilBuffer* targetCube,
 		ID3D11DepthStencilView* face,
 		ID3D11RenderTargetView* debugRTV = nullptr,
 		bool cullFront = true,
 		bool indoor = false,
 		bool noNPCs = false,
-		std::list<VobInfo*>* renderedVobs = nullptr, std::list<SkeletalVobInfo*>* renderedMobs = nullptr, std::map<MeshKey, WorldMeshInfo*, cmpMeshKey>* worldMeshCache = nullptr);
+		std::list<VobInfo*>* renderedVobs = nullptr, std::list<SkeletalVobInfo*>* renderedMobs = nullptr, std::map<MeshKey, WorldMeshInfo*, cmpMeshKey>* worldMeshCache = nullptr );
 
 	/** Updates the occlusion for the bsp-tree */
 	void UpdateOcclusion();
@@ -242,22 +264,22 @@ public:
 	XRESULT UpdateRenderStates();
 
 	/** Returns the textures drawn this frame */
-	const std::set<zCTexture *> GetFrameTextures() override { return FrameTextures; }
+	const std::set<zCTexture*> GetFrameTextures() override { return FrameTextures; }
 
 	/** Draws a fullscreenquad, copying the given texture to the viewport */
-	void DrawQuad(INT2 position, INT2 size);
+	void DrawQuad( INT2 position, INT2 size );
 
 	/** Sets the current rendering stage */
-	void SetRenderingStage(D3D11ENGINE_RENDER_STAGE stage);
+	void SetRenderingStage( D3D11ENGINE_RENDER_STAGE stage );
 
 	/** Returns the current rendering stage */
 	D3D11ENGINE_RENDER_STAGE GetRenderingStage();
 
 	/** Message-Callback for the main window */
-	virtual LRESULT OnWindowMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+	virtual LRESULT OnWindowMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam );
 
 	/** Constructs the makro list for shader compilation */
-	static void ConstructShaderMakroList(std::vector<D3D10_SHADER_MACRO> & list);
+	static void ConstructShaderMakroList( std::vector<D3D_SHADER_MACRO>& list );
 
 	/** Reloads shaders */
 	virtual XRESULT ReloadShaders();
@@ -266,31 +288,32 @@ public:
 	void DrawWaterSurfaces();
 
 	/** Handles an UI-Event */
-	void OnUIEvent(EUIEvent uiEvent);
+	void OnUIEvent( EUIEvent uiEvent );
 
 	/** Draws the given list of decals */
-	void DrawDecalList(const std::vector<zCVob *> & decals, bool lighting);
+	void DrawDecalList( const std::vector<zCVob*>& decals, bool lighting );
 
 	/** Draws underwater effects */
 	void DrawUnderwaterEffects();
 
 	/** Binds the right shader for the given texture */
-	void BindShaderForTexture(zCTexture * texture, bool forceAlphaTest=false, int zMatAlphaFunc = 0);
+	void BindShaderForTexture( zCTexture* texture, bool forceAlphaTest = false, int zMatAlphaFunc = 0 );
 
 	/** Copies the depth stencil buffer to DepthStencilBufferCopy */
 	void CopyDepthStencil();
 
 	/** Draws particle effects */
-	void DrawFrameParticles(std::map<zCTexture *, std::vector<ParticleInstanceInfo>> & particles, std::map<zCTexture *, ParticleRenderInfo> & info);
+	void DrawFrameParticles( std::map<zCTexture*, std::vector<ParticleInstanceInfo>>& particles, std::map<zCTexture*, ParticleRenderInfo>& info );
 
 	/** Returns the UI-View */
 	D2DView* GetUIView() { return UIView.get(); }
 
 	/** Creates the main UI-View */
 	void CreateMainUIView();
+	void RenderStrings() override;
 
 	/** Returns a dummy cube-rendertarget used for pointlight shadowmaps */
-	RenderToTextureBuffer * GetDummyCubeRT() { return DummyShadowCubemapTexture.get(); }
+	RenderToTextureBuffer* GetDummyCubeRT() { return DummyShadowCubemapTexture.get(); }
 protected:
 	std::unique_ptr<FpsLimiter> m_FrameLimiter;
 	int m_LastFrameLimit;
@@ -306,7 +329,7 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D11SamplerState> ClampSamplerState;
 	Microsoft::WRL::ComPtr<ID3D11SamplerState> CubeSamplerState;
 	Microsoft::WRL::ComPtr<ID3D11SamplerState> ShadowmapSamplerState;
-	
+
 	Microsoft::WRL::ComPtr<ID3D11RasterizerState> WorldRasterizerState;
 	Microsoft::WRL::ComPtr<ID3D11RasterizerState> HUDRasterizerState;
 	Microsoft::WRL::ComPtr<ID3D11DepthStencilState> DefaultDepthStencilState;
@@ -323,12 +346,12 @@ protected:
 	std::unique_ptr<RenderToTextureBuffer> DummyShadowCubemapTexture; // PS-Stage needs to have a rendertarget bound to execute SV_Depth-Writes, as it seems.
 
 	/** Temp-Arrays for storing data to be put in constant buffers */
-	DirectX::SimpleMath::Matrix Temp2[2];
-	DirectX::SimpleMath::Matrix TempBones[NUM_MAX_BONES];
+	DirectX::XMFLOAT4X4 Temp2D3DXMatrix[2];
+	DirectX::XMFLOAT4X4 TempBonesMatrix[NUM_MAX_BONES];
 	float2 Temp2Float2[2];
 	std::unique_ptr<D3D11VertexBuffer> DynamicInstancingBuffer;
 
-	std::set<zCTexture *> FrameTextures;
+	std::set<zCTexture*> FrameTextures;
 
 	/** Post processing */
 	std::unique_ptr<D3D11PfxRenderer> PfxRenderer;
@@ -353,13 +376,13 @@ protected:
 	std::unique_ptr<D2DView> UIView;
 
 	/** Map of texture/index */
-	stdext::unordered_map<zCTexture *, int> TexArrayIndexByTexture;
+	stdext::unordered_map<zCTexture*, int> TexArrayIndexByTexture;
 
 	/** List of water surfaces for this frame */
-	std::unordered_map<zCTexture *, std::vector<WorldMeshInfo*>> FrameWaterSurfaces;
+	std::unordered_map<zCTexture*, std::vector<WorldMeshInfo*>> FrameWaterSurfaces;
 
 	/** List of worldmeshes we have to render using alphablending */
-	std::vector<std::pair<MeshKey, MeshInfo *>> FrameTransparencyMeshes;
+	std::vector<std::pair<MeshKey, MeshInfo*>> FrameTransparencyMeshes;
 
 	/** Reflection */
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> ReflectionCube;
@@ -379,4 +402,14 @@ protected:
 
 	/** If true, we will save a screenshot after the next frame */
 	bool SaveScreenshotNextFrame;
+
+	std::unique_ptr<DirectX::SpriteFont> m_font;
+	std::unique_ptr<DirectX::SpriteBatch> m_spriteBatch;
+	std::unique_ptr<DirectX::CommonStates> states;
+
+	std::vector<simpleTextBuffer> textToDraw;
+
+	bool m_flipWithTearing;
+	bool m_swapchainflip;
+	int m_previousFpsLimit;
 };

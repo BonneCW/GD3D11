@@ -3,8 +3,7 @@
 #include "zCObject.h"
 #include "zCArray.h"
 
-class zCClassDef
-{
+class zCClassDef {
 public:
 	zSTRING className;
 	zSTRING baseClassName;

@@ -3,14 +3,13 @@
 
 class D3D11VertexBuffer;
 class D3D11LineRenderer :
-	public BaseLineRenderer
-{
+	public BaseLineRenderer {
 public:
 	D3D11LineRenderer();
 	~D3D11LineRenderer();
 
 	/** Adds a line to the list */
-	virtual XRESULT AddLine(const LineVertex& v1, const LineVertex& v2);
+	virtual XRESULT AddLine( const LineVertex& v1, const LineVertex& v2 );
 
 	/** Flushes the cached lines */
 	virtual XRESULT Flush();

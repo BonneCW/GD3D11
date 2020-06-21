@@ -6,16 +6,13 @@
 #include "GothicAPI.h"
 
 template <class T>
-class zCArrayAdapt
-{
+class zCArrayAdapt {
 public:
-	unsigned int GetSizeInBytes()
-	{
-		return NumInArray * sizeof(T);
+	unsigned int GetSizeInBytes() {
+		return NumInArray * sizeof( T );
 	}
 
-	T Get(unsigned int idx)
-	{
+	T Get( unsigned int idx ) {
 		return Array[idx];
 	}
 

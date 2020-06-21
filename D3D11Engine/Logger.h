@@ -63,8 +63,8 @@ __declspec(selectany) std::string LOGFILE;
 #endif
 */
 
-/** Logging macros 
-	Usage: LogInfo() << L"Loaded Texture: " << TextureName; 
+/** Logging macros
+	Usage: LogInfo() << L"Loaded Texture: " << TextureName;
 	*/
 
 
@@ -73,7 +73,7 @@ __declspec(selectany) std::string LOGFILE;
 #define LogError() Log("Error",__FILE__, __LINE__, __FUNCSIG__, true)
 
 
-/** Displays a messagebox and loggs its content */
+	/** Displays a messagebox and loggs its content */
 #define LogInfoBox() Log("Info",__FILE__, __LINE__, __FUNCSIG__, false, 1)
 #define LogWarnBox() Log("Warning",__FILE__, __LINE__, __FUNCSIG__, true, 2)
 #define LogErrorBox() Log("Error",__FILE__, __LINE__, __FUNCSIG__, true, 3)
@@ -81,37 +81,32 @@ __declspec(selectany) std::string LOGFILE;
 /** Stream logger */
 #ifdef USE_LOG
 
-namespace LogCache
-{
+namespace LogCache {
 	__declspec(selectany) std::vector<std::string> Cache;
 	__declspec(selectany) std::mutex LogMutex;
-	struct LogFlush
-	{
-		~LogFlush()
-		{
+	struct LogFlush {
+		~LogFlush() {
 			LogMutex.lock();
-			Cache.push_back("Flushed " +  std::to_string(Cache.size()) + " log messages at program termination!\n");
+			Cache.push_back( "Flushed " + std::to_string( Cache.size() ) + " log messages at program termination!\n" );
 			FlushData();
 			LogMutex.unlock();
 		}
 
-		static void FlushData()
-		{
+		static void FlushData() {
 			FILE* f;
-			f = fopen(LOGFILE.c_str(),"a");
+			f = fopen( LOGFILE.c_str(), "a" );
 
 			//if (MAX_LOG_MESSAGES_TO_CACHE > 5)
 			//	fputs(" --- Log-Cache flush! --- \n", f);
 
 			// Write down all the data we have
-			for(UINT i=0;i<Cache.size();i++)
-			{
-				fputs(Cache[i].c_str(), f);
+			for ( UINT i = 0; i < Cache.size(); i++ ) {
+				fputs( Cache[i].c_str(), f );
 
 				//OutputDebugStringA(Cache[i].c_str());
 			}
 
-			fclose(f);
+			fclose( f );
 
 			// Clear the cache
 			Cache.clear();
@@ -121,70 +116,60 @@ namespace LogCache
 	__declspec(selectany) LogFlush fls; // This will be deleted by the CRT when the program ends, thus, calling the destructor, which flushes the remaining cache
 }
 
-class Log
-{
+class Log {
 public:
-	Log(const char* Type,const  char* File, int Line,const  char* Function, bool bIncludeInfo=false, UINT MessageBox=0)
-	{
-		if (bIncludeInfo)
-		{
-			Info << Type << ": ["<< File << "("<<Line<<"), "<<Function<<"]: "; 
-		} else
-		{
+	Log( const char* Type, const  char* File, int Line, const  char* Function, bool bIncludeInfo = false, UINT MessageBox = 0 ) {
+		if ( bIncludeInfo ) {
+			Info << Type << ": [" << File << "(" << Line << "), " << Function << "]: ";
+		} else {
 			Info << Type << ": ";
 		}
 
-		MessageBoxStyle=MessageBox;
+		MessageBoxStyle = MessageBox;
 	}
 
-	~Log()
-	{
+	~Log() {
 		Flush();
 	}
 
 	/** Clears the logfile */
-	static void Clear()
-	{
+	static void Clear() {
 		char path[MAX_PATH + 1];
-		GetModuleFileNameA(nullptr, path, MAX_PATH);
-		LOGFILE = std::string(path);
-		LOGFILE = LOGFILE.substr(0, LOGFILE.find_last_of('\\')+1);
+		GetModuleFileNameA( nullptr, path, MAX_PATH );
+		LOGFILE = std::string( path );
+		LOGFILE = LOGFILE.substr( 0, LOGFILE.find_last_of( '\\' ) + 1 );
 		LOGFILE += "Log.txt";
 
 		FILE* f;
-		f = fopen(LOGFILE.c_str(),"w");
-		fclose(f);
+		f = fopen( LOGFILE.c_str(), "w" );
+		fclose( f );
 	}
 
 	/** STL stringstream feature */
 	template< typename T >
-	inline Log& operator << (const T &obj)
-	{
+	inline Log& operator << ( const T& obj ) {
 		Message << obj;
 		return *this;
 	}
 
-	inline Log& operator << (std::wostream& (*fn)(std::wostream&))
-	{
+	inline Log& operator << ( std::wostream& (*fn)(std::wostream&) ) {
 		Message << fn;
 		return *this;
 	}
 
 	/** Called when the object is getting destroyed, which happens immediately if simply calling the constructor of this class */
-	inline void Flush()
-	{	
+	inline void Flush() {
 		FILE* f;
-		f = fopen(LOGFILE.c_str(),"a");
+		f = fopen( LOGFILE.c_str(), "a" );
 
-		if (f)
-		{
-			
-			fputs(Info.str().c_str(),f);
+		if ( f ) {
 
-			fputs(Message.str().c_str(),f);
-			fputs("\n",f);
+			fputs( Info.str().c_str(), f );
 
-			fclose(f);
+			fputs( Message.str().c_str(), f );
+			fputs( "\n", f );
+
+			fclose( f );
 		}
 
 		/*if (strnicmp(Info.str().c_str(), "Error", sizeof("Error")) == 0)
@@ -199,18 +184,17 @@ public:
 		if (LogCache::Cache.size() >= MAX_LOG_MESSAGES_TO_CACHE)
 			LogCache::LogFlush::FlushData();*/
 
-		switch(MessageBoxStyle)
-		{
+		switch ( MessageBoxStyle ) {
 		case 1:
-			InfoBox(Message.str().c_str());
+			InfoBox( Message.str().c_str() );
 			break;
 
 		case 2:
-			WarnBox(Message.str().c_str());
+			WarnBox( Message.str().c_str() );
 			break;
 
 		case 3:
-			ErrorBox(Message.str().c_str());
+			ErrorBox( Message.str().c_str() );
 			break;
 		}
 	}
@@ -225,40 +209,33 @@ private:
 };
 #else
 
-class Log
-{
+class Log {
 public:
-	Log(const char* Type,const  char* File, int Line,const  char* Function, bool bIncludeInfo=false, UINT MessageBox=0)
-	{
+	Log( const char* Type, const  char* File, int Line, const  char* Function, bool bIncludeInfo = false, UINT MessageBox = 0 ) {
 
 	}
 
-	~Log()
-	{
-	
+	~Log() {
+
 	}
 
 	/** Clears the logfile */
-	static void Clear()
-	{
+	static void Clear() {
 
 	}
 
 	/** STL stringstream feature */
 	template< typename T >
-	inline Log& operator << (const T &obj)
-	{
+	inline Log& operator << ( const T& obj ) {
 		return *this;
 	}
 
-	inline Log& operator << (std::wostream& (*fn)(std::wostream&))
-	{
+	inline Log& operator << ( std::wostream& (*fn)(std::wostream&) ) {
 		return *this;
 	}
 
 	/** Called when the object is getting destroyed, which happens immediately if simply calling the constructor of this class */
-	inline void Flush()
-	{	
+	inline void Flush() {
 
 	}
 

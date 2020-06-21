@@ -1,13 +1,14 @@
 #include "pch.h"
 #include "D3D11VShader.h"
 #include "D3D11GraphicsEngineBase.h"
-#include <D3DX11.h>
 #include "Engine.h"
 #include "GothicAPI.h"
 #include "D3D11ConstantBuffer.h"
+#include <d3dcompiler.h>
 
-D3D11VShader::D3D11VShader()
-{
+using namespace DirectX;
+
+D3D11VShader::D3D11VShader() {
 	VertexShader = nullptr;
 	InputLayout = nullptr;
 
@@ -17,16 +18,14 @@ D3D11VShader::D3D11VShader()
 	D3D11ObjectIDs::VShadersByID[ID] = this;
 }
 
-D3D11VShader::~D3D11VShader()
-{
+D3D11VShader::~D3D11VShader() {
 	// Remove from state map
-	Toolbox::EraseByElement(D3D11ObjectIDs::VShadersByID, this);
+	Toolbox::EraseByElement( D3D11ObjectIDs::VShadersByID, this );
 
-	if (VertexShader)VertexShader->Release();
-	if (InputLayout)InputLayout->Release();
+	if ( VertexShader )VertexShader->Release();
+	if ( InputLayout )InputLayout->Release();
 
-	for (unsigned int i = 0; i < ConstantBuffers.size(); i++)
-	{
+	for ( unsigned int i = 0; i < ConstantBuffers.size(); i++ ) {
 		delete ConstantBuffers[i];
 	}
 }
@@ -34,13 +33,12 @@ D3D11VShader::~D3D11VShader()
 //--------------------------------------------------------------------------------------
 // Find and compile the specified shader
 //--------------------------------------------------------------------------------------
-HRESULT D3D11VShader::CompileShaderFromFile(const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, std::vector<D3D10_SHADER_MACRO> & makros)
-{
+HRESULT D3D11VShader::CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, std::vector<D3D_SHADER_MACRO>& makros ) {
 	HRESULT hr = S_OK;
 
 	char dir[260];
-	GetCurrentDirectoryA(260, dir);
-	SetCurrentDirectoryA(Engine::GAPI->GetStartDirectory().c_str());
+	GetCurrentDirectoryA( 260, dir );
+	SetCurrentDirectoryA( Engine::GAPI->GetStartDirectory().c_str() );
 
 	DWORD dwShaderFlags = 0;
 #if defined(DEBUG) || defined(_DEBUG)
@@ -49,74 +47,61 @@ HRESULT D3D11VShader::CompileShaderFromFile(const CHAR* szFileName, LPCSTR szEnt
 	// the shaders to be optimized and to run exactly the way they will run in 
 	// the release configuration of this program.
 	//dwShaderFlags |= D3DCOMPILE_DEBUG;
+#else
+	dwShaderFlags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
 #endif
 
 	// Construct makros
-	std::vector<D3D10_SHADER_MACRO> m;
-	D3D11GraphicsEngineBase::ConstructShaderMakroList(m);
-	
+	std::vector<D3D_SHADER_MACRO> m;
+	D3D11GraphicsEngineBase::ConstructShaderMakroList( m );
+
 	// Push these to the front
-	m.insert(m.begin(), makros.begin(), makros.end());
+	m.insert( m.begin(), makros.begin(), makros.end() );
 
-	ID3DBlob* pErrorBlob;
-	hr = D3DX11CompileFromFileA(szFileName, &m[0], nullptr, szEntryPoint, szShaderModel,
-		dwShaderFlags, 0, nullptr, ppBlobOut, &pErrorBlob, nullptr);
-	if (FAILED(hr))
-	{
+	Microsoft::WRL::ComPtr<ID3DBlob> pErrorBlob;
+	hr = D3DCompileFromFile( Toolbox::ToWideChar( szFileName ).c_str(), &m[0], D3D_COMPILE_STANDARD_FILE_INCLUDE, szEntryPoint, szShaderModel, dwShaderFlags, 0, ppBlobOut, &pErrorBlob );
+	if ( FAILED( hr ) ) {
 		LogInfo() << "Shader compilation failed!";
-		if (pErrorBlob != nullptr)
-		{
-
+		if ( pErrorBlob.Get() ) {
 			LogErrorBox() << (char*)pErrorBlob->GetBufferPointer() << "\n\n (You can ignore the next error from Gothic about too small video memory!)";
-			pErrorBlob->Release();
 		}
 
-		SetCurrentDirectoryA(dir);
+		SetCurrentDirectoryA( dir );
 		return hr;
 	}
-	if (pErrorBlob)
-	{
-		/*if (Engine->SwapchainCreated())
-		Engine->GetConsole()->PostConsoleMessage((char*)pErrorBlob->GetBufferPointer());
-		else
-		LogWarnBox() << (char*)pErrorBlob->GetBufferPointer() << "\n\n (You can ignore the next error from Gothic about too small video memory!)";
-		*/
-		pErrorBlob->Release();
-	}
 
-	SetCurrentDirectoryA(dir);
+	SetCurrentDirectoryA( dir );
 	return S_OK;
 }
 
 
 /** Loads shader */
-XRESULT D3D11VShader::LoadShader(const char* vertexShader, int layout, std::vector<D3D10_SHADER_MACRO> & makros)
-{
+XRESULT D3D11VShader::LoadShader( const char* vertexShader, int layout, std::vector<D3D_SHADER_MACRO>& makros ) {
 	HRESULT hr;
-	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase *)Engine::GraphicsEngine;
+	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
 	ID3DBlob* vsBlob;
 
-	LogInfo() << "Compilling vertex shader: " << vertexShader;
+	if ( Engine::GAPI->GetRendererState()->RendererSettings.EnableDebugLog )
+		LogInfo() << "Compilling vertex shader: " << vertexShader;
 	File = vertexShader;
 
 
 	// Compile shader
-	if (FAILED(CompileShaderFromFile(vertexShader, "VSMain", "vs_4_0", &vsBlob, makros)))
-	{
+	if ( FAILED( CompileShaderFromFile( vertexShader, "VSMain", "vs_5_0", &vsBlob, makros ) ) ) {
 		return XR_FAILED;
 	}
 
 	// Create the shader
-	LE(engine->GetDevice()->CreateVertexShader(vsBlob->GetBufferPointer(),
-		vsBlob->GetBufferSize(), nullptr, &VertexShader));
+	LE( engine->GetDevice()->CreateVertexShader( vsBlob->GetBufferPointer(),
+		vsBlob->GetBufferSize(), nullptr, &VertexShader ) );
 
 #ifndef PUBLIC_RELEASE
-	VertexShader->SetPrivateData(WKPDID_D3DDebugObjectName, strlen(vertexShader), vertexShader);
+	VertexShader->SetPrivateData( WKPDID_D3DDebugObjectName, strlen( vertexShader ), vertexShader );
 #endif
 
 
-	const D3D11_INPUT_ELEMENT_DESC layout1[] =
+	const D3D11_INPUT_ELEMENT_DESC layout1 [] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -125,14 +110,14 @@ XRESULT D3D11VShader::LoadShader(const char* vertexShader, int layout, std::vect
 		{ "DIFFUSE", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout2[] =
+	const D3D11_INPUT_ELEMENT_DESC layout2 [] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout3[] =
+	const D3D11_INPUT_ELEMENT_DESC layout3 [] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "POSITION", 1, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -145,7 +130,7 @@ XRESULT D3D11VShader::LoadShader(const char* vertexShader, int layout, std::vect
 		{ "WEIGHTS", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout4[] =
+	const D3D11_INPUT_ELEMENT_DESC layout4 [] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -160,19 +145,19 @@ XRESULT D3D11VShader::LoadShader(const char* vertexShader, int layout, std::vect
 		{ "INSTANCE_SCALE", 0, DXGI_FORMAT_R32G32_FLOAT, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout5[] =
+	const D3D11_INPUT_ELEMENT_DESC layout5 [] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout6[] =
+	const D3D11_INPUT_ELEMENT_DESC layout6 [] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "DIFFUSE", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout7[] =
+	const D3D11_INPUT_ELEMENT_DESC layout7 [] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "DIFFUSE", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -180,16 +165,16 @@ XRESULT D3D11VShader::LoadShader(const char* vertexShader, int layout, std::vect
 
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout8[] =
+	const D3D11_INPUT_ELEMENT_DESC layout8 [] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout9[] =
+	const D3D11_INPUT_ELEMENT_DESC layout9 [] =
 	{
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },	
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 
 		{ "INSTANCE_WORLD_MATRIX", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_INSTANCE_DATA, 1},
@@ -198,7 +183,7 @@ XRESULT D3D11VShader::LoadShader(const char* vertexShader, int layout, std::vect
 		{ "INSTANCE_WORLD_MATRIX", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_INSTANCE_DATA, 1},
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout10[] =
+	const D3D11_INPUT_ELEMENT_DESC layout10 [] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -212,7 +197,7 @@ XRESULT D3D11VShader::LoadShader(const char* vertexShader, int layout, std::vect
 		{ "INSTANCE_COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout11[] =
+	const D3D11_INPUT_ELEMENT_DESC layout11 [] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "DIFFUSE", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -221,7 +206,7 @@ XRESULT D3D11VShader::LoadShader(const char* vertexShader, int layout, std::vect
 		{ "VELOCITY", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout12[] =
+	const D3D11_INPUT_ELEMENT_DESC layout12 [] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -231,66 +216,65 @@ XRESULT D3D11VShader::LoadShader(const char* vertexShader, int layout, std::vect
 		{ "INSTANCE_REMAP_INDEX", 0, DXGI_FORMAT_R32_UINT, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_INSTANCE_DATA, 1},
 	};
 
-	switch (layout)
-	{
+	switch ( layout ) {
 	case 1:
-		LE(engine->GetDevice()->CreateInputLayout(layout1, ARRAYSIZE(layout1), vsBlob->GetBufferPointer(),
-			vsBlob->GetBufferSize(), &InputLayout));
+		LE( engine->GetDevice()->CreateInputLayout( layout1, ARRAYSIZE( layout1 ), vsBlob->GetBufferPointer(),
+			vsBlob->GetBufferSize(), &InputLayout ) );
 		break;
 
 	case 2:
-		LE(engine->GetDevice()->CreateInputLayout(layout2, ARRAYSIZE(layout2), vsBlob->GetBufferPointer(),
-			vsBlob->GetBufferSize(), &InputLayout));
+		LE( engine->GetDevice()->CreateInputLayout( layout2, ARRAYSIZE( layout2 ), vsBlob->GetBufferPointer(),
+			vsBlob->GetBufferSize(), &InputLayout ) );
 		break;
 
 	case 3:
-		LE(engine->GetDevice()->CreateInputLayout(layout3, ARRAYSIZE(layout3), vsBlob->GetBufferPointer(),
-			vsBlob->GetBufferSize(), &InputLayout));
+		LE( engine->GetDevice()->CreateInputLayout( layout3, ARRAYSIZE( layout3 ), vsBlob->GetBufferPointer(),
+			vsBlob->GetBufferSize(), &InputLayout ) );
 		break;
 
 	case 4:
-		LE(engine->GetDevice()->CreateInputLayout(layout4, ARRAYSIZE(layout4), vsBlob->GetBufferPointer(),
-			vsBlob->GetBufferSize(), &InputLayout));
+		LE( engine->GetDevice()->CreateInputLayout( layout4, ARRAYSIZE( layout4 ), vsBlob->GetBufferPointer(),
+			vsBlob->GetBufferSize(), &InputLayout ) );
 		break;
 
 	case 5:
-		LE(engine->GetDevice()->CreateInputLayout(layout5, ARRAYSIZE(layout5), vsBlob->GetBufferPointer(),
-			vsBlob->GetBufferSize(), &InputLayout));
+		LE( engine->GetDevice()->CreateInputLayout( layout5, ARRAYSIZE( layout5 ), vsBlob->GetBufferPointer(),
+			vsBlob->GetBufferSize(), &InputLayout ) );
 		break;
 
 	case 6:
-		LE(engine->GetDevice()->CreateInputLayout(layout6, ARRAYSIZE(layout6), vsBlob->GetBufferPointer(),
-			vsBlob->GetBufferSize(), &InputLayout));
+		LE( engine->GetDevice()->CreateInputLayout( layout6, ARRAYSIZE( layout6 ), vsBlob->GetBufferPointer(),
+			vsBlob->GetBufferSize(), &InputLayout ) );
 		break;
 
 	case 7:
-		LE(engine->GetDevice()->CreateInputLayout(layout7, ARRAYSIZE(layout7), vsBlob->GetBufferPointer(),
-			vsBlob->GetBufferSize(), &InputLayout));
+		LE( engine->GetDevice()->CreateInputLayout( layout7, ARRAYSIZE( layout7 ), vsBlob->GetBufferPointer(),
+			vsBlob->GetBufferSize(), &InputLayout ) );
 		break;
 
 	case 8:
-		LE(engine->GetDevice()->CreateInputLayout(layout8, ARRAYSIZE(layout8), vsBlob->GetBufferPointer(),
-			vsBlob->GetBufferSize(), &InputLayout));
+		LE( engine->GetDevice()->CreateInputLayout( layout8, ARRAYSIZE( layout8 ), vsBlob->GetBufferPointer(),
+			vsBlob->GetBufferSize(), &InputLayout ) );
 		break;
 
 	case 9:
-		LE(engine->GetDevice()->CreateInputLayout(layout9, ARRAYSIZE(layout9), vsBlob->GetBufferPointer(),
-			vsBlob->GetBufferSize(), &InputLayout));
+		LE( engine->GetDevice()->CreateInputLayout( layout9, ARRAYSIZE( layout9 ), vsBlob->GetBufferPointer(),
+			vsBlob->GetBufferSize(), &InputLayout ) );
 		break;
 
 	case 10:
-		LE(engine->GetDevice()->CreateInputLayout(layout10, ARRAYSIZE(layout10), vsBlob->GetBufferPointer(),
-			vsBlob->GetBufferSize(), &InputLayout));
+		LE( engine->GetDevice()->CreateInputLayout( layout10, ARRAYSIZE( layout10 ), vsBlob->GetBufferPointer(),
+			vsBlob->GetBufferSize(), &InputLayout ) );
 		break;
 
 	case 11:
-		LE(engine->GetDevice()->CreateInputLayout(layout11, ARRAYSIZE(layout11), vsBlob->GetBufferPointer(),
-			vsBlob->GetBufferSize(), &InputLayout));
+		LE( engine->GetDevice()->CreateInputLayout( layout11, ARRAYSIZE( layout11 ), vsBlob->GetBufferPointer(),
+			vsBlob->GetBufferSize(), &InputLayout ) );
 		break;
 
 	case 12:
-		LE(engine->GetDevice()->CreateInputLayout(layout12, ARRAYSIZE(layout12), vsBlob->GetBufferPointer(),
-			vsBlob->GetBufferSize(), &InputLayout));
+		LE( engine->GetDevice()->CreateInputLayout( layout12, ARRAYSIZE( layout12 ), vsBlob->GetBufferPointer(),
+			vsBlob->GetBufferSize(), &InputLayout ) );
 		break;
 	}
 
@@ -300,18 +284,16 @@ XRESULT D3D11VShader::LoadShader(const char* vertexShader, int layout, std::vect
 }
 
 /** Applys the shaders */
-XRESULT D3D11VShader::Apply()
-{
-	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase *)Engine::GraphicsEngine;
+XRESULT D3D11VShader::Apply() {
+	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
-	engine->GetContext()->IASetInputLayout(InputLayout);
-	engine->GetContext()->VSSetShader(VertexShader, nullptr, 0);
+	engine->GetContext()->IASetInputLayout( InputLayout );
+	engine->GetContext()->VSSetShader( VertexShader, nullptr, 0 );
 
 	return XR_SUCCESS;
 }
 
 /** Returns a reference to the constantBuffer vector */
-std::vector<D3D11ConstantBuffer*> & D3D11VShader::GetConstantBuffer()
-{
+std::vector<D3D11ConstantBuffer*>& D3D11VShader::GetConstantBuffer() {
 	return ConstantBuffers;
 }

@@ -12,17 +12,15 @@
 #define zCPARSER_CALL_FUNC(symbolId, ...)
 #endif
 
-class zCParser 
-{
+class zCParser {
 public:
 #if defined(BUILD_GOTHIC_1_08k) || defined(BUILD_SPACER)
-	static void CallFunc(int symbolId, ...)
-	{
-		
+	static void CallFunc( int symbolId, ... ) {
+
 	}
 
-	static zCParser* GetParser(){return nullptr;}
+	static zCParser* GetParser() { return nullptr; }
 #else
-	static zCParser* GetParser(){return (zCParser *)GothicMemoryLocations::GlobalObjects::zCParser;}
+	static zCParser* GetParser() { return (zCParser*)GothicMemoryLocations::GlobalObjects::zCParser; }
 #endif
 };

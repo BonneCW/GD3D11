@@ -2,25 +2,22 @@
 #include "zSTRING.h"
 #include "zCClassDef.h"
 
-class zCObject
-{
+class zCObject {
 public:
-	void Release()
-	{
+	void Release() {
 		refCtr--;
 		int temp = refCtr;
-		if (temp <= 0)
-		{
+		if ( temp <= 0 ) {
 			// Call destructor
 			delete this;
 		}
 	}
 
 	// Recreate V-Table
-	virtual	zCClassDef*	_GetClassDef() = 0;
+	virtual	zCClassDef* _GetClassDef() = 0;
 	virtual void Archive() = 0;
 	virtual void Unarchive() = 0;
-	virtual ~zCObject(){}
+	virtual ~zCObject() {}
 	/*void Destructor(char arg)
 	{
 		// Get vtable-entry
@@ -35,6 +32,6 @@ public:
 	int refCtr;
 	VERTEX_INDEX hashIndex;
 	zCObject* hashNext;
-	zSTRING objectName;	
+	zSTRING objectName;
 };
 

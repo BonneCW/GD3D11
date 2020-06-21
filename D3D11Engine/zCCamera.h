@@ -7,12 +7,10 @@
 #include "zTypes.h"
 
 
-class zCCamera
-{
+class zCCamera {
 public:
 
-	enum ETransformType
-	{
+	enum ETransformType {
 		TT_WORLD,
 		TT_VIEW,
 		TT_WORLDVIEW,
@@ -20,94 +18,79 @@ public:
 		TT_VIEW_INV
 	};
 
-	static bool IsFreeLookActive()
-	{
+	static bool IsFreeLookActive() {
 #ifdef BUILD_GOTHIC_2_6_fix
-		return (*(int *)(GothicMemoryLocations::zCCamera::Var_FreeLook)) != 0;
+		return (*(int*)(GothicMemoryLocations::zCCamera::Var_FreeLook)) != 0;
 #else
 		return false;
 #endif
 	}
 
-	DirectX::SimpleMath::Matrix const& GetTransform(const ETransformType type)
-	{
-		XCALL(GothicMemoryLocations::zCCamera::GetTransform);
+	DirectX::XMFLOAT4X4 const& GetTransform( const ETransformType type ) {
+		XCALL( GothicMemoryLocations::zCCamera::GetTransform );
 	}
-	DirectX::XMFLOAT4X4 const& GetTransformDX(const ETransformType type)
-	{
-		XCALL(GothicMemoryLocations::zCCamera::GetTransform);
+	DirectX::XMFLOAT4X4 const& GetTransformDX( const ETransformType type ) {
+		XCALL( GothicMemoryLocations::zCCamera::GetTransform );
 	}
 
-	void SetTransform(const ETransformType type, const DirectX::SimpleMath::Matrix& mat)
-	{
-		XCALL(GothicMemoryLocations::zCCamera::SetTransform);
+	void SetTransform( const ETransformType type, const DirectX::XMFLOAT4X4& mat ) {
+		XCALL( GothicMemoryLocations::zCCamera::SetTransform );
 	}
 
-	void Activate()
-	{
-		XCALL(GothicMemoryLocations::zCCamera::Activate);
+	void SetTransformXM( const ETransformType type, const DirectX::XMMATRIX& mat ) {
+		DirectX::XMFLOAT4X4 m; DirectX::XMStoreFloat4x4( &m, mat );
+		SetTransform( type, m );
 	}
 
-	void SetFOV(float azi, float elev)
-	{
-#ifndef BUILD_GOTHIC_1_08k // TODO: Implement this for G1
-		XCALL(GothicMemoryLocations::zCCamera::SetFOV);
-#endif
+	void Activate() {
+		XCALL( GothicMemoryLocations::zCCamera::Activate );
 	}
 
-	void GetFOV(float & fovH, float & fovV)
-	{
-#ifdef BUILD_GOTHIC_2_6_fix
-		XCALL(GothicMemoryLocations::zCCamera::GetFOV_f2);
-#else
-		fovH = 90.0f;
-		fovV = 90.0f;
-#endif
+	void SetFOV( float azi, float elev ) {
+		XCALL( GothicMemoryLocations::zCCamera::SetFOV );
 	}
 
-	void UpdateViewport()
-	{
-		XCALL(GothicMemoryLocations::zCCamera::UpdateViewport);
+	void GetFOV( float& fovH, float& fovV ) {
+		XCALL( GothicMemoryLocations::zCCamera::GetFOV_f2 );
 	}
 
-	zTCam_ClipType BBox3DInFrustum(const zTBBox3D& box)
-	{
+	void UpdateViewport() {
+		XCALL( GothicMemoryLocations::zCCamera::UpdateViewport );
+	}
+
+	zTCam_ClipType BBox3DInFrustum( const zTBBox3D& box ) {
 		//int flags = 15; // Full clip, no farplane
 		int flags = 63;
-		return BBox3DInFrustum(box, flags);
+		return BBox3DInFrustum( box, flags );
 	}
 
-	zTCam_ClipType BBox3DInFrustum(const zTBBox3D& box, int& clipFlags)
-	{
-		XCALL(GothicMemoryLocations::zCCamera::BBox3DInFrustum);
+	zTCam_ClipType BBox3DInFrustum( const zTBBox3D& box, int& clipFlags ) {
+		XCALL( GothicMemoryLocations::zCCamera::BBox3DInFrustum );
 	}
 
-	float GetFarPlane()
-	{
+	float GetFarPlane() {
 #ifdef BUILD_GOTHIC_2_6_fix
-		return *(float *)((char *)this + GothicMemoryLocations::zCCamera::Offset_FarPlane);
+		return *(float*)((char*)this + GothicMemoryLocations::zCCamera::Offset_FarPlane);
 #else
 		return 20000.0f;
 #endif
 	}
 
-	float GetNearPlane()
-	{
+	float GetNearPlane() {
 #ifdef BUILD_GOTHIC_2_6_fix
-		return *(float *)((char *)this + GothicMemoryLocations::zCCamera::Offset_NearPlane);
+		return *(float*)((char*)this + GothicMemoryLocations::zCCamera::Offset_NearPlane);
 #else
 		return 0.5f;
 #endif
 	}
 
-	void SetFarPlane(float value)
-	{
+	void SetFarPlane( float value ) {
 #ifdef BUILD_GOTHIC_2_6_fix
-		XCALL(GothicMemoryLocations::zCCamera::SetFarPlane);
+		XCALL( GothicMemoryLocations::zCCamera::SetFarPlane );
 #endif
 	}
 
-	/*void GetCameraPosition(D3DXVECTOR3 & v)
+	/*void GetCameraPosition(DirectX::XMFLOAT3 & v)
 	{
 		XCALL(GADDR::zCCamera_GetCameraPosition);
 	}*/
@@ -119,18 +102,16 @@ public:
 	}*/
 
 	/** Returns the frustumplanes */
-	zTPlane* GetFrustumPlanes()
-	{
+	zTPlane* GetFrustumPlanes() {
 		return FrustumPlanes;
 	}
 
 	/** Returns the signbits for the frustumplanes */
-	byte* GetFrustumSignBits()
-	{
+	byte* GetFrustumSignBits() {
 		return SignBits;
 	}
 
-	static zCCamera* GetCamera(){return *(zCCamera**)GothicMemoryLocations::GlobalObjects::zCCamera;}
+	static zCCamera* GetCamera() { return *(zCCamera**)GothicMemoryLocations::GlobalObjects::zCCamera; }
 
 	/** Frustum Planes in world space */
 	zTPlane FrustumPlanes[6];

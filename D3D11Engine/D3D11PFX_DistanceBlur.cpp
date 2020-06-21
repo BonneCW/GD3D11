@@ -11,40 +11,35 @@
 #include "ConstantBufferStructs.h"
 #include "GothicAPI.h"
 
-D3D11PFX_DistanceBlur::D3D11PFX_DistanceBlur(D3D11PfxRenderer* rnd) : D3D11PFX_Effect(rnd)
-{
-}
+D3D11PFX_DistanceBlur::D3D11PFX_DistanceBlur( D3D11PfxRenderer* rnd ) : D3D11PFX_Effect( rnd ) {}
 
 
-D3D11PFX_DistanceBlur::~D3D11PFX_DistanceBlur()
-{
-}
+D3D11PFX_DistanceBlur::~D3D11PFX_DistanceBlur() {}
 
 /** Draws this effect to the given buffer */
-XRESULT D3D11PFX_DistanceBlur::Render(RenderToTextureBuffer * fxbuffer)
-{
-	D3D11GraphicsEngine * engine = (D3D11GraphicsEngine *)Engine::GraphicsEngine;
+XRESULT D3D11PFX_DistanceBlur::Render( RenderToTextureBuffer* fxbuffer ) {
+	D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
 
 	// Save old rendertargets
 	ID3D11RenderTargetView* oldRTV = nullptr;
 	ID3D11DepthStencilView* oldDSV = nullptr;
-	engine->GetContext()->OMGetRenderTargets(1, &oldRTV, &oldDSV);
+	engine->GetContext()->OMGetRenderTargets( 1, &oldRTV, &oldDSV );
 
-	engine->GetShaderManager()->GetVShader("VS_PFX")->Apply();
-	D3D11PShader * ps = engine->GetShaderManager()->GetPShader("PS_PFX_DistanceBlur");
+	engine->GetShaderManager()->GetVShader( "VS_PFX" )->Apply();
+	D3D11PShader* ps = engine->GetShaderManager()->GetPShader( "PS_PFX_DistanceBlur" );
 
 	Engine::GAPI->GetRendererState()->BlendState.SetDefault();
 	Engine::GAPI->GetRendererState()->BlendState.SetDirty();
 
 	// Copy scene
-	engine->GetContext()->ClearRenderTargetView(FxRenderer->GetTempBuffer()->GetRenderTargetView(), (float *)&DirectX::SimpleMath::Vector4::Zero);
-	FxRenderer->CopyTextureToRTV(engine->GetGBuffer0()->GetShaderResView(), FxRenderer->GetTempBuffer()->GetRenderTargetView(), Engine::GraphicsEngine->GetResolution());
+	engine->GetContext()->ClearRenderTargetView( FxRenderer->GetTempBuffer()->GetRenderTargetView(), (float*)&float4( 0, 0, 0, 0 ) );
+	FxRenderer->CopyTextureToRTV( engine->GetGBuffer0()->GetShaderResView(), FxRenderer->GetTempBuffer()->GetRenderTargetView(), Engine::GraphicsEngine->GetResolution() );
 
-	engine->GetContext()->OMSetRenderTargets(1, &oldRTV, nullptr);
+	engine->GetContext()->OMSetRenderTargets( 1, &oldRTV, nullptr );
 
 	// Bind textures
-	FxRenderer->GetTempBuffer()->BindToPixelShader(engine->GetContext(), 0);
-	engine->GetDepthBuffer()->BindToPixelShader(engine->GetContext(), 1);
+	FxRenderer->GetTempBuffer()->BindToPixelShader( engine->GetContext(), 0 );
+	engine->GetDepthBuffer()->BindToPixelShader( engine->GetContext(), 1 );
 
 	// Blur/Copy
 	ps->Apply();
@@ -52,9 +47,9 @@ XRESULT D3D11PFX_DistanceBlur::Render(RenderToTextureBuffer * fxbuffer)
 	FxRenderer->DrawFullScreenQuad();
 
 	// Restore rendertargets
-	engine->GetContext()->OMSetRenderTargets(1, &oldRTV, oldDSV);
-	if (oldRTV)oldRTV->Release();
-	if (oldDSV)oldDSV->Release();
+	engine->GetContext()->OMSetRenderTargets( 1, &oldRTV, oldDSV );
+	if ( oldRTV )oldRTV->Release();
+	if ( oldDSV )oldDSV->Release();
 
 	return XR_SUCCESS;
 }

@@ -2,20 +2,19 @@
 #include "pch.h"
 #include "D3D11VertexBuffer.h"
 
-class GMeshSimple
-{
+class GMeshSimple {
 public:
 	GMeshSimple();
 	virtual ~GMeshSimple();
 
 	/** Load a mesh from file */
-	XRESULT LoadMesh(const std::string & file);
+	XRESULT LoadMesh( const std::string& file );
 
 	/** Draws all buffers this holds */
 	void DrawMesh();
 
 	/** Draws a batch of instances */
-	void DrawBatch(D3D11VertexBuffer* instances, int numInstances, int instanceDataStride);
+	void DrawBatch( D3D11VertexBuffer* instances, int numInstances, int instanceDataStride );
 
 private:
 	D3D11VertexBuffer* VertexBuffer;

@@ -70,4 +70,9 @@ public:
   }
 };
 
+template <typename T>
+using AlignAlloc16 = AlignmentAllocator<T, 16>;
+
+template <typename T>
+using VectorA16 = std::vector<T, AlignAlloc16<T>>;
 #endif

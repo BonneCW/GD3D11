@@ -6,21 +6,18 @@
 #include "BaseGraphicsEngine.h"
 #include "zCResourceManager.h"
 
-class zCThread
-{
+class zCThread {
 public:
 
 	/** Hooks the functions of this Class */
-	static void Hook()
-	{
-		HookedFunctions::OriginalFunctions.original_zCThreadSuspendThread = (zCThreadSuspendThread)DetourFunction((BYTE *)GothicMemoryLocations::zCThread::SuspendThread, (BYTE *)zCThread::hooked_SuspendThread);
+	static void Hook() {
+		XHook( HookedFunctions::OriginalFunctions.original_zCThreadSuspendThread, GothicMemoryLocations::zCThread::SuspendThread, zCThread::hooked_SuspendThread );
 
 		//ThreadSleeping = false;
 	}
 
 	/** Reads config stuff */
-	static int __fastcall hooked_SuspendThread(void * thisptr, void * unknwn)
-	{
+	static int __fastcall hooked_SuspendThread( void* thisptr, void* unknwn ) {
 		//hook_infunc
 		//Engine::GAPI->EnterResourceCriticalSection(); // Protect the game from running into a deadlock
 		//Sleep(0);
@@ -39,27 +36,26 @@ public:
 		/*ThreadSleeping = true;
 		int r = HookedFunctions::OriginalFunctions.original_zCThreadSuspendThread(thisptr);
 		ThreadSleeping = false;
-		
+
 		hook_outfunc
 
 		return r;*/
 
-		zCThread* t = (zCThread *)thisptr;
-		int * suspCount = t->GetSuspendCounter();
+		zCThread* t = (zCThread*)thisptr;
+		int* suspCount = t->GetSuspendCounter();
 
-		if ((*suspCount) > 0)
+		if ( (*suspCount) > 0 )
 			return 0;
 
 		(*suspCount) += 1;
 
-		while((*suspCount))
-			Sleep(100); // Sleep as long as we are suspended
+		while ( (*suspCount) )
+			Sleep( 100 ); // Sleep as long as we are suspended
 
 		return 1;
 	}
 
-	int * GetSuspendCounter()
-	{
-		return (int *)THISPTR_OFFSET(GothicMemoryLocations::zCThread::Offset_SuspendCount);
+	int* GetSuspendCounter() {
+		return (int*)THISPTR_OFFSET( GothicMemoryLocations::zCThread::Offset_SuspendCount );
 	}
 };

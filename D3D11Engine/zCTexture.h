@@ -7,38 +7,35 @@
 #include "zSTRING.h"
 #include "D3D7\MyDirectDrawSurface7.h"
 
-namespace zCTextureCacheHack
-{
+namespace zCTextureCacheHack {
 	__declspec(selectany) unsigned int NumNotCachedTexturesInFrame;
 	const int MAX_NOT_CACHED_TEXTURES_IN_FRAME = 40;
 
-	/** If true, this will force all calls to CacheIn to have -1 as parameter, which makes them an immediate cache in! 
+	/** If true, this will force all calls to CacheIn to have -1 as parameter, which makes them an immediate cache in!
 		Be very careful with this as the game will lag everytime a texture is being loaded!*/
-	__declspec(selectany) bool ForceCacheIn; 
+	__declspec(selectany) bool ForceCacheIn;
 };
 
-class zCTexture
-{
+class zCTexture {
 public:
 	zCTexture();
 	~zCTexture();
 
 	/** Hooks the functions of this Class */
-	static void Hook()
-	{
-		//HookedFunctions::OriginalFunctions.original_zCTex_D3DXTEX_BuildSurfaces = (zCTex_D3DXTEX_BuildSurfaces)DetourFunction((BYTE *)GothicMemoryLocations::zCTexture::XTEX_BuildSurfaces, (BYTE *)zCTexture::hooked_XTEX_BuildSurfaces);
-		HookedFunctions::OriginalFunctions.ofiginal_zCTextureLoadResourceData = (zCTextureLoadResourceData)DetourFunction((BYTE *)GothicMemoryLocations::zCTexture::LoadResourceData, (BYTE *)zCTexture::hooked_LoadResourceData);
-	
+	static void Hook() {
+		//XHook(HookedFunctions::OriginalFunctions.original_zCTex_D3DXTEX_BuildSurfaces, GothicMemoryLocations::zCTexture::XTEX_BuildSurfaces, zCTexture::hooked_XTEX_BuildSurfaces);
+		XHook( HookedFunctions::OriginalFunctions.ofiginal_zCTextureLoadResourceData, GothicMemoryLocations::zCTexture::LoadResourceData, zCTexture::hooked_LoadResourceData );
+
 		zCTextureCacheHack::NumNotCachedTexturesInFrame = 0;
 		zCTextureCacheHack::ForceCacheIn = false;
 	}
 
-	static int __fastcall hooked_LoadResourceData(void * thisptr)
-	{
-		Engine::GAPI->SetBoundTexture(7, (zCTexture *)thisptr); // Slot 7 is reserved for this
-		int ret = HookedFunctions::OriginalFunctions.ofiginal_zCTextureLoadResourceData(thisptr);
+	static int __fastcall hooked_LoadResourceData( void* thisptr ) {
+		Engine::GAPI->SetBoundTexture( 7, (zCTexture*)thisptr ); // Slot 7 is reserved for this
+		// TODO: Figure out why some DTX1a Textures crash this
+		int ret = HookedFunctions::OriginalFunctions.ofiginal_zCTextureLoadResourceData( thisptr );
 
-		Engine::GAPI->SetBoundTexture(7, nullptr); // Slot 7 is reserved for this
+		Engine::GAPI->SetBoundTexture( 7, nullptr ); // Slot 7 is reserved for this
 
 		/*if (ret)
 		{
@@ -56,71 +53,60 @@ public:
 	}
 
 
-	static int __fastcall hooked_XTEX_BuildSurfaces(void * thisptr, void * unknwn, int iVal)
-	{
+	static int __fastcall hooked_XTEX_BuildSurfaces( void* thisptr, void* unknwn, int iVal ) {
 		// Notify the texture and load resources
-		int ret = HookedFunctions::OriginalFunctions.original_zCTex_D3DXTEX_BuildSurfaces(thisptr, iVal);
+		int ret = HookedFunctions::OriginalFunctions.original_zCTex_D3DXTEX_BuildSurfaces( thisptr, iVal );
 
 		return ret;
 	}
 
-	const char* GetName()
-	{
+	const char* GetName() {
 		return __GetName().ToChar();
 	}
 
-	std::string GetNameWithoutExt()
-	{
+	std::string GetNameWithoutExt() {
 		std::string n = GetName();
 
-		int p = n.find_last_of('.');
+		int p = n.find_last_of( '.' );
 
-		if (p != std::string::npos)
-			n.resize(p);
+		if ( p != std::string::npos )
+			n.resize( p );
 
 		return n;
 	}
 
-	MyDirectDrawSurface7 * GetSurface()
-	{
-		return *(MyDirectDrawSurface7 **)THISPTR_OFFSET(GothicMemoryLocations::zCTexture::Offset_Surface);
+	MyDirectDrawSurface7* GetSurface() {
+		return *(MyDirectDrawSurface7**)THISPTR_OFFSET( GothicMemoryLocations::zCTexture::Offset_Surface );
 	}
 
-	void Bind(int slot = 0)
-	{
-		Engine::GAPI->SetBoundTexture(slot, this);
+	void Bind( int slot = 0 ) {
+		Engine::GAPI->SetBoundTexture( slot, this );
 
-		_Bind(0, slot);
+		_Bind( 0, slot );
 	}
 
-	void _Bind(bool unkwn, int stage = 0)
-	{
-		XCALL(GothicMemoryLocations::zCTexture::zCTex_D3DInsertTexture);
-	}
-	
-	int LoadResourceData()
-	{
-		XCALL(GothicMemoryLocations::zCTexture::LoadResourceData);
+	void _Bind( bool unkwn, int stage = 0 ) {
+		XCALL( GothicMemoryLocations::zCTexture::zCTex_D3DInsertTexture );
 	}
 
-	zTResourceCacheState GetCacheState()
-	{
-		unsigned char state = *(unsigned char *)THISPTR_OFFSET(GothicMemoryLocations::zCTexture::Offset_CacheState);
+	int LoadResourceData() {
+		XCALL( GothicMemoryLocations::zCTexture::LoadResourceData );
+	}
+
+	zTResourceCacheState GetCacheState() {
+		unsigned char state = *(unsigned char*)THISPTR_OFFSET( GothicMemoryLocations::zCTexture::Offset_CacheState );
 
 		return (zTResourceCacheState)(state & GothicMemoryLocations::zCTexture::Mask_CacheState);
 	}
 
-	zTResourceCacheState CacheIn(float priority)
-	{
-		if (GetCacheState()==zRES_CACHED_IN)
-		{
+	zTResourceCacheState CacheIn( float priority ) {
+		if ( GetCacheState() == zRES_CACHED_IN ) {
 			TouchTimeStamp();
-		} else if (GetCacheState()==zRES_CACHED_OUT || zCTextureCacheHack::ForceCacheIn)
-		{
+		} else if ( GetCacheState() == zRES_CACHED_OUT || zCTextureCacheHack::ForceCacheIn ) {
 
 			/*TouchTimeStampLocal();
 			zCTextureCacheHack::NumNotCachedTexturesInFrame++;
-		
+
 			if (zCTextureCacheHack::NumNotCachedTexturesInFrame >= zCTextureCacheHack::MAX_NOT_CACHED_TEXTURES_IN_FRAME)
 			{
 				// Don't let the renderer cache in all textures at once!
@@ -128,24 +114,23 @@ public:
 			}*/
 
 #ifndef PUBLIC_RELEASE
-			if (1 == 0) // Small debugger-only section to get the name of currently cachedin texture
+			if ( 1 == 0 ) // Small debugger-only section to get the name of currently cachedin texture
 			{
 				std::string name = GetName();
 				LogInfo() << "CacheIn on Texture: " << name;
 			}
 #endif
-			Engine::GAPI->SetBoundTexture(7, this); // Index 7 is reserved for cacheIn
+			Engine::GAPI->SetBoundTexture( 7, this ); // Index 7 is reserved for cacheIn
 			//TouchTimeStampLocal();
 
 			// Cache the texture, overwrite priority if wanted.
-			zCResourceManager::GetResourceManager()->CacheIn(this, zCTextureCacheHack::ForceCacheIn ? -1 : priority);
+			zCResourceManager::GetResourceManager()->CacheIn( this, zCTextureCacheHack::ForceCacheIn ? -1 : priority );
 		}
 
-		MyDirectDrawSurface7 * surface = GetSurface();
-		if (!surface || !surface->IsSurfaceReady())
-		{
-			if (zCTextureCacheHack::ForceCacheIn)
-				zCResourceManager::GetResourceManager()->CacheIn(this, -1);
+		MyDirectDrawSurface7* surface = GetSurface();
+		if ( !surface || !surface->IsSurfaceReady() ) {
+			if ( zCTextureCacheHack::ForceCacheIn )
+				zCResourceManager::GetResourceManager()->CacheIn( this, -1 );
 			else
 				return zRES_CACHED_OUT;
 		}
@@ -153,19 +138,16 @@ public:
 		return GetCacheState();
 	}
 
-	void TouchTimeStamp()
-	{
-		XCALL(GothicMemoryLocations::zCTexture::zCResourceTouchTimeStamp);
+	void TouchTimeStamp() {
+		XCALL( GothicMemoryLocations::zCTexture::zCResourceTouchTimeStamp );
 	}
 
-	void TouchTimeStampLocal()
-	{
-		XCALL(GothicMemoryLocations::zCTexture::zCResourceTouchTimeStampLocal);
+	void TouchTimeStampLocal() {
+		XCALL( GothicMemoryLocations::zCTexture::zCResourceTouchTimeStampLocal );
 	}
 
-	bool HasAlphaChannel()
-	{
-		unsigned char flags = *(unsigned char *)THISPTR_OFFSET(GothicMemoryLocations::zCTexture::Offset_Flags);
+	bool HasAlphaChannel() {
+		unsigned char flags = *(unsigned char*)THISPTR_OFFSET( GothicMemoryLocations::zCTexture::Offset_Flags );
 		return (flags & GothicMemoryLocations::zCTexture::Mask_FlagHasAlpha) != 0;
 	}
 
@@ -174,17 +156,16 @@ public:
 		XCALL(GothicMemoryLocations::zCObject::Release);
 	}*/
 
-/*#ifdef BUILD_GOTHIC_1_08k
-	zCTexture * GetAniTexture()
-	{
-		XCALL(GothicMemoryLocations::zCTexture::GetAniTexture);
-	}
-#endif*/
+	/*#ifdef BUILD_GOTHIC_1_08k
+		zCTexture * GetAniTexture()
+		{
+			XCALL(GothicMemoryLocations::zCTexture::GetAniTexture);
+		}
+	#endif*/
 
 private:
-	const zSTRING& __GetName()
-	{
-		XCALL(GothicMemoryLocations::zCObject::GetObjectName);
+	const zSTRING& __GetName() {
+		XCALL( GothicMemoryLocations::zCObject::GetObjectName );
 	}
 };
 

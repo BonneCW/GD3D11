@@ -60,15 +60,15 @@ class zCMaterial
 public:
 };
 
-#pragma pack (push, 1)	
+#pragma pack (push, 1)
 struct PolyFlags {
 	unsigned char PortalPoly			: 2;
 	unsigned char Occluder				: 1;
 	unsigned char SectorPoly			: 1;
 	unsigned char MustRelight			: 1;
-	unsigned char PortalIndoorOutdoor	: 1;	
+	unsigned char PortalIndoorOutdoor	: 1;
 	unsigned char GhostOccluder			: 1;
-	unsigned char NoDynLightNear		: 1;	
+	unsigned char NoDynLightNear		: 1;
 	VERTEX_INDEX SectorIndex			: 16;
 };
 #pragma pack (pop)
@@ -100,7 +100,7 @@ public:
 	{
 		return *(zCVertFeature ***)(((char *)this) + GADDR::Offset_zCPolygon::Offset_FeaturesArray);
 	}
-	
+
 	unsigned char GetNumPolyVertices() const
 	{
 		return *(unsigned char*)THISPTR_OFFSET(GADDR::Offset_zCPolygon::Offset_NumPolyVertices);

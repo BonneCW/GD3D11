@@ -11,7 +11,7 @@ class SV_Panel;
 
 class SV_GMeshInfoView : public D2DSubView {
 public:
-	SV_GMeshInfoView(D2DView * view, D2DSubView * parent);
+	SV_GMeshInfoView( D2DView* view, D2DSubView* parent );
 	~SV_GMeshInfoView();
 
 	enum ERenderMode {
@@ -22,55 +22,55 @@ public:
 	};
 
 	/** Sets the current render mode */
-	void SetRenderMode(ERenderMode mode);
+	void SetRenderMode( ERenderMode mode );
 
 	/** Sets the mesh infos for this view */
-	void SetMeshes(const std::map<zCTexture *, MeshInfo *> & meshes, BaseVisualInfo * visInfo = nullptr);
+	void SetMeshes( const std::map<zCTexture*, MeshInfo*>& meshes, BaseVisualInfo* visInfo = nullptr );
 
 	/** Sets the name of this view */
-	void SetName(const std::string & name);
+	void SetName( const std::string& name );
 
 	/** Sets the rotation of this object in the view */
-	void SetObjectOrientation(float yaw, float pitch, float distance);
+	void SetObjectOrientation( float yaw, float pitch, float distance );
 
 	/** Updates the view */
 	void UpdateView();
 
 	/** Sets the position and size of this sub-view */
-	virtual void SetRect(const D2D1_RECT_F & rect);
+	virtual void SetRect( const D2D1_RECT_F& rect );
 
 	/** Processes a window-message. Return false to stop the message from going to children */
-	bool OnWindowMessage(HWND hWnd, unsigned int msg, WPARAM wParam, LPARAM lParam, const D2D1_RECT_F & clientRectAbs);
+	bool OnWindowMessage( HWND hWnd, unsigned int msg, WPARAM wParam, LPARAM lParam, const D2D1_RECT_F& clientRectAbs );
 
 	/** Returns the view-properties */
-	void GetObjectOrientation(float & yaw, float & pitch, float & distance);
+	void GetObjectOrientation( float& yaw, float& pitch, float& distance );
 
 protected:
 	/** Draws the meshes to the buffer */
 	void DrawMeshes();
 
-	std::map<zCTexture *, MeshInfo *> Meshes;
-	BaseVisualInfo * VisualInfo;
+	std::map<zCTexture*, MeshInfo*> Meshes;
+	BaseVisualInfo* VisualInfo;
 	ERenderMode RenderMode;
 
 	/** Orientation */
 	float ObjectYaw;
 	float ObjectPitch;
 	float ObjectDistance;
-	DirectX::SimpleMath::Vector3 ObjectPosition;
+	DirectX::XMFLOAT3 ObjectPosition;
 	float FOV;
-	DirectX::SimpleMath::Matrix ObjectWorldMatrix;
-	DirectX::SimpleMath::Matrix ObjectViewMatrix;
-	DirectX::SimpleMath::Matrix ObjectProjMatrix;
+	DirectX::XMFLOAT4X4 ObjectWorldMatrix;
+	DirectX::XMFLOAT4X4 ObjectViewMatrix;
+	DirectX::XMFLOAT4X4 ObjectProjMatrix;
 
 	/** Props */
 	bool IsDraggingView;
 	POINT LastDragPosition;
 
 	/** Rendertarget */
-	RenderToTextureBuffer * RT;
-	RenderToDepthStencilBuffer * DS;
+	RenderToTextureBuffer* RT;
+	RenderToDepthStencilBuffer* DS;
 
 	/** Image panel */
-	SV_Panel * Panel;
+	SV_Panel* Panel;
 };

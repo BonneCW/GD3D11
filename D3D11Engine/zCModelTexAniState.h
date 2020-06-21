@@ -5,15 +5,13 @@
 #include "Engine.h"
 #include "GothicAPI.h"
 
-class zCModelTexAniState
-{
+class zCModelTexAniState {
 public:
-	void UpdateTexList()
-	{
-		XCALL(GothicMemoryLocations::zCModelTexAniState::UpdateTexList);
+	void UpdateTexList() {
+		XCALL( GothicMemoryLocations::zCModelTexAniState::UpdateTexList );
 	}
 
 	int	NumNodeTex;
-	zCTexture ** NodeTexList;
+	zCTexture** NodeTexList;
 	int	ActAniFrames[8];
 };

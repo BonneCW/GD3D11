@@ -10,21 +10,18 @@
 
 namespace Engine {
 
-	const char* DLL_FILES[] = { "d3dcompiler_46.dll", "FW1FontWrapper.dll", "Assimp32.dll", "AntTweakBar.dll" };
-	const int NUM_DLL_FILES = 4;
-
 	/** Creates main graphics engine */
 	void CreateGraphicsEngine() {
 		LogInfo() << "Creating Main graphics engine";
 
 		GraphicsEngine = new D3D11GraphicsEngine;
 
-		if (!GraphicsEngine) {
+		if ( !GraphicsEngine ) {
 			LogErrorBox() << "Failed to create GraphicsEngine! Out of memory!";
-			exit(0);
+			exit( 0 );
 		}
 
-		XLE(GraphicsEngine->Init());
+		XLE( GraphicsEngine->Init() );
 
 		// Create ant tweak bar with it
 		AntTweakBar = new D3D11AntTweakBar;
@@ -44,27 +41,25 @@ namespace Engine {
 		LogInfo() << "Initializing GothicAPI";
 
 		GAPI = new GothicAPI;
-		if (!GAPI) {
+		if ( !GAPI ) {
 			LogErrorBox() << "Failed to create GothicAPI!";
-			exit(0);
+			exit( 0 );
 		}
-	}
-
-	/** Loads the needed dll files from subdir */
-	void LoadDLLFiles() {
 	}
 
 	/** Called when the game is about to close */
 	void OnShutDown() {
 		LogInfo() << "Shutting down...";
 
-		exit(0); // TODO: remove this hack in the future, just a temporary workaround to fix crash on shutdown with the need to kill process via TaskManager
+		// TODO: remove this hack in the future, just a temporary workaround to fix crash on shutdown with the need to kill process via TaskManager
+		// Just killing before GraphicsEngine is not enough.
+		exit( 0 );
 
-		SAFE_DELETE(Engine::RenderingThreadPool);
-		SAFE_DELETE(Engine::AntTweakBar);
-		SAFE_DELETE(Engine::GAPI);
-		SAFE_DELETE(Engine::GraphicsEngine);
-		SAFE_DELETE(Engine::WorkerThreadPool);
+		SAFE_DELETE( Engine::RenderingThreadPool );
+		SAFE_DELETE( Engine::AntTweakBar );
+		SAFE_DELETE( Engine::GAPI );
+		SAFE_DELETE( Engine::WorkerThreadPool );
+		SAFE_DELETE( Engine::GraphicsEngine );
 	}
 
 };

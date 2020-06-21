@@ -3,22 +3,21 @@
 #include "zCWorld.h"
 #include "WorldConverter.h"
 
-class GInventory
-{
+class GInventory {
 public:
 	GInventory();
 	~GInventory();
 
 	/** Called when a VOB got added to the BSP-Tree or the world */
-	void OnAddVob(VobInfo* vob, zCWorld* world);
+	void OnAddVob( VobInfo* vob, zCWorld* world );
 
 	/** Called when a VOB got removed from the world */
-	bool OnRemovedVob(zCVob * vob, zCWorld* world);
+	bool OnRemovedVob( zCVob* vob, zCWorld* world );
 
 	/** Draws the inventory for the given world */
-	void DrawInventory(zCWorld* world, zCCamera& camera);
+	void DrawInventory( zCWorld* world, zCCamera& camera );
 
 private:
-	std::map<zCWorld *, std::list<VobInfo *>> InventoryVobs;
+	std::map<zCWorld*, std::list<VobInfo*>> InventoryVobs;
 };
 

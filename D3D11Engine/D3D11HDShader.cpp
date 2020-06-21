@@ -1,18 +1,19 @@
 #include "pch.h"
 #include "D3D11HDShader.h"
 #include "D3D11GraphicsEngineBase.h"
-#include <D3DX11.h>
 #include "Engine.h"
 #include "GothicAPI.h"
 #include "D3D11ConstantBuffer.h"
+#include <d3dcompiler.h>
+
+using namespace DirectX;
 
 // Patch HLSL-Compiler for http://support.microsoft.com/kb/2448404
 #if D3DX_VERSION == 0xa2b
 #pragma ruledisable 0x0802405f
 #endif
 
-D3D11HDShader::D3D11HDShader()
-{
+D3D11HDShader::D3D11HDShader() {
 	HullShader = nullptr;
 	DomainShader = nullptr;
 	ConstantBuffers = std::vector<D3D11ConstantBuffer*>();
@@ -20,23 +21,21 @@ D3D11HDShader::D3D11HDShader()
 	// Insert into state-map
 	ID = 0;
 
-	if (!D3D11ObjectIDs::HDShadersByID.empty())
+	if ( !D3D11ObjectIDs::HDShadersByID.empty() )
 		ID = D3D11ObjectIDs::Counters.HDShadersCounter + 1;
 
 	D3D11ObjectIDs::HDShadersByID[ID] = this;
 }
 
- 
-D3D11HDShader::~D3D11HDShader()
-{
+
+D3D11HDShader::~D3D11HDShader() {
 	// Remove from state map
-	Toolbox::EraseByElement(D3D11ObjectIDs::HDShadersByID, this);
+	Toolbox::EraseByElement( D3D11ObjectIDs::HDShadersByID, this );
 
-	if (HullShader)HullShader->Release();
-	if (DomainShader)DomainShader->Release();
+	if ( HullShader )HullShader->Release();
+	if ( DomainShader )DomainShader->Release();
 
-	for (unsigned int i = 0; i < ConstantBuffers.size(); i++)
-	{
+	for ( unsigned int i = 0; i < ConstantBuffers.size(); i++ ) {
 		delete ConstantBuffers[i];
 	}
 }
@@ -45,13 +44,12 @@ D3D11HDShader::~D3D11HDShader()
 //--------------------------------------------------------------------------------------
 // Find and compile the specified shader
 //--------------------------------------------------------------------------------------
-HRESULT D3D11HDShader::CompileShaderFromFile(const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut)
-{
+HRESULT D3D11HDShader::CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut ) {
 	HRESULT hr = S_OK;
 
 	char dir[260];
-	GetCurrentDirectoryA(260, dir);
-	SetCurrentDirectoryA(Engine::GAPI->GetStartDirectory().c_str());
+	GetCurrentDirectoryA( 260, dir );
+	SetCurrentDirectoryA( Engine::GAPI->GetStartDirectory().c_str() );
 
 	DWORD dwShaderFlags = 0;
 #if defined(DEBUG) || defined(_DEBUG)
@@ -60,68 +58,54 @@ HRESULT D3D11HDShader::CompileShaderFromFile(const CHAR* szFileName, LPCSTR szEn
 	// the shaders to be optimized and to run exactly the way they will run in 
 	// the release configuration of this program.
 	//dwShaderFlags |= D3DCOMPILE_DEBUG;
+#else
+	dwShaderFlags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
 #endif
 
-	ID3DBlob* pErrorBlob;
-	hr = D3DX11CompileFromFileA(szFileName, nullptr, nullptr, szEntryPoint, szShaderModel,
-		dwShaderFlags, 0, nullptr, ppBlobOut, &pErrorBlob, nullptr);
-	if (FAILED(hr))
-	{
+	Microsoft::WRL::ComPtr<ID3DBlob> pErrorBlob;
+	hr = D3DCompileFromFile( Toolbox::ToWideChar( szFileName ).c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, szEntryPoint, szShaderModel, dwShaderFlags, 0, ppBlobOut, &pErrorBlob );
+	if ( FAILED( hr ) ) {
 		LogInfo() << "Shader compilation failed!";
-		if (pErrorBlob != nullptr)
-		{
-
+		if ( pErrorBlob.Get() ) {
 			LogErrorBox() << (char*)pErrorBlob->GetBufferPointer() << "\n\n (You can ignore the next error from Gothic about too small video memory!)";
-			pErrorBlob->Release();
 		}
 
-		SetCurrentDirectoryA(dir);
+		SetCurrentDirectoryA( dir );
 		return hr;
 	}
-	if (pErrorBlob)
-	{
-		/*if (Engine->SwapchainCreated())
-		Engine->GetConsole()->PostConsoleMessage((char*)pErrorBlob->GetBufferPointer());
-		else
-		LogWarnBox() << (char*)pErrorBlob->GetBufferPointer() << "\n\n (You can ignore the next error from Gothic about too small video memory!)";
-		*/
-		pErrorBlob->Release();
-	}
 
-	SetCurrentDirectoryA(dir);
+	SetCurrentDirectoryA( dir );
 	return S_OK;
 }
 
 /** Loads both shaders at the same time */
-XRESULT D3D11HDShader::LoadShader(const char* hullShader, const char* domainShader)
-{
+XRESULT D3D11HDShader::LoadShader( const char* hullShader, const char* domainShader ) {
 	HRESULT hr;
-	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase *)Engine::GraphicsEngine;
+	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
 	ID3DBlob* hsBlob;
 	ID3DBlob* dsBlob;
 
-	LogInfo() << "Compilling hull shader: " << hullShader;
+	if ( Engine::GAPI->GetRendererState()->RendererSettings.EnableDebugLog )
+		LogInfo() << "Compilling hull shader: " << hullShader;
 	File = hullShader;
 
 	// Compile shaders
-	if (FAILED(CompileShaderFromFile(hullShader, "HSMain", "hs_5_0", &hsBlob)))
-	{
+	if ( FAILED( CompileShaderFromFile( hullShader, "HSMain", "hs_5_0", &hsBlob ) ) ) {
 		return XR_FAILED;
 	}
 
-	if (FAILED(CompileShaderFromFile(domainShader, "DSMain", "ds_5_0", &dsBlob)))
-	{
+	if ( FAILED( CompileShaderFromFile( domainShader, "DSMain", "ds_5_0", &dsBlob ) ) ) {
 		return XR_FAILED;
 	}
 
 	// Create the shaders
-	LE(engine->GetDevice()->CreateHullShader(hsBlob->GetBufferPointer(), hsBlob->GetBufferSize(), nullptr, &HullShader));
-	LE(engine->GetDevice()->CreateDomainShader(dsBlob->GetBufferPointer(), dsBlob->GetBufferSize(), nullptr, &DomainShader));
+	LE( engine->GetDevice()->CreateHullShader( hsBlob->GetBufferPointer(), hsBlob->GetBufferSize(), nullptr, &HullShader ) );
+	LE( engine->GetDevice()->CreateDomainShader( dsBlob->GetBufferPointer(), dsBlob->GetBufferSize(), nullptr, &DomainShader ) );
 
 #ifndef PUBLIC_RELEASE
-	HullShader->SetPrivateData(WKPDID_D3DDebugObjectName, strlen(hullShader), hullShader);
-	DomainShader->SetPrivateData(WKPDID_D3DDebugObjectName, strlen(domainShader), domainShader);
+	HullShader->SetPrivateData( WKPDID_D3DDebugObjectName, strlen( hullShader ), hullShader );
+	DomainShader->SetPrivateData( WKPDID_D3DDebugObjectName, strlen( domainShader ), domainShader );
 #endif
 
 	hsBlob->Release();
@@ -131,27 +115,24 @@ XRESULT D3D11HDShader::LoadShader(const char* hullShader, const char* domainShad
 }
 
 /** Applys the shaders */
-XRESULT D3D11HDShader::Apply()
-{
-	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase *)Engine::GraphicsEngine;
+XRESULT D3D11HDShader::Apply() {
+	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
-	engine->GetContext()->HSSetShader(HullShader, nullptr, 0);
-	engine->GetContext()->DSSetShader(DomainShader, nullptr, 0);
+	engine->GetContext()->HSSetShader( HullShader, nullptr, 0 );
+	engine->GetContext()->DSSetShader( DomainShader, nullptr, 0 );
 
 	return XR_SUCCESS;
 }
 
 /** Unbinds the currently bound hull/domain shaders */
-void D3D11HDShader::Unbind()
-{
-	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase *)Engine::GraphicsEngine;
+void D3D11HDShader::Unbind() {
+	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
-	engine->GetContext()->HSSetShader(nullptr, nullptr, 0);
-	engine->GetContext()->DSSetShader(nullptr, nullptr, 0);
+	engine->GetContext()->HSSetShader( nullptr, nullptr, 0 );
+	engine->GetContext()->DSSetShader( nullptr, nullptr, 0 );
 }
 
 /** Returns a reference to the constantBuffer vector*/
-std::vector<D3D11ConstantBuffer*> & D3D11HDShader::GetConstantBuffer()
-{
+std::vector<D3D11ConstantBuffer*>& D3D11HDShader::GetConstantBuffer() {
 	return ConstantBuffers;
 }

@@ -26,10 +26,10 @@ struct PS_INPUT
 //--------------------------------------------------------------------------------------
 float4 PSMain( PS_INPUT Input ) : SV_TARGET
 {
-	float depth = TX_Depth.Sample(SS_Linear, Input.vTexcoord);
+	float4 depth = TX_Depth.Sample(SS_Linear, Input.vTexcoord);
 
 	float2 ps = float2(1.0f / 1920.0f, 1.0f / 1080.0f);
-	ps = lerp(float2(0,0), ps, pow(depth, 300));
+	ps = lerp(float2(0,0), ps, pow(abs((float)depth), 300));
 	
 	float4 blur = DoBlurPassSingle(ps, Input.vTexcoord, TX_Texture0, TX_Depth, SS_Linear, 1.0f);
 	

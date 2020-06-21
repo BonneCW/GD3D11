@@ -15,9 +15,7 @@
 #include "pch.h"
 #include "ocean_simulator.h"
 #include <assert.h>
-#include <D3Dcompiler.h>
-
-#pragma comment(lib, "D3DCompiler.lib")
+#include <d3dcompiler.h>
 
 // Disable warning "conditional expression is constant"
 #pragma warning(disable:4127)
@@ -30,10 +28,6 @@
 #define BLOCK_SIZE_X 16
 #define BLOCK_SIZE_Y 16
 
-using namespace DirectX;
-using namespace DirectX::SimpleMath;
-
-
 HRESULT CompileShaderFromFile(WCHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut);
 
 // Generating gaussian random number with mean 0 and standard deviation 1.
@@ -43,12 +37,12 @@ float Gauss()
 	float u2 = rand() / (float)RAND_MAX;
 	if (u1 < 1e-6f)
 		u1 = 1e-6f;
-	return sqrtf(-2 * logf(u1)) * cosf(2*(float)XM_PI * u2);
+	return sqrtf(-2 * logf(u1)) * cosf(DirectX::XM_2PI * u2);
 }
 
 // Phillips Spectrum
 // K: normalized wave vector, W: wind direction, v: wind velocity, a: amplitude constant
-float Phillips(DirectX::SimpleMath::Vector2 K, DirectX::SimpleMath::Vector2 W, float v, float a, float dir_depend)
+float Phillips(DirectX::XMFLOAT2 K, DirectX::XMFLOAT2 W, float v, float a, float dir_depend)
 {
 	// largest possible wave from constant wind of velocity v
 	float l = v * v / GRAV_ACCEL;
@@ -163,7 +157,7 @@ OceanSimulator::OceanSimulator(OceanParameter& params, ID3D11Device* pd3dDevice)
 
 	// Height map H(0)
 	int height_map_size = (params.dmap_dim + 4) * (params.dmap_dim + 1);
-	DirectX::SimpleMath::Vector2 * h0_data = new DirectX::SimpleMath::Vector2[height_map_size * sizeof(DirectX::SimpleMath::Vector2)];
+	DirectX::XMFLOAT2 * h0_data = new DirectX::XMFLOAT2[height_map_size * sizeof(DirectX::XMFLOAT2)];
 	float * omega_data = new float[height_map_size * sizeof(float)];
 	initHeightMap(params, h0_data, omega_data);
 
@@ -226,7 +220,7 @@ OceanSimulator::OceanSimulator(OceanParameter& params, ID3D11Device* pd3dDevice)
 	// Compute shaders
     ID3DBlob* pBlobUpdateSpectrumCS = nullptr;
 
-    CompileShaderFromFile(L"ocean_simulator_cs.hlsl", "UpdateSpectrumCS", "cs_4_0", &pBlobUpdateSpectrumCS);
+    CompileShaderFromFile(L"ocean_simulator_cs.hlsl", "UpdateSpectrumCS", "cs_5_0", &pBlobUpdateSpectrumCS);
 	assert(pBlobUpdateSpectrumCS);
 
     m_pd3dDevice->CreateComputeShader(pBlobUpdateSpectrumCS->GetBufferPointer(), pBlobUpdateSpectrumCS->GetBufferSize(), nullptr, &m_pUpdateSpectrumCS);
@@ -239,9 +233,9 @@ OceanSimulator::OceanSimulator(OceanParameter& params, ID3D11Device* pd3dDevice)
     ID3DBlob* pBlobUpdateDisplacementPS = nullptr;
     ID3DBlob* pBlobGenGradientFoldingPS = nullptr;
 
-    CompileShaderFromFile(L"ocean_simulator_vs_ps.hlsl", "QuadVS", "vs_4_0", &pBlobQuadVS);
-    CompileShaderFromFile(L"ocean_simulator_vs_ps.hlsl", "UpdateDisplacementPS", "ps_4_0", &pBlobUpdateDisplacementPS);
-    CompileShaderFromFile(L"ocean_simulator_vs_ps.hlsl", "GenGradientFoldingPS", "ps_4_0", &pBlobGenGradientFoldingPS);
+    CompileShaderFromFile(L"ocean_simulator_vs_ps.hlsl", "QuadVS", "vs_5_0", &pBlobQuadVS);
+    CompileShaderFromFile(L"ocean_simulator_vs_ps.hlsl", "UpdateDisplacementPS", "ps_5_0", &pBlobUpdateDisplacementPS);
+    CompileShaderFromFile(L"ocean_simulator_vs_ps.hlsl", "GenGradientFoldingPS", "ps_5_0", &pBlobGenGradientFoldingPS);
 	assert(pBlobQuadVS);
 	assert(pBlobUpdateDisplacementPS);
 	assert(pBlobGenGradientFoldingPS);
@@ -267,7 +261,7 @@ OceanSimulator::OceanSimulator(OceanParameter& params, ID3D11Device* pd3dDevice)
 
 	// Quad vertex buffer
 	D3D11_BUFFER_DESC vb_desc;
-	vb_desc.ByteWidth = 4 * sizeof(DirectX::SimpleMath::Vector4);
+	vb_desc.ByteWidth = 4 * sizeof(DirectX::XMFLOAT4);
 	vb_desc.Usage = D3D11_USAGE_IMMUTABLE;
 	vb_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	vb_desc.CPUAccessFlags = 0;
@@ -389,13 +383,13 @@ OceanSimulator::~OceanSimulator()
 // Initialize the vector field.
 // wlen_x: width of wave tile, in meters
 // wlen_y: length of wave tile, in meters
-void OceanSimulator::initHeightMap(OceanParameter& params, DirectX::SimpleMath::Vector2 * out_h0, float * out_omega)
+void OceanSimulator::initHeightMap(OceanParameter& params, DirectX::XMFLOAT2 * out_h0, float * out_omega)
 {
 	int i, j;
-	DirectX::SimpleMath::Vector2 K, Kn;
+	DirectX::XMFLOAT2 K;
 
-	DirectX::SimpleMath::Vector2 wind_dir;
-	wind_dir.Normalize();
+	DirectX::XMFLOAT2 wind_dir;
+	XMStoreFloat2(&wind_dir, DirectX::XMVector2Normalize(XMLoadFloat2(&params.wind_dir)));
 	float a = params.wave_amplitude * 1e-7f;	// It is too small. We must scale it for editing.
 	float v = params.wind_speed;
 	float dir_depend = params.wind_dependency;
@@ -409,11 +403,11 @@ void OceanSimulator::initHeightMap(OceanParameter& params, DirectX::SimpleMath::
 	for (i = 0; i <= height_map_dim; i++)
 	{
 		// K is wave-vector, range [-|DX/W, |DX/W], [-|DY/H, |DY/H]
-		K.y = (-height_map_dim / 2.0f + i) * (2 * ((float)XM_PI) / patch_length);
+		K.y = (-height_map_dim / 2.0f + i) * ((DirectX::XM_2PI) / patch_length);
 
 		for (j = 0; j <= height_map_dim; j++)
 		{
-			K.x = (-height_map_dim / 2.0f + j) * (2 * ((float)XM_PI) / patch_length);
+			K.x = (-height_map_dim / 2.0f + j) * ((DirectX::XM_2PI) / patch_length);
 
 			float phil = (K.x == 0 && K.y == 0) ? 0 : sqrtf(Phillips(K, wind_dir, v, a, dir_depend));
 
@@ -508,7 +502,7 @@ void OceanSimulator::updateDisplacementMap(float time)
 
 	// IA setup
 	ID3D11Buffer* vbs[1] = {m_pQuadVB};
-	UINT strides[1] = {sizeof(DirectX::SimpleMath::Vector4)};
+	UINT strides[1] = {sizeof(DirectX::XMFLOAT4)};
 	UINT offsets[1] = {0};
 	m_pd3dImmediateContext->IASetVertexBuffers(0, 1, &vbs[0], &strides[0], &offsets[0]);
 
@@ -565,7 +559,7 @@ void OceanSimulator::updateDisplacementMap(float time)
 		// and cast it as (float *)
 
 		// Write to disk
-		DirectX::SimpleMath::Vector2 * v = (DirectX::SimpleMath::Vector2 *)mapped_res.pData;
+		DirectX::XMFLOAT2 * v = (DirectX::XMFLOAT2 *)mapped_res.pData;
 
 		FILE* fp = fopen(".\\tmp\\Ht_raw.dat", "wb");
 		fwrite(v, 512*512*sizeof(float)*2*3, 1, fp);
@@ -626,8 +620,8 @@ HRESULT CompileShaderFromFile(WCHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szS
     // Compile the shader
     char pFilePathName[MAX_PATH];        
     WideCharToMultiByte(CP_ACP, 0, str, -1, pFilePathName, MAX_PATH, nullptr, nullptr);
-    ID3DBlob* pErrorBlob;
-    hr = D3DCompile(pFileData, FileSize.LowPart, pFilePathName, nullptr, nullptr, szEntryPoint, szShaderModel, D3D10_SHADER_ENABLE_STRICTNESS, 0, ppBlobOut, &pErrorBlob);
+	Microsoft::WRL::ComPtr<ID3DBlob> pErrorBlob;
+    hr = D3DCompile(pFileData, FileSize.LowPart, pFilePathName, nullptr, nullptr, szEntryPoint, szShaderModel, D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, ppBlobOut, &pErrorBlob);
 
     delete []pFileData;
 
@@ -635,10 +629,8 @@ HRESULT CompileShaderFromFile(WCHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szS
     {
         OutputDebugStringA((char*)pErrorBlob->GetBufferPointer());
 		LogError() << "(char*)pErrorBlob->GetBufferPointer()";
-        SAFE_RELEASE(pErrorBlob);
         return hr;
     }
-    SAFE_RELEASE(pErrorBlob);
 
     return S_OK;
 }

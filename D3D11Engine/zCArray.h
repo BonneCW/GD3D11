@@ -5,7 +5,7 @@
 #include "Engine.h"
 #include "GothicAPI.h"
 
-/*template <class T> 
+/*template <class T>
 class zCArray {
 public:
 	~zCArray()
@@ -66,152 +66,135 @@ Full license at http://creativecommons.org/licenses/by-nc/3.0/legalcode
 */
 
 template<class T>
-class zCArray
-{
+class zCArray {
 public:
-        T*  Array;
-        int NumAlloc;
-        int NumInArray;
+	T* Array;
+	int NumAlloc;
+	int NumInArray;
 
 private:
-        void Reallocate(const int nSize)
-        {
-                if (nSize == 0)
-                        return;
+	void Reallocate( const int nSize ) {
+		if ( nSize == 0 )
+			return;
 
-                T* pArray = new T[this->NumAlloc+nSize];
+		T* pArray = new T[this->NumAlloc + nSize];
 
-                if (this->NumInArray > 0)
-                {
-                        for(int i = 0; i < this->NumInArray; i++)
-                                pArray[i] = array[i];
-                };
+		if ( this->NumInArray > 0 ) {
+			for ( int i = 0; i < this->NumInArray; i++ )
+				pArray[i] = array[i];
+		};
 
-                delete [] this->Array;
-                this->NumAlloc += nSize;
-                this->Array     = pArray;
-        };      
+		delete [] this->Array;
+		this->NumAlloc += nSize;
+		this->Array = pArray;
+	};
 
 public:
-        /** Insert description.
-        */
-        zCArray()
-        {
-                this->Array           = nullptr;
-                this->NumAlloc        = 0;
-                this->NumInArray      = 0;
-        };
+	/** Insert description.
+	*/
+	zCArray() {
+		this->Array = nullptr;
+		this->NumAlloc = 0;
+		this->NumInArray = 0;
+	};
 
-        /** Insert description.
-        */
-        ~zCArray()
-        {
-                this->Clear();
-        };
+	/** Insert description.
+	*/
+	~zCArray() {
+		this->Clear();
+	};
 
-        /** Insert description.
-        */
-        const T& operator [] (const unsigned int pos) const
-        {
-                if ((int)pos <= this->NumInArray)
-                        return this->Array[pos];
-        };
+	/** Insert description.
+	*/
+	const T& operator [] ( const unsigned int pos ) const {
+		if ( (int)pos <= this->NumInArray )
+			return this->Array[pos];
+	};
 
-        /** Insert description.
-        */
-        T& operator [] (const unsigned int pos)
-        {
-                if ((int)pos <= this->NumInArray)
-                        return this->Array[pos];
-        };
+	/** Insert description.
+	*/
+	T& operator [] ( const unsigned int pos ) {
+		if ( (int)pos <= this->NumInArray )
+			return this->Array[pos];
+	};
 
-        /** Insert description.
-        */
-        void Clear()
-        {
-                this->NumAlloc        = 0;
-                this->NumInArray      = 0;
-                if (this->Array != nullptr)
-                {
-                        delete[] this->Array;
-                        this->Array = nullptr;
-                };
-        };
+	/** Insert description.
+	*/
+	void Clear() {
+		this->NumAlloc = 0;
+		this->NumInArray = 0;
+		if ( this->Array != nullptr ) {
+			delete [] this->Array;
+			this->Array = nullptr;
+		};
+	};
 
-        /**
-        * @brief Adds an element to the zCArray.
-        *
-        * This method adds an element to the zCArray. If the preallocated memory of the zCArray
-        * is full then this method will allocate one additional field to store the the new element.
-        * This behaviour saves memory but is very inefficient when adding many elements as memory
-        * is allocated on every method call when the preallocated area is full.
-        *
-        * This method can be interleaved with PushBackFast.
-        */
-        void PushBack(const T& in)
-        {
-                if ((this->NumInArray + 1) > this->NumAlloc) // -- PB throws around with memory. But we don't, so we use the allocated space and don't allocate more and more memory... (memory leak!?)
-                        Reallocate(1);
+	/**
+	* @brief Adds an element to the zCArray.
+	*
+	* This method adds an element to the zCArray. If the preallocated memory of the zCArray
+	* is full then this method will allocate one additional field to store the the new element.
+	* This behaviour saves memory but is very inefficient when adding many elements as memory
+	* is allocated on every method call when the preallocated area is full.
+	*
+	* This method can be interleaved with PushBackFast.
+	*/
+	void PushBack( const T& in ) {
+		if ( (this->NumInArray + 1) > this->NumAlloc ) // -- PB throws around with memory. But we don't, so we use the allocated space and don't allocate more and more memory... (memory leak!?)
+			Reallocate( 1 );
 
-                this->Array[this->NumInArray++] = in;
-        };
+		this->Array[this->NumInArray++] = in;
+	};
 
-        /**
-        * @brief Adds an element to the zCArray.
-        *
-        * This method adds an element to the zCArray. If the preallocated memory of the zCArray
-        * is full then this method will double the size of the preallocated memory. This might lead
-        * to the worst case situation where twice as much memory than needed is used for this zCArray.
-        * Use this method in often created/short lived zCArrays.
-        *
-        * This method can be interleaved with PushBack.
-        */
-        void PushBackFast(const T& in)
-        {
-                if ((this->NumInArray + 1) > this->NumAlloc) // -- Let's throw around with memory like PB does for performance's sake.
-                        Reallocate(this->NumAlloc*2);
+	/**
+	* @brief Adds an element to the zCArray.
+	*
+	* This method adds an element to the zCArray. If the preallocated memory of the zCArray
+	* is full then this method will double the size of the preallocated memory. This might lead
+	* to the worst case situation where twice as much memory than needed is used for this zCArray.
+	* Use this method in often created/short lived zCArrays.
+	*
+	* This method can be interleaved with PushBack.
+	*/
+	void PushBackFast( const T& in ) {
+		if ( (this->NumInArray + 1) > this->NumAlloc ) // -- Let's throw around with memory like PB does for performance's sake.
+			Reallocate( this->NumAlloc * 2 );
 
-                this->Array[this->NumInArray++] = in;
-        };
+		this->Array[this->NumInArray++] = in;
+	};
 
-        /** Insert description.
-        */
-        const T& GetItem(const unsigned int pos)
-        {
-                if ((pos <= this->NumInArray) && (pos <= this->NumAlloc))
-                        return this->Array[pos];
-        };
+	/** Insert description.
+	*/
+	const T& GetItem( const unsigned int pos ) {
+		if ( (pos <= this->NumInArray) && (pos <= this->NumAlloc) )
+			return this->Array[pos];
+	};
 
-        /** Insert description.
-        */
-        unsigned int GetSize()
-        {
-                return (unsigned int)this->NumInArray;
-        };
+	/** Insert description.
+	*/
+	unsigned int GetSize() {
+		return (unsigned int)this->NumInArray;
+	};
 
-        /** Insert description.
-        */
-        int Search(const T& item)
-        {
-                for (size_t i = 0; i < GetSize(); i++)
-                {
-                        if (Array[i] == item)
-                                return i;
-                }
+	/** Insert description.
+	*/
+	int Search( const T& item ) {
+		for ( size_t i = 0; i < GetSize(); i++ ) {
+			if ( Array[i] == item )
+				return i;
+		}
 
-                return -1;
-        };
+		return -1;
+	};
 
-        /** Insert description.
-        */
-        bool IsInList(const T& item)
-        {
-                for (size_t i = 0; i < GetSize(); i++)
-                {
-                        if (Array[i] == item)
-                                return true;
-                }
+	/** Insert description.
+	*/
+	bool IsInList( const T& item ) {
+		for ( size_t i = 0; i < GetSize(); i++ ) {
+			if ( Array[i] == item )
+				return true;
+		}
 
-                return false;
-        };
+		return false;
+	};
 };

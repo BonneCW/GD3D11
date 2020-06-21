@@ -12,17 +12,16 @@ struct RenderToTextureBuffer;
 struct VobInfo;
 struct SkeletalVobInfo;
 class D3D11ConstantBuffer;
-class D3D11PointLight : public BaseShadowedPointLight
-{
+class D3D11PointLight : public BaseShadowedPointLight {
 public:
-	D3D11PointLight(VobLightInfo* info, bool dynamicLight = false);
+	D3D11PointLight( VobLightInfo* info, bool dynamicLight = false );
 	~D3D11PointLight();
 
 	/** Initializes the resources of this light */
 	void InitResources();
 
 	/** Draws the surrounding scene into the cubemap */
-	void RenderCubemap(bool forceUpdate = false);
+	void RenderCubemap( bool forceUpdate = false );
 
 	/** Binds the shadowmap to the pixelshader */
 	void OnRenderLight();
@@ -40,11 +39,11 @@ public:
 	bool NotYetDrawn();
 
 	/** Called when a vob got removed from the world */
-	virtual void OnVobRemovedFromWorld(BaseVobInfo * vob);
+	virtual void OnVobRemovedFromWorld( BaseVobInfo* vob );
 
 protected:
 	/** Renders the scene with the given view-proj-matrices */
-	void RenderCubemapFace(const DirectX::SimpleMath::Matrix& view, const DirectX::SimpleMath::Matrix& proj, UINT faceIdx);
+	void RenderCubemapFace( const DirectX::XMFLOAT4X4& view, const DirectX::XMFLOAT4X4& proj, UINT faceIdx );
 
 	/** Renders all cubemap faces at once, using the geometry shader */
 	void RenderFullCubemap();
@@ -55,14 +54,13 @@ protected:
 	bool WorldCacheInvalid;
 
 	VobLightInfo* LightInfo;
-	RenderToDepthStencilBuffer * DepthCubemap;
-	DirectX::SimpleMath::Matrix CubeMapViewMatrices[6];
-	DirectX::SimpleMath::Vector3 LastUpdatePosition;
+	RenderToDepthStencilBuffer* DepthCubemap;
+	DirectX::XMFLOAT4X4 CubeMapViewMatrices[6];
+	DirectX::XMFLOAT3 LastUpdatePosition;
 	DWORD LastUpdateColor;
 	D3D11ConstantBuffer* ViewMatricesCB;
 	bool DynamicLight;
 	bool InitDone;
 	bool DrawnOnce;
-	std::mutex InitMutex;
 };
 

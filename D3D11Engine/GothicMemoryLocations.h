@@ -8,6 +8,16 @@
 
 #define THISPTR_OFFSET(x) (((char *)this) + (x))
 
+template<typename TOriginal, typename T>
+static void XHook( TOriginal& original, unsigned int adr, T& hookFn ) {
+	original = (TOriginal)DetourFunction( (BYTE*)adr, (BYTE*)hookFn );
+}
+
+template<typename T>
+static void XHook( unsigned int adr, T& hookFn ) {
+	DetourFunction( (BYTE*)adr, (BYTE*)hookFn );
+}
+
 // -- call macro from GothicX (thx, Zerxes!)
 #define XCALL(uAddr)                    \
         __asm { mov esp, ebp    }       \

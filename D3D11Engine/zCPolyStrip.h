@@ -44,22 +44,21 @@ struct zCPolyStripInstance {
 
 
 
-class zCPolyStrip : public zCObject
-{
+class zCPolyStrip : public zCObject {
 public:
 	zCPolyStripInstance GetInstanceData() {
-		return *(zCPolyStripInstance*)THISPTR_OFFSET(GothicMemoryLocations::zCPolyStrip::Offset_Material);
+		return *(zCPolyStripInstance*)THISPTR_OFFSET( GothicMemoryLocations::zCPolyStrip::Offset_Material );
 	}
 
-	void SetVisibleSegments(float visibleFirst, float visibleLast) {
-		XCALL(GothicMemoryLocations::zCPolyStrip::SetVisibleSegments);
+	void SetVisibleSegments( float visibleFirst, float visibleLast ) {
+		XCALL( GothicMemoryLocations::zCPolyStrip::SetVisibleSegments );
 	}
 
 	void AlighToCamera() {
-		XCALL(GothicMemoryLocations::zCPolyStrip::AlignToCamera);
+		XCALL( GothicMemoryLocations::zCPolyStrip::AlignToCamera );
 	}
 
-	void Render(void*) {
-		XCALL(GothicMemoryLocations::zCPolyStrip::Render);
+	void Render( void* ) {
+		XCALL( GothicMemoryLocations::zCPolyStrip::Render );
 	}
 };

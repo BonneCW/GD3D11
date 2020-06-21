@@ -1,14 +1,12 @@
 #pragma once
 
-#define WINVER 0x0601 // Windows 7
-#define _WIN32_WINNT 0x0601 // Windows 7
-#define NTDDI_VERSION 0x06010000 // Windows 7
-
 #pragma warning(disable: 4731) // Change of ebp from inline assembly
 #pragma warning(disable: 4244) // Loss of data during conversion
 #include <Windows.h>
+#include <wrl/client.h>
+#include <chrono>
 #include <d3d11.h>
-#include <SimpleMath.h>
+#include <DirectXMath.h>
 #include <future>
 #include <list>
 #include <map>
@@ -28,7 +26,7 @@
 #define stdext std
 #endif
 
-#define VERSION_NUMBER "17.7-dev2"
+#define VERSION_NUMBER "17.7-dev11-fix2"
 __declspec(selectany) const char* VERSION_NUMBER_STR = VERSION_NUMBER;
 
 extern bool GMPModeActive;
@@ -44,8 +42,9 @@ extern bool GMPModeActive;
 //#define V(x) x
 
 /** Writes a string of the D3D7-Call log */
-void DebugWrite_i(LPCSTR lpDebugMessage, void * thisptr);
+void DebugWrite_i( LPCSTR lpDebugMessage, void* thisptr );
 
 /** Computes the size in bytes of the given FVF */
-int ComputeFVFSize(DWORD fvf);
+int ComputeFVFSize( DWORD fvf );
+
 

@@ -14,9 +14,9 @@ struct AtmosphereSettings {
 	int Samples;
 	float RayleightScaleDepth;
 	float3 WaveLengths;
-	DirectX::SimpleMath::Vector3 SpherePosition;
+	DirectX::XMFLOAT3 SpherePosition;
 	float SphereOffsetY;
-	DirectX::SimpleMath::Vector3 LightDirection;
+	DirectX::XMFLOAT3 LightDirection;
 	float SkyTimeScale;
 };
 
@@ -42,34 +42,34 @@ public:
 	XRESULT RenderSky();
 
 	/** Returns the sky-texture for the passed daytime (0..1) */
-	void GetTextureOfDaytime(float time, D3D11Texture ** t1, D3D11Texture ** t2, float * factor);
+	void GetTextureOfDaytime( float time, D3D11Texture** t1, D3D11Texture** t2, float* factor );
 
 	/** Returns the loaded sky-Dome */
 	GMesh* GetSkyDome();
 
 	/** Sets the current sky texture */
-	void SetSkyTexture(ESkyTexture texture);
+	void SetSkyTexture( ESkyTexture texture );
 
 	/** Returns the skyplane */
-	MeshInfo * GetSkyPlane();
+	MeshInfo* GetSkyPlane();
 
 	/** Returns the cloud meshes */
-	std::vector<GMesh *> & GetCloudMeshes();
+	std::vector<GMesh*>& GetCloudMeshes();
 
 	/** Returns the atmospheric parameters */
-	AtmosphereConstantBuffer & GetAtmosphereCB() { return AtmosphereCB; }
+	AtmosphereConstantBuffer& GetAtmosphereCB() { return AtmosphereCB; }
 
 	/** returns atmosphere settings */
-	AtmosphereSettings & GetAtmoshpereSettings() { return Atmosphere; }
+	AtmosphereSettings& GetAtmoshpereSettings() { return Atmosphere; }
 
 	/** Returns the current sky-light color */
 	float4 GetSkylightColor();
 
 	/** Returns the cloud texture */
-	D3D11Texture * GetCloudTexture();
+	D3D11Texture* GetCloudTexture();
 
 	/** Returns the night texture */
-	D3D11Texture * GetNightTexture();
+	D3D11Texture* GetNightTexture();
 
 	/** Returns the current sun color */
 	float3 GetSunColor();
@@ -79,24 +79,24 @@ protected:
 	XRESULT LoadSkyResources();
 
 	/** Adds a sky texture. Sky textures must be in order to make the daytime work */
-	XRESULT AddSkyTexture(const std::string & file);
+	XRESULT AddSkyTexture( const std::string& file );
 
 	/** Sky mesh */
-	GMesh * SkyDome;
+	std::unique_ptr<GMesh> SkyDome;
 
 	/** Skyplane */
-	MeshInfo * SkyPlane;
+	std::unique_ptr<MeshInfo> SkyPlane;
 
 	/** Sky textures by time:
 		1=0	0.25	0.5	  0.75	  1=0
 		Day	Evening	Night Morning Day
 	*/
-	std::vector<D3D11Texture *> SkyTextures;
+	std::vector<D3D11Texture*> SkyTextures;
 
-	D3D11Texture * CloudTexture;
-	D3D11Texture * NightTexture;
+	std::unique_ptr<D3D11Texture> CloudTexture;
+	std::unique_ptr<D3D11Texture> NightTexture;
 
-	D3D11VertexBuffer* SkyPlaneVertexBuffer;
+	std::unique_ptr<D3D11VertexBuffer> SkyPlaneVertexBuffer;
 	ExVertexStruct SkyPlaneVertices[6];
 
 	/** Atmospheric variables */

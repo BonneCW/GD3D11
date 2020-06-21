@@ -2,8 +2,7 @@
 #include "pch.h"
 
 class GFSDK_SSAO_Context_D3D11;
-class D3D11NVHBAO
-{
+class D3D11NVHBAO {
 public:
 	D3D11NVHBAO();
 	~D3D11NVHBAO();
@@ -12,7 +11,7 @@ public:
 	XRESULT Init();
 
 	/** Renders the HBAO-Effect onto the given RTV */
-	XRESULT Render(ID3D11RenderTargetView* rtv);
+	XRESULT Render( ID3D11RenderTargetView* pOutputColorRTV );
 private:
 	/** Nvidia HBAO+ context */
 	GFSDK_SSAO_Context_D3D11* AOContext;
