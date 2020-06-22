@@ -53,6 +53,19 @@ namespace VersionCheck {
 			}
 		}
 
+		// Check for game data
+		// Do this by checking one file in the folder which should always be there
+		// Not the best solution, but we'll just roll with it at this point as
+		// this is only a hint for the user that he forgot to copy over the GD3D11-Folder
+		if ( !Toolbox::FileExists( "GD3D11\\data\\DeviceEnum.bin" ) && !Toolbox::FileExists( "system\\GD3D11\\data\\DeviceEnum.bin" )  ) {
+			LogErrorBox() << "Failed to find GD3D11 systemfiles!\n"
+				"This means: The GD3D11-folder is missing or corrupt. This can be the result of only copying the ddraw.dll into Gothics system-folder, which isn't enough!\n\n"
+				"Please check your installation.\n";
+			exit( 0 );
+		}
+
+		if (FileExists(dir_upper + "\\SpineAPI.dll")) return; // skip hash check for Spine
+
 		// Get checksum from header
 		MapFileAndCheckSum( exe.c_str(), &headersum, &checksum );
 
@@ -78,17 +91,6 @@ namespace VersionCheck {
 								"Not everything is working yet and it may crash frequently. You don't need to report every bug you see, because I likely have seen it myself by now.\n";
 		#endif*/
 #endif
-
-		// Check for game data
-		// Do this by checking one file in the folder which should always be there
-		// Not the best solution, but we'll just roll with it at this point as
-		// this is only a hint for the user that he forgot to copy over the GD3D11-Folder
-		if ( !Toolbox::FileExists( "GD3D11\\data\\DeviceEnum.bin" ) ) {
-			LogErrorBox() << "Failed to find GD3D11 systemfiles!\n"
-				"This means: The GD3D11-folder is missing or corrupt. This can be the result of only copying the ddraw.dll into Gothics system-folder, which isn't enough!\n\n"
-				"Please check your installation.\n";
-			exit( 0 );
-		}
 	}
 
 }
