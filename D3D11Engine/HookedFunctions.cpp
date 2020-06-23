@@ -83,6 +83,15 @@ void HookedFunctionInfo::InitHooks() {
 	if ( !GMPModeActive ) {
 		XHook( GothicMemoryLocations::zCActiveSnd::AutoCalcObstruction, HookedFunctionInfo::hooked_zCActiveSndAutoCalcObstruction );
 	}
+
+	// Workaround to fix disappearing ui elements under certain circumstances
+	// e.g. praying at Beliar statue, screen blend causing dialog boxes to disappear.
+	unsigned char* lpSkipFOV = (unsigned char*)(0x61808Fu);
+	LogWarn() << "Overriding zCVobScreenFX::OnTick() if (blend.visible) -> if (false)";
+	VirtualProtect( (void*)lpSkipFOV, 2, PAGE_EXECUTE_READWRITE, &dwProtect );
+	memcpy( lpSkipFOV, "\x90\xE9", 2 );
+	VirtualProtect( (void*)lpSkipFOV, 2, dwProtect, &dwProtect );
+
 #endif
 }
 
