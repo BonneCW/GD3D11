@@ -391,6 +391,7 @@ void D2DSettingsDialog::ApplyButtonPressed( SV_Button* sender, void* userdata ) 
 	if ( d->Resolutions[d->ResolutionSetting].Width != Engine::GraphicsEngine->GetResolution().x || d->Resolutions[d->ResolutionSetting].Height != Engine::GraphicsEngine->GetResolution().y ) {
 		Engine::GraphicsEngine->OnResize( INT2( d->Resolutions[d->ResolutionSetting].Width, d->Resolutions[d->ResolutionSetting].Height ) );
 	}
+	Engine::GAPI->SaveRendererWorldSettings( settings );
 }
 
 /** Checks if a change needs to reload the shaders */

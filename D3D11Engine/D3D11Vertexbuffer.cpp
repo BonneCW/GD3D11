@@ -58,8 +58,7 @@ XRESULT D3D11VertexBuffer::Init( void* initData, unsigned int sizeInBytes, EBind
 
 	// Check for structured buffer again to create the SRV
 	if ( (EBindFlags & EBindFlags::B_SHADER_RESOURCE) != 0 && structuredByteSize > 0 ) {
-		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-		ZeroMemory( &srvDesc, sizeof( srvDesc ) );
+		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 		srvDesc.Format = DXGI_FORMAT_UNKNOWN;
 		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
 		srvDesc.Buffer.ElementWidth = sizeInBytes / structuredByteSize;

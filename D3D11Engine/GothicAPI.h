@@ -197,6 +197,12 @@ public:
 	/** Called when the game is done loading the world */
 	void OnWorldLoaded();
 
+	/** Sets the per mod & per world renderersettings which can be persisted */
+	void LoadRendererWorldSettings( GothicRendererSettings& s );
+
+	/** Persists the per mod & per world renderersettings */
+	void SaveRendererWorldSettings( const GothicRendererSettings& s );
+
 	/** Called to update the world, before rendering */
 	void OnWorldUpdate();
 

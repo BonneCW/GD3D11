@@ -794,9 +794,9 @@ void EditorLinePrimitive::RecalcTransforms() {
 			Front = XMVector3TransformNormal( Front, xmRotationMatrix );
 			Right = XMVector3Cross( Up, Front );
 
-			auto X = XMMatrixRotationAxis( Front, DeltaRot.x );
-			auto Y = XMMatrixRotationAxis( Up, DeltaRot.y );
-			auto Z = XMMatrixRotationAxis( Right, DeltaRot.z );
+			XMMATRIX X = XMMatrixRotationAxis( Front, DeltaRot.x );
+			XMMATRIX Y = XMMatrixRotationAxis( Up, DeltaRot.y );
+			XMMATRIX Z = XMMatrixRotationAxis( Right, DeltaRot.z );
 
 			xmRotationMatrix *= X * Y * Z;
 			XMStoreFloat4x4( &RotationMatrix, xmRotationMatrix );

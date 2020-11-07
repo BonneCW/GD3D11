@@ -132,6 +132,37 @@ GothicAPI::~GothicAPI() {
 	SAFE_DELETE( WrappedWorldMesh );
 }
 
+float GetPrivateProfileFloatA(
+	const LPCSTR lpAppName,
+	const LPCSTR lpKeyName,
+	const float nDefault,
+	const std::string& lpFileName
+) {
+	const int float_str_max = 30;
+	TCHAR nFloat[float_str_max];
+	if ( GetPrivateProfileStringA( lpAppName, lpKeyName, nullptr, nFloat, float_str_max, lpFileName.c_str() ) ) {
+		return std::stof( std::string( nFloat ) );
+	}
+	return nDefault;
+}
+std::string GetPrivateProfileStringA(
+	const LPCSTR lpAppName,
+	const LPCSTR lpKeyName,
+	const std::string& lpcstrDefault,
+	const std::string& lpFileName ) {
+	char buffer[MAX_PATH];
+	GetPrivateProfileStringA( lpAppName, lpKeyName, lpcstrDefault.c_str(), buffer, MAX_PATH, lpFileName.c_str() );
+	return std::string( buffer );
+}
+
+bool GetPrivateProfileBoolA(
+	const LPCSTR lpAppName,
+	const LPCSTR lpKeyName,
+	const bool nDefault,
+	const std::string& lpFileName ) {
+	return GetPrivateProfileIntA( lpAppName, lpKeyName, nDefault, lpFileName.c_str() ) ? true : false;
+}
+
 /** Called when the game starts */
 void GothicAPI::OnGameStart() {
 	LoadMenuSettings( MENU_SETTINGS_FILE );
@@ -563,6 +594,8 @@ void GothicAPI::OnWorldLoaded() {
 		GetSky()->SetSkyTexture( ESkyTexture::ST_NewWorld ); // Make newworld default
 		RendererState.RendererSettings.SetupNewWorldSpecificValues();
 	}
+	
+	LoadRendererWorldSettings( RendererState.RendererSettings );
 
 	// Reset wetness
 	SceneWetness = GetRainFXWeight();
@@ -578,6 +611,108 @@ void GothicAPI::OnWorldLoaded() {
 #endif
 
 	_canClearVobsByVisual = false;
+}
+
+void GothicAPI::LoadRendererWorldSettings(GothicRendererSettings& s) {
+	if ( !LoadedWorldInfo || LoadedWorldInfo->WorldName.empty() ) {
+		return;
+	}
+
+	auto gameName = GetGameName();
+	std::string zenFolder;
+	if ( gameName == "Original" ) {
+		zenFolder = "system\\GD3D11\\ZENResources\\";
+	} else {
+		zenFolder = "system\\GD3D11\\ZENResources\\" + gameName + "\\";
+	}
+	if ( !Toolbox::FolderExists( zenFolder ) ) {
+		LogInfo() << "Custom ZEN-Resources. Directory not found: " << zenFolder;
+		return;
+	}
+
+	auto const ini = zenFolder + LoadedWorldInfo->WorldName + ".INI";
+	if ( !Toolbox::FileExists( ini ) ) {
+		return;
+	}
+
+	s.FogHeight = GetPrivateProfileFloatA( "Fog", "Height", s.FogHeight, ini.c_str() );
+	s.FogHeightFalloff = GetPrivateProfileFloatA( "Fog", "HeightFalloff", s.FogHeightFalloff, ini.c_str() );
+	s.FogGlobalDensity = GetPrivateProfileFloatA( "Fog", "GlobalDensity", s.FogGlobalDensity, ini.c_str() );
+
+	s.SunLightColor = float3::FromColor(
+		GetPrivateProfileIntA( "Atmoshpere", "SunLightColorR", (int)(s.SunLightColor.x * 255.0f), ini.c_str() ),
+		GetPrivateProfileIntA( "Atmoshpere", "SunLightColorG", (int)(s.SunLightColor.y * 255.0f), ini.c_str() ),
+		GetPrivateProfileIntA( "Atmoshpere", "SunLightColorB", (int)(s.SunLightColor.z * 255.0f), ini.c_str() )
+	);
+
+	s.FogColorMod = float3::FromColor(
+		GetPrivateProfileIntA( "Atmoshpere", "FogColorModR", (int)(s.FogColorMod.x * 255.0f), ini.c_str() ),
+		GetPrivateProfileIntA( "Atmoshpere", "FogColorModG", (int)(s.FogColorMod.y * 255.0f), ini.c_str() ),
+		GetPrivateProfileIntA( "Atmoshpere", "FogColorModB", (int)(s.FogColorMod.z * 255.0f), ini.c_str() )
+	);
+
+	if ( !GMPModeActive ) {
+		s.VisualFXDrawRadius = GetPrivateProfileFloatA( "General", "VisualFXDrawRadius", s.VisualFXDrawRadius, ini.c_str() );
+		s.OutdoorVobDrawRadius = GetPrivateProfileFloatA( "General", "OutdoorVobDrawRadius", s.OutdoorVobDrawRadius, ini.c_str() );
+		s.OutdoorSmallVobDrawRadius = GetPrivateProfileFloatA( "General", "OutdoorSmallVobDrawRadius", s.OutdoorSmallVobDrawRadius, ini.c_str() );
+		s.SectionDrawRadius = GetPrivateProfileFloatA( "General", "SectionDrawRadius", s.SectionDrawRadius, ini.c_str() );
+	}
+
+	s.ReplaceSunDirection = GetPrivateProfileBoolA( "Atmoshpere", "ReplaceSunDirection", s.ReplaceSunDirection, ini );
+		
+	AtmosphereSettings& aS = GetSky()->GetAtmoshpereSettings();
+
+	aS.LightDirection = DirectX::XMFLOAT3(
+		GetPrivateProfileFloatA( "Atmoshpere", "LightDirectionX", aS.LightDirection.x, ini.c_str() ),
+		GetPrivateProfileFloatA( "Atmoshpere", "LightDirectionY", aS.LightDirection.y, ini.c_str() ),
+		GetPrivateProfileFloatA( "Atmoshpere", "LightDirectionZ", aS.LightDirection.z, ini.c_str() )
+	);
+}
+
+void GothicAPI::SaveRendererWorldSettings( const GothicRendererSettings & s) {
+	if ( !LoadedWorldInfo || LoadedWorldInfo->WorldName.empty() ) {
+		return;
+	}
+	auto gameName = GetGameName();
+	std::string zenFolder;
+	if ( gameName == "Original" ) {
+		zenFolder = "system\\GD3D11\\ZENResources\\";
+	} else {
+		zenFolder = "system\\GD3D11\\ZENResources\\" + gameName + "\\";
+	}
+	if ( !Toolbox::FolderExists( zenFolder ) ) {
+		if ( !Toolbox::CreateDirectoryRecursive( zenFolder ) ) {
+			LogError() << "Could not save custom ZEN-Resources. Could not create directory: " << zenFolder;
+			return;
+		}
+	}
+
+	auto const ini = zenFolder + LoadedWorldInfo->WorldName + ".INI";
+
+	WritePrivateProfileStringA( "Fog", "Height", std::to_string( s.FogHeight ).c_str(), ini.c_str() );
+	WritePrivateProfileStringA( "Fog", "HeightFalloff", std::to_string( s.FogHeightFalloff ).c_str(), ini.c_str() );
+	WritePrivateProfileStringA( "Fog", "GlobalDensity", std::to_string( s.FogGlobalDensity ).c_str(), ini.c_str() );
+
+	WritePrivateProfileStringA( "Atmoshpere", "SunLightColorR", std::to_string( (int)(s.SunLightColor.x * 255.0f) ).c_str(), ini.c_str() );
+	WritePrivateProfileStringA( "Atmoshpere", "SunLightColorG", std::to_string( (int)(s.SunLightColor.y * 255.0f) ).c_str(), ini.c_str() );
+	WritePrivateProfileStringA( "Atmoshpere", "SunLightColorB", std::to_string( (int)(s.SunLightColor.z * 255.0f) ).c_str(), ini.c_str() );
+
+	WritePrivateProfileStringA( "Atmoshpere", "FogColorModR", std::to_string( (int)(s.FogColorMod.x * 255.0f) ).c_str(), ini.c_str() );
+	WritePrivateProfileStringA( "Atmoshpere", "FogColorModG", std::to_string( (int)(s.FogColorMod.y * 255.0f) ).c_str(), ini.c_str() );
+	WritePrivateProfileStringA( "Atmoshpere", "FogColorModB", std::to_string( (int)(s.FogColorMod.z * 255.0f) ).c_str(), ini.c_str() );
+
+	WritePrivateProfileStringA( "General", "VisualFXDrawRadius", std::to_string( s.VisualFXDrawRadius ).c_str(), ini.c_str() );
+	WritePrivateProfileStringA( "General", "OutdoorVobDrawRadius", std::to_string( s.OutdoorVobDrawRadius ).c_str(), ini.c_str() );
+	WritePrivateProfileStringA( "General", "OutdoorSmallVobDrawRadius", std::to_string( s.OutdoorSmallVobDrawRadius ).c_str(), ini.c_str() );
+	WritePrivateProfileStringA( "General", "SectionDrawRadius", std::to_string( s.SectionDrawRadius ).c_str(), ini.c_str() );
+
+	WritePrivateProfileStringA( "Atmoshpere", "ReplaceSunDirection", std::to_string( s.ReplaceSunDirection ? TRUE : FALSE ).c_str(), ini.c_str() );
+		
+	AtmosphereSettings& aS = GetSky()->GetAtmoshpereSettings();
+
+	WritePrivateProfileStringA( "Atmoshpere", "LightDirectionX", std::to_string( aS.LightDirection.x ).c_str(), ini.c_str() );
+	WritePrivateProfileStringA( "Atmoshpere", "LightDirectionY", std::to_string( aS.LightDirection.y ).c_str(), ini.c_str() );
+	WritePrivateProfileStringA( "Atmoshpere", "LightDirectionZ", std::to_string( aS.LightDirection.z ).c_str(), ini.c_str() );
 }
 
 /** Goes through the given zCTree and registers all found vobs */
@@ -627,7 +762,7 @@ void GothicAPI::DrawWorldMeshNaive() {
 		zCCamera::GetCamera()->SetFOV( RendererState.RendererSettings.FOVHoriz, (Engine::GraphicsEngine->GetResolution().y / (float)Engine::GraphicsEngine->GetResolution().x) * RendererState.RendererSettings.FOVVert );
 
 		CurrentCamera = zCCamera::GetCamera();
-	}
+}
 #else
 	float fovH = 90.0f, fovV = 90.0f;
 	if ( zCCamera::GetCamera() )
@@ -939,7 +1074,7 @@ void GothicAPI::OnVobMoved( zCVob* vob ) {
 		if ( memcmp( &vob->GetWorldMatrixXM(), &XMLoadFloat4x4( &it->second->WorldMatrix ), sizeof( XMMATRIX ) ) == 0 ) {
 			// No actual change
 			return;
-		}
+}
 #endif
 
 		if ( !it->second->ParentBSPNodes.empty() ) {
@@ -1476,7 +1611,7 @@ void GothicAPI::DrawSkeletalMeshVob( SkeletalVobInfo* vi, float distance ) {
 
 	model->SetIsVisible( true );
 
-#ifndef BUILD_GOTHIC_1_08k
+#ifndef BUILD_GOTHIC_1_08k // does not work in G1
 	if ( !vi->Vob->GetShowVisual() )
 		return;
 #endif
@@ -2502,7 +2637,7 @@ void GothicAPI::CollectVisibleVobs( std::vector<VobInfo*>& vobs, std::vector<Vob
 				if ( !it->VobConstantBuffer ) {
 					removeList.push_back( it );
 					continue;
-				}
+		}
 #endif
 				if ( !it->Vob->GetShowVisual() ) {
 					continue;
@@ -2516,8 +2651,8 @@ void GothicAPI::CollectVisibleVobs( std::vector<VobInfo*>& vobs, std::vector<Vob
 
 				vobs.push_back( it );
 				it->VisibleInRenderPass = true;
-			}
-		}
+	}
+}
 	}
 
 #ifdef BUILD_GOTHIC_1_08k
@@ -2967,12 +3102,12 @@ void GothicAPI::BuildBspVobMapCacheHelper( zCBspBase* base ) {
 					//if (v)
 					//	MoveVobFromBspToDynamic(v);
 #endif
+					}
 				}
-			}
 
 			bvi.NumStaticLights = leaf->LightVobList.NumInArray;
-		}
-	} else {
+			}
+		} else {
 		zCBspNode* node = (zCBspNode*)base;
 
 		bvi.OriginalNode = base;
@@ -2984,7 +3119,7 @@ void GothicAPI::BuildBspVobMapCacheHelper( zCBspBase* base ) {
 		bvi.Front = &BspLeafVobLists[node->Front];
 		bvi.Back = &BspLeafVobLists[node->Back];
 	}
-}
+	}
 
 /** Builds our BspTreeVobMap */
 void GothicAPI::BuildBspVobMapCache() {
@@ -3210,14 +3345,7 @@ void GothicAPI::SaveCustomZENResources() {
 
 	bool mkDirErr = false;
 	if ( !Toolbox::FolderExists( zenFolder ) ) {
-		unsigned int pos = 0;
-		do {
-			pos = zenFolder.find_first_of( "\\/", pos + 1 );
-			if ( CreateDirectory( zenFolder.substr( 0, pos ).c_str(), NULL ) == FALSE ) {
-				mkDirErr = true;
-				break;
-			}
-		} while ( pos != std::string::npos );
+		mkDirErr = !Toolbox::CreateDirectoryRecursive( zenFolder );
 	}
 
 	if ( mkDirErr ) {
@@ -3434,37 +3562,6 @@ XRESULT GothicAPI::LoadVegetation( const std::string& file ) {
 	return XR_SUCCESS;
 }
 
-float GetPrivateProfileFloatA(
-	const LPCSTR lpAppName,
-	const LPCSTR lpKeyName,
-	const float nDefault,
-	const std::string& lpFileName
-) {
-	const int float_str_max = 30;
-	TCHAR nFloat[float_str_max];
-	if ( GetPrivateProfileStringA( lpAppName, lpKeyName, nullptr, nFloat, float_str_max, lpFileName.c_str() ) ) {
-		return std::stof( std::string( nFloat ) );
-	}
-	return nDefault;
-}
-std::string GetPrivateProfileStringA(
-	const LPCSTR lpAppName,
-	const LPCSTR lpKeyName,
-	const std::string& lpcstrDefault,
-	const std::string& lpFileName ) {
-	char buffer[MAX_PATH];
-	GetPrivateProfileStringA( lpAppName, lpKeyName, lpcstrDefault.c_str(), buffer, MAX_PATH, lpFileName.c_str() );
-	return std::string( buffer );
-}
-
-bool GetPrivateProfileBoolA(
-	const LPCSTR lpAppName,
-	const LPCSTR lpKeyName,
-	const bool nDefault,
-	const std::string& lpFileName ) {
-	return GetPrivateProfileIntA( lpAppName, lpKeyName, nDefault, lpFileName.c_str() ) ? true : false;
-}
-
 /** Saves the users settings from the menu */
 XRESULT GothicAPI::SaveMenuSettings( const std::string& file ) {
 	TCHAR NPath[MAX_PATH];
@@ -3484,21 +3581,13 @@ XRESULT GothicAPI::SaveMenuSettings( const std::string& file ) {
 	WritePrivateProfileStringA( "General", "EnableGodRays", std::to_string( s.EnableGodRays ? TRUE : FALSE ).c_str(), ini.c_str() );
 	WritePrivateProfileStringA( "General", "AllowNormalmaps", std::to_string( s.AllowNormalmaps ? TRUE : FALSE ).c_str(), ini.c_str() );
 	WritePrivateProfileStringA( "General", "AllowNumpadKeys", std::to_string( s.AllowNumpadKeys ? TRUE : FALSE ).c_str(), ini.c_str() );
-	WritePrivateProfileStringA( "General", "VisualFXDrawRadius", std::to_string( s.VisualFXDrawRadius ).c_str(), ini.c_str() );
-	WritePrivateProfileStringA( "General", "OutdoorVobDrawRadius", std::to_string( s.OutdoorVobDrawRadius ).c_str(), ini.c_str() );
-	WritePrivateProfileStringA( "General", "OutdoorSmallVobDrawRadius", std::to_string( s.OutdoorSmallVobDrawRadius ).c_str(), ini.c_str() );
-	WritePrivateProfileStringA( "General", "SectionDrawRadius", std::to_string( s.SectionDrawRadius ).c_str(), ini.c_str() );
+
+	/*
+	* Draw-distance is saved on a per World basis using SaveRendererWorldSettings
+	*/
+
 	WritePrivateProfileStringA( "General", "EnableOcclusionCulling", std::to_string( s.EnableOcclusionCulling ).c_str(), ini.c_str() );
 	WritePrivateProfileStringA( "General", "FpsLimit", std::to_string( s.FpsLimit ).c_str(), ini.c_str() );
-	WritePrivateProfileStringA( "General", "ReplaceSunDirection", std::to_string( s.ReplaceSunDirection ? TRUE : FALSE ).c_str(), ini.c_str() );
-
-	if ( Engine::GAPI->GetSky() ) {
-		AtmosphereSettings& aS = Engine::GAPI->GetSky()->GetAtmoshpereSettings();
-
-		WritePrivateProfileStringA( "Atmoshpere", "LightDirectionX", std::to_string( aS.LightDirection.x ).c_str(), ini.c_str() );
-		WritePrivateProfileStringA( "Atmoshpere", "LightDirectionY", std::to_string( aS.LightDirection.y ).c_str(), ini.c_str() );
-		WritePrivateProfileStringA( "Atmoshpere", "LightDirectionZ", std::to_string( aS.LightDirection.z ).c_str(), ini.c_str() );
-	}
 
 	auto res = Engine::GraphicsEngine->GetResolution();
 	WritePrivateProfileStringA( "Display", "Width", std::to_string( res.x ).c_str(), ini.c_str() );
@@ -3511,6 +3600,7 @@ XRESULT GothicAPI::SaveMenuSettings( const std::string& file ) {
 	WritePrivateProfileStringA( "Display", "Brightness", std::to_string( s.BrightnessValue ).c_str(), ini.c_str() );
 	WritePrivateProfileStringA( "Display", "DisplayFlip", std::to_string( s.DisplayFlip ? TRUE : FALSE ).c_str(), ini.c_str() );
 	WritePrivateProfileStringA( "Display", "StretchWindow", std::to_string( s.StretchWindow ? TRUE : FALSE ).c_str(), ini.c_str() );
+	WritePrivateProfileStringA( "Display", "UIScale", std::to_string( s.GothicUIScale ).c_str(), ini.c_str() );
 
 	WritePrivateProfileStringA( "Shadows", "EnableShadows", std::to_string( s.EnableShadows ? TRUE : FALSE ).c_str(), ini.c_str() );
 	WritePrivateProfileStringA( "Shadows", "EnableSoftShadows", std::to_string( s.EnableSoftShadows ? TRUE : FALSE ).c_str(), ini.c_str() );
@@ -3574,13 +3664,13 @@ XRESULT GothicAPI::LoadMenuSettings( const std::string& file ) {
 	s.EnableGodRays = GetPrivateProfileBoolA( "General", "EnableGodRays", defaultRendererSettings.EnableGodRays, ini );
 	s.AllowNormalmaps = GetPrivateProfileBoolA( "General", "AllowNormalmaps", defaultRendererSettings.AllowNormalmaps, ini );
 	s.AllowNumpadKeys = GetPrivateProfileBoolA( "General", "AllowNumpadKeys", defaultRendererSettings.AllowNumpadKeys, ini );
-	s.VisualFXDrawRadius = GetPrivateProfileFloatA( "General", "VisualFXDrawRadius", 8000.0f, ini.c_str() );
-	s.OutdoorVobDrawRadius = GetPrivateProfileFloatA( "General", "OutdoorVobDrawRadius", 30000.0f, ini.c_str() );
-	s.OutdoorSmallVobDrawRadius = GetPrivateProfileFloatA( "General", "OutdoorSmallVobDrawRadius", 10000.0f, ini.c_str() );
-	s.SectionDrawRadius = GetPrivateProfileFloatA( "General", "SectionDrawRadius", 4, ini.c_str() );
+
+	/*
+	* Draw-distance is Loaded on a per World basis using LoadRendererWorldSettings
+	*/
+
 	s.EnableOcclusionCulling = GetPrivateProfileBoolA( "General", "EnableOcclusionCulling", defaultRendererSettings.EnableOcclusionCulling, ini );
 	s.FpsLimit = GetPrivateProfileIntA( "General", "FpsLimit", 0, ini.c_str() );
-	s.ReplaceSunDirection = GetPrivateProfileBoolA( "General", "ReplaceSunDirection", defaultRendererSettings.ReplaceSunDirection, ini );
 
 	// override INI settings with GMP minimum values.
 	if ( GMPModeActive ) {
@@ -3591,16 +3681,6 @@ XRESULT GothicAPI::LoadMenuSettings( const std::string& file ) {
 	}
 
 	static DirectX::XMFLOAT3 defaultLightDirection = DirectX::XMFLOAT3( 1, 1, 1 );
-
-	if ( Engine::GAPI->GetSky() ) {
-		AtmosphereSettings& aS = Engine::GAPI->GetSky()->GetAtmoshpereSettings();
-
-		aS.LightDirection = DirectX::XMFLOAT3(
-			GetPrivateProfileFloatA( "Atmoshpere", "LightDirectionX", defaultLightDirection.x, ini.c_str() ),
-			GetPrivateProfileFloatA( "Atmoshpere", "LightDirectionY", defaultLightDirection.y, ini.c_str() ),
-			GetPrivateProfileFloatA( "Atmoshpere", "LightDirectionZ", defaultLightDirection.z, ini.c_str() )
-		);
-	}
 
 	s.EnableShadows = GetPrivateProfileBoolA( "Shadows", "EnableShadows", defaultRendererSettings.EnableShadows, ini );
 	s.EnableSoftShadows = GetPrivateProfileBoolA( "Shadows", "EnableSoftShadows", defaultRendererSettings.EnableSoftShadows, ini );
@@ -3622,6 +3702,7 @@ XRESULT GothicAPI::LoadMenuSettings( const std::string& file ) {
 	s.BrightnessValue = GetPrivateProfileFloatA( "Display", "Brightness", 1.0f, ini.c_str() );
 	s.DisplayFlip = GetPrivateProfileBoolA( "Display", "DisplayFlip", false, ini.c_str() );
 	s.StretchWindow = GetPrivateProfileBoolA( "Display", "StretchWindow", false, ini.c_str() );
+	s.GothicUIScale = GetPrivateProfileFloatA( "Display", "UIScale", 1.0f, ini.c_str() );
 
 	s.EnableSMAA = GetPrivateProfileBoolA( "SMAA", "Enabled", false, ini );
 	s.SharpenFactor = GetPrivateProfileFloatA( "SMAA", "SharpenFactor", 0.30f, ini.c_str() );

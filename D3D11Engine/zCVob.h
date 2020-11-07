@@ -211,7 +211,7 @@ public:
 
 	/** Returns whether the visual of this vob is visible */
 	bool GetShowVisual() {
-		unsigned int flags = *(unsigned int*)THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_Flags );
+		//unsigned int flags = *(unsigned int*)THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_Flags );
 
 #ifndef BUILD_SPACER
 		return GetShowMainVisual();

@@ -216,6 +216,11 @@ struct RenderToDepthStencilBuffer {
 
 		LE( device->CreateTexture2D( &Desc, nullptr, &Texture ) );
 
+		if ( !Texture ) {
+			LogError() << "Could not create Texture!";
+			return; 
+		}
+
 		//Create a render target view
 		D3D11_DEPTH_STENCIL_VIEW_DESC DescDSV = CD3D11_DEPTH_STENCIL_VIEW_DESC();
 		ZeroMemory( &DescDSV, sizeof( DescDSV ) );

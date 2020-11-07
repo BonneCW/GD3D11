@@ -42,11 +42,12 @@ D3D11PointLight::~D3D11PointLight() {
 	// Make sure we are out of the init-queue
 	while ( !InitDone );
 
-	delete DepthCubemap;
-	delete ViewMatricesCB;
+	SAFE_DELETE(DepthCubemap);
+	SAFE_DELETE(ViewMatricesCB);
 
-	for ( auto it = WorldMeshCache.begin(); it != WorldMeshCache.end(); it++ )
-		delete it->second;
+	for ( auto it = WorldMeshCache.begin(); it != WorldMeshCache.end(); it++ ) {
+		SAFE_DELETE(it->second);
+	}
 }
 
 /** Returns true if this is the first time that light is being rendered */

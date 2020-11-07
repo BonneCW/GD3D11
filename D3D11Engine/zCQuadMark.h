@@ -11,11 +11,9 @@ public:
 
 	/** Hooks the functions of this Class */
 	static void Hook() {
-#ifndef BUILD_GOTHIC_1_08k
 		XHook( HookedFunctions::OriginalFunctions.original_zCQuadMarkCreateQuadMark, GothicMemoryLocations::zCQuadMark::CreateQuadMark, zCQuadMark::Hooked_CreateQuadMark );
 		//XHook(HookedFunctions::OriginalFunctions.original_zCQuadMarkConstructor, GothicMemoryLocations::zCQuadMark::Constructor, zCQuadMark::Hooked_Constructor);
 		XHook( HookedFunctions::OriginalFunctions.original_zCQuadMarkDestructor, GothicMemoryLocations::zCQuadMark::Destructor, zCQuadMark::Hooked_Destructor );
-#endif
 	}
 
 	static void __fastcall Hooked_CreateQuadMark( void* thisptr, void* unknwn, zCPolygon* poly, const float3& position, const float2& size, struct zTEffectParams* params ) {

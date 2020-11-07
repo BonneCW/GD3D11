@@ -453,29 +453,29 @@ HRESULT MyDirectDrawSurface7::Unlock( LPRECT lpRect ) {
 			// Catch unset resolution 
 			if ( vidRes.x == 0 || vidRes.y == 0 )
 				vidRes = Engine::GraphicsEngine->GetResolution();
-
-			XMVECTOR mid = XMVectorSet( Engine::GraphicsEngine->GetResolution().x / 2, Engine::GraphicsEngine->GetResolution().y / 2, 0, 0 );
+			const INT2 engineRes = Engine::GraphicsEngine->GetResolution();
+			XMVECTOR mid = XMVectorSet( engineRes.x / 2, engineRes.y / 2, 0, 0 );
 			DirectX::XMFLOAT2 tl;
 			XMStoreFloat2( &tl, mid - XMVectorSet( vidRes.x, vidRes.y, 0, 0 ) * 0.5f ); //check propably never used
 			DirectX::XMFLOAT2 br;
 			XMStoreFloat2( &br, mid + XMVectorSet( vidRes.x, vidRes.y, 0, 0 ) * 0.5f ); //check propably never used
 
 			// Compute how much we would have to scale the video on both axis
-			float scaleX = Engine::GraphicsEngine->GetResolution().x / (float)vidRes.x;
-			float scaleY = Engine::GraphicsEngine->GetResolution().y / (float)vidRes.y;
+			float scaleX = engineRes.x / (float)vidRes.x;
+			float scaleY = engineRes.y / (float)vidRes.y;
 
 			// select the smaller one
 			float scale = std::min( scaleX, scaleY ) * 0.75f;
 
 
 			// I am honestly not sure how this is correct, but after an hour of fiddeling this works fine. You probably don't want to touch it.
-			float tlx = -Engine::GraphicsEngine->GetResolution().x * scale + (float)Engine::GraphicsEngine->GetResolution().x;
-			float tly = -Engine::GraphicsEngine->GetResolution().y * scale + (float)Engine::GraphicsEngine->GetResolution().y;
+			float tlx = -engineRes.x * scale + (float)engineRes.x;
+			float tly = -engineRes.y * scale + (float)engineRes.y;
 
-			float brx = Engine::GraphicsEngine->GetResolution().x * scale;
-			float bry = Engine::GraphicsEngine->GetResolution().y * scale;
+			float brx = engineRes.x * scale;
+			float bry = engineRes.y * scale;
 
-#ifdef BUILD_GOTHIC_2_6_fix
+#if defined(BUILD_GOTHIC_2_6_fix) || defined(BUILD_GOTHIC_1_08k)
 			Engine::GraphicsEngine->DrawQuad( INT2( tlx, tly ),
 				INT2( brx - tlx, bry - tly ) );
 #else

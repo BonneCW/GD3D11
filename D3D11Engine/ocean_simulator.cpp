@@ -104,7 +104,7 @@ void createTextureAndViews(ID3D11Device* pd3dDevice, UINT width, UINT height, DX
 						   ID3D11Texture2D ** ppTex, ID3D11ShaderResourceView ** ppSRV, ID3D11RenderTargetView** ppRTV)
 {
 	// Create 2D texture
-	D3D11_TEXTURE2D_DESC tex_desc;
+	D3D11_TEXTURE2D_DESC tex_desc = {};
 	tex_desc.Width = width;
 	tex_desc.Height = height;
 	tex_desc.MipLevels = 0;
@@ -200,7 +200,7 @@ OceanSimulator::OceanSimulator(OceanParameter& params, ID3D11Device* pd3dDevice)
 	createTextureAndViews(m_pd3dDevice, hmap_dim, hmap_dim, DXGI_FORMAT_R16G16B16A16_FLOAT, &m_pGradientMap, &m_pGradientSRV, &m_pGradientRTV);
 
 	// Samplers
-	D3D11_SAMPLER_DESC sam_desc;
+	D3D11_SAMPLER_DESC sam_desc = {};
 	sam_desc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
 	sam_desc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
 	sam_desc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
@@ -260,7 +260,7 @@ OceanSimulator::OceanSimulator(OceanParameter& params, ID3D11Device* pd3dDevice)
 	SAFE_RELEASE(pBlobQuadVS);
 
 	// Quad vertex buffer
-	D3D11_BUFFER_DESC vb_desc;
+	D3D11_BUFFER_DESC vb_desc = {};
 	vb_desc.ByteWidth = 4 * sizeof(DirectX::XMFLOAT4);
 	vb_desc.Usage = D3D11_USAGE_IMMUTABLE;
 	vb_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
@@ -274,7 +274,7 @@ OceanSimulator::OceanSimulator(OceanParameter& params, ID3D11Device* pd3dDevice)
 		 1, -1, 0, 1,
 		 1,  1, 0, 1,
 	};
-	D3D11_SUBRESOURCE_DATA init_data;
+	D3D11_SUBRESOURCE_DATA init_data = {};
 	init_data.pSysMem = &quad_verts[0];
 	init_data.SysMemPitch = 0;
 	init_data.SysMemSlicePitch = 0;
@@ -293,7 +293,7 @@ OceanSimulator::OceanSimulator(OceanParameter& params, ID3D11Device* pd3dDevice)
 	UINT immutable_consts[] = {actual_dim, input_width, output_width, output_height, dtx_offset, dty_offset};
 	D3D11_SUBRESOURCE_DATA init_cb0 = {&immutable_consts[0], 0, 0};
 
-	D3D11_BUFFER_DESC cb_desc;
+	D3D11_BUFFER_DESC cb_desc = {};
 	cb_desc.Usage = D3D11_USAGE_IMMUTABLE;
 	cb_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 	cb_desc.CPUAccessFlags = 0;

@@ -159,8 +159,7 @@ XRESULT D3D11GraphicsEngineBase::OnResize( INT2 newSize ) {
 	if ( !SwapChain ) {
 		LogInfo() << "Creating new swapchain! (Format: DXGI_FORMAT_R8G8B8A8_UNORM)";
 
-		DXGI_SWAP_CHAIN_DESC1 scd;
-		ZeroMemory( &scd, sizeof(DXGI_SWAP_CHAIN_DESC1) );
+		DXGI_SWAP_CHAIN_DESC1 scd = {};
 
 		scd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 		scd.BufferCount = 1;
@@ -201,6 +200,11 @@ XRESULT D3D11GraphicsEngineBase::OnResize( INT2 newSize ) {
 	ID3D11Texture2D* backbuffer = nullptr;
 	SwapChain->GetBuffer( 0, __uuidof(ID3D11Texture2D), (void**)&backbuffer );
 
+	if ( !backbuffer ) {
+		LogError() << "Failed to get backbuffer!";
+		return XR_FAILED;
+	}
+
 	// Recreate RenderTargetView
 	ID3D11RenderTargetView* backbufferRTV;
 	ID3D11ShaderResourceView* backbufferSRV;
@@ -216,8 +220,7 @@ XRESULT D3D11GraphicsEngineBase::OnResize( INT2 newSize ) {
 	GetContext()->OMSetRenderTargets( 1, Backbuffer->GetRenderTargetViewPtr(), DepthStencilBuffer->GetDepthStencilView() );
 
 	// Set the viewport
-	D3D11_VIEWPORT viewport;
-	ZeroMemory( &viewport, sizeof( D3D11_VIEWPORT ) );
+	D3D11_VIEWPORT viewport = {};
 
 	viewport.TopLeftX = 0;
 	viewport.TopLeftY = 0;
@@ -279,8 +282,7 @@ XRESULT D3D11GraphicsEngineBase::OnEndFrame() {
 /** Called to set the current viewport */
 XRESULT D3D11GraphicsEngineBase::SetViewport( const ViewportInfo& viewportInfo ) {
 	// Set the viewport
-	D3D11_VIEWPORT viewport;
-	ZeroMemory( &viewport, sizeof( D3D11_VIEWPORT ) );
+	D3D11_VIEWPORT viewport = {};
 
 	viewport.TopLeftX = static_cast<float>(viewportInfo.TopLeftX);
 	viewport.TopLeftY = static_cast<float>(viewportInfo.TopLeftY);
@@ -335,7 +337,7 @@ XRESULT D3D11GraphicsEngineBase::GetDisplayModeList( std::vector<DisplayModeInfo
 	UINT numModes = 0;
 	std::unique_ptr<DXGI_MODE_DESC []> displayModes = nullptr;
 	DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	IDXGIOutput* output;
+	IDXGIOutput* output = nullptr;
 
 	// Get desktop rect
 	RECT desktop;

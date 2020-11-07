@@ -72,7 +72,7 @@ void HookedFunctionInfo::InitHooks() {
 	// Hook the single bink-function
 	XHook( GothicMemoryLocations::zCBinkPlayer::GetPixelFormat, HookedFunctionInfo::hooked_zBinkPlayerGetPixelFormat );
 
-#ifdef BUILD_GOTHIC_2_6_fix
+#if defined(BUILD_GOTHIC_2_6_fix) || defined(BUILD_GOTHIC_1_08k)
 	XHook( original_zCBinkPlayerOpenVideo, GothicMemoryLocations::zCBinkPlayer::OpenVideo, HookedFunctionInfo::hooked_zBinkPlayerOpenVideo );
 #endif
 	original_Alg_Rotation3DNRad = (Alg_Rotation3DNRad)GothicMemoryLocations::Functions::Alg_Rotation3DNRad;
@@ -86,11 +86,20 @@ void HookedFunctionInfo::InitHooks() {
 
 	// Workaround to fix disappearing ui elements under certain circumstances
 	// e.g. praying at Beliar statue, screen blend causing dialog boxes to disappear.
-	unsigned char* lpSkipFOV = (unsigned char*)(0x61808Fu);
-	LogWarn() << "Overriding zCVobScreenFX::OnTick() if (blend.visible) -> if (false)";
-	VirtualProtect( (void*)lpSkipFOV, 2, PAGE_EXECUTE_READWRITE, &dwProtect );
-	memcpy( lpSkipFOV, "\x90\xE9", 2 );
-	VirtualProtect( (void*)lpSkipFOV, 2, dwProtect, &dwProtect );
+	LogInfo() << "Patching: Overriding zCVobScreenFX::OnTick() if (blend.visible) -> if (false)";
+	PatchAddr( 0x61808Fu, "\x90\xE9");
+
+	LogInfo() << "Patching: Interupt gamestart sound";
+	PatchAddr( 0x004DB89F, "\x00" );
+
+	LogInfo() << "Patching: Fix low framerate";
+	PatchAddr( 0x004DDC6F, "\x08" );
+
+	LogInfo() << "Patching: LOW_FPS_NaN_check";
+	PatchAddr( 0x0066E59A, "\x81\x3A\x00\x00\xC0\xFF\x0F\x84\xF3\x3C\xEC\xFF\x81\x3A\x00\x00\xC0\x7F\x0F\x84\xE7\x3C\xEC\xFF\xD9\x45\x00\x8D\x44\x8C\x20\xE9\xEB\x3C\xEC\xFF" );
+	PatchAddr( 0x005322A2, "\xE9\xF3\xC2\x13\x00\x90\x90" );
+	PatchAddr( 0x0066E5BE, "\x81\x7C\xE4\x20\x00\x00\xC0\xFF\x0F\x84\x2A\x2B\xEC\xFF\x81\x7C\xE4\x20\x00\x00\xC0\x7F\x0F\x84\x1C\x2B\xEC\xFF\xE9\xC1\x2A\xEC\xFF" );
+	PatchAddr( 0x0061E412, "\xE8\xA7\x01\x05\x00");
 
 #endif
 }

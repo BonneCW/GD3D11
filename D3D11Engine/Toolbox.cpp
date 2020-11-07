@@ -94,6 +94,17 @@ namespace Toolbox {
 		return (clipFlags > 0) ? ZTCAM_CLIPTYPE_CROSSING : ZTCAM_CLIPTYPE_IN;
 	}
 
+	bool CreateDirectoryRecursive( const std::string& dirName ) {
+		unsigned int pos = 0;
+		do {
+			pos = dirName.find_first_of( "\\/", pos + 1 );
+			if ( CreateDirectory( dirName.substr( 0, pos ).c_str(), NULL ) == 0 && GetLastError() != ERROR_ALREADY_EXISTS ) {
+				return false;
+			}
+		} while ( pos != std::string::npos );
+		return true;
+	}
+
 	bool FolderExists( const std::string& dirName_in ) {
 		DWORD ftyp = GetFileAttributesA( dirName_in.c_str() );
 		if ( ftyp == INVALID_FILE_ATTRIBUTES )

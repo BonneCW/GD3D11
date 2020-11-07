@@ -340,20 +340,27 @@ XRESULT D3D11Effect::DrawRainShadowmap() {
 // of textures on disk.
 //--------------------------------------------------------------------------------------
 HRESULT LoadTextureArray( ID3D11Device* pd3dDevice, ID3D11DeviceContext* context, char* sTexturePrefix, int iNumTextures, ID3D11Texture2D** ppTex2D, ID3D11ShaderResourceView** ppSRV ) {
+	if ( !ppTex2D || !*ppTex2D ) {
+		LogError() << "invalid argument: ppTex2D. should not be null/pointing to null";
+		return E_FAIL;
+	}
 	HRESULT hr = S_OK;
-	D3D11_TEXTURE2D_DESC desc;
-	ZeroMemory( &desc, sizeof( D3D11_TEXTURE2D_DESC ) );
+	D3D11_TEXTURE2D_DESC desc = {};
 
 	//	CHAR szTextureName[MAX_PATH];
 	CHAR str[MAX_PATH];
 	for ( int i = 0; i < iNumTextures; i++ ) {
 		sprintf( str, "%s%.4d.dds", sTexturePrefix, i );
 
-		ID3D11Resource* pRes = nullptr;
+		Microsoft::WRL::ComPtr<ID3D11Resource> pRes;
 		LE( CreateDDSTextureFromFileEx( pd3dDevice, Toolbox::ToWideChar( str ).c_str(), 0, D3D11_USAGE_STAGING, 0, D3D11_CPU_ACCESS_READ | D3D11_CPU_ACCESS_WRITE, 0, false, &pRes, nullptr ) );
-		if ( pRes ) {
-			ID3D11Texture2D* pTemp;
-			pRes->QueryInterface( __uuidof(ID3D11Texture2D), (LPVOID*)&pTemp );
+		if ( pRes.Get() ) {
+			Microsoft::WRL::ComPtr<ID3D11Texture2D> pTemp;
+			pRes.As( &pTemp );
+			if ( !pTemp.Get() ) {
+				LogError() << "Could not get ID3D11Texture2D!";
+				return E_FAIL;
+			}
 			pTemp->GetDesc( &desc );
 
 
@@ -372,7 +379,7 @@ HRESULT LoadTextureArray( ID3D11Device* pd3dDevice, ID3D11DeviceContext* context
 
 			D3D11_MAPPED_SUBRESOURCE mappedTex2D;
 			for ( UINT iMip = 0; iMip < desc.MipLevels; iMip++ ) {
-				context->Map( pTemp, iMip, D3D11_MAP_READ, 0, &mappedTex2D );
+				context->Map( pTemp.Get(), iMip, D3D11_MAP_READ, 0, &mappedTex2D );
 				if ( mappedTex2D.pData ) {
 					context->UpdateSubresource( (*ppTex2D),
 						D3D11CalcSubresource( iMip, i, desc.MipLevels ),
@@ -381,18 +388,17 @@ HRESULT LoadTextureArray( ID3D11Device* pd3dDevice, ID3D11DeviceContext* context
 						mappedTex2D.RowPitch,
 						0 );
 				}
-				context->Unmap( pTemp, iMip );
+				context->Unmap( pTemp.Get(), iMip );
 			}
 
-			SAFE_RELEASE( pRes );
-			SAFE_RELEASE( pTemp );
+			pRes.Reset();
+			pTemp.Reset();
 		} else {
 			return E_FAIL;
 		}
 	}
 
-	D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc;
-	ZeroMemory( &SRVDesc, sizeof( SRVDesc ) );
+	D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
 	SRVDesc.Format = desc.Format;
 	SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
 	SRVDesc.Texture2DArray.MipLevels = desc.MipLevels;

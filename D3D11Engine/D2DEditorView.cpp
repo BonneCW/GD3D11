@@ -1428,9 +1428,9 @@ void D2DEditorView::SmoothMesh( WorldMeshInfo* mesh, bool tesselate ) {
 
 
 	// Cleanup
-	delete mesh->MeshVertexBuffer;
-	delete mesh->MeshIndexBuffer;
-	delete mesh->MeshIndexBufferPNAEN;
+	SAFE_DELETE(mesh->MeshVertexBuffer);
+	SAFE_DELETE(mesh->MeshIndexBuffer);
+	SAFE_DELETE(mesh->MeshIndexBufferPNAEN);
 
 	// Recreate the buffers
 	Engine::GraphicsEngine->CreateVertexBuffer( &mesh->MeshVertexBuffer );

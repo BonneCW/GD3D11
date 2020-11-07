@@ -18,6 +18,14 @@ static void XHook( unsigned int adr, T& hookFn ) {
 	DetourFunction( (BYTE*)adr, (BYTE*)hookFn );
 }
 
+template<typename T, size_t n >
+static void PatchAddr( unsigned int adr, const T(&v)[n]) {
+	DWORD dwProtect;
+	VirtualProtect( (void*)adr, n - 1, PAGE_EXECUTE_READWRITE, &dwProtect );
+	memcpy( (unsigned char *)adr, v, n - 1 );
+	VirtualProtect( (void*)adr, n - 1, dwProtect, &dwProtect );
+}
+
 // -- call macro from GothicX (thx, Zerxes!)
 #define XCALL(uAddr)                    \
         __asm { mov esp, ebp    }       \

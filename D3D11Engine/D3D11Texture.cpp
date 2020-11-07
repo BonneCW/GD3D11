@@ -54,8 +54,7 @@ XRESULT D3D11Texture::Init( INT2 size, ETextureFormat format, UINT mipMapCount, 
 	Texture->SetPrivateData( WKPDID_D3DDebugObjectName, fileName.size(), fileName.c_str() );
 #endif
 
-	D3D11_SHADER_RESOURCE_VIEW_DESC descRV;
-	ZeroMemory( &descRV, sizeof( descRV ) );
+	D3D11_SHADER_RESOURCE_VIEW_DESC descRV = {};
 	descRV.Format = DXGI_FORMAT_UNKNOWN;
 	descRV.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	descRV.Texture2D.MipLevels = mipMapCount;
