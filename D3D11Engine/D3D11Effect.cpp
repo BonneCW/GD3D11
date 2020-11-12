@@ -38,8 +38,8 @@ HRESULT LoadTextureArray( ID3D11Device* pd3dDevice, ID3D11DeviceContext* context
 void D3D11Effect::FillRandomRaindropData( std::vector<ParticleInstanceInfo>& data ) {
 	/** Base taken from Nvidias Rain-Sample **/
 
-	float radius = Engine::GAPI->GetRendererState()->RendererSettings.RainRadiusRange;
-	float height = Engine::GAPI->GetRendererState()->RendererSettings.RainHeightRange;
+	float radius = Engine::GAPI->GetRendererState().RendererSettings.RainRadiusRange;
+	float height = Engine::GAPI->GetRendererState().RendererSettings.RainHeightRange;
 
 	for ( size_t i = 0; i < data.size(); i++ ) {
 		ParticleInstanceInfo raindrop;
@@ -92,16 +92,16 @@ void D3D11Effect::FillRandomRaindropData( std::vector<ParticleInstanceInfo>& dat
 /** Draws GPU-Based rain */
 XRESULT D3D11Effect::DrawRain() {
 	D3D11GraphicsEngineBase* e = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
-	GothicRendererState& state = *Engine::GAPI->GetRendererState();
+	GothicRendererState& state = Engine::GAPI->GetRendererState();
 
 	// Get shaders
-	D3D11GShader* streamOutGS = e->GetShaderManager()->GetGShader( "GS_ParticleStreamOut" );
-	D3D11GShader* particleGS = e->GetShaderManager()->GetGShader( "GS_Raindrops" );
-	D3D11VShader* particleAdvanceVS = e->GetShaderManager()->GetVShader( "VS_AdvanceRain" );
-	D3D11VShader* particleVS = e->GetShaderManager()->GetVShader( "VS_ParticlePointShaded" );
-	D3D11PShader* rainPS = e->GetShaderManager()->GetPShader( "PS_Rain" );
+	auto streamOutGS = e->GetShaderManager().GetGShader( "GS_ParticleStreamOut" );
+	auto particleGS = e->GetShaderManager().GetGShader( "GS_Raindrops" );
+	auto particleAdvanceVS = e->GetShaderManager().GetVShader( "VS_AdvanceRain" );
+	auto particleVS = e->GetShaderManager().GetVShader( "VS_ParticlePointShaded" );
+	auto rainPS = e->GetShaderManager().GetPShader( "PS_Rain" );
 
-	UINT numParticles = Engine::GAPI->GetRendererState()->RendererSettings.RainNumParticles;
+	UINT numParticles = Engine::GAPI->GetRendererState().RendererSettings.RainNumParticles;
 
 	static float lastRadius = state.RendererSettings.RainRadiusRange;
 	static float lastHeight = state.RendererSettings.RainHeightRange;
@@ -118,7 +118,7 @@ XRESULT D3D11Effect::DrawRain() {
 		e->CreateVertexBuffer( &RainBufferStreamTo );
 		e->CreateVertexBuffer( &RainBufferInitial );
 
-		UINT numParticles = Engine::GAPI->GetRendererState()->RendererSettings.RainNumParticles;
+		UINT numParticles = Engine::GAPI->GetRendererState().RendererSettings.RainNumParticles;
 		std::vector<ParticleInstanceInfo> particles( numParticles );
 
 		// Fill the vector with random raindrop data
@@ -135,7 +135,7 @@ XRESULT D3D11Effect::DrawRain() {
 			HRESULT hr = S_OK;
 			// Load textures...
 			LogInfo() << "Loading rain-drop textures";
-			LE( LoadTextureArray( e->GetDevice(), e->GetContext(), "system\\GD3D11\\Textures\\Raindrops\\cv0_vPositive_", 370, &RainTextureArray, &RainTextureArraySRV ) );
+			LE( LoadTextureArray( e->GetDevice().Get(), e->GetContext().Get(), "system\\GD3D11\\Textures\\Raindrops\\cv0_vPositive_", 370, &RainTextureArray, &RainTextureArraySRV ) );
 
 		}
 
@@ -268,13 +268,13 @@ XRESULT D3D11Effect::DrawRainShadowmap() {
 		return XR_SUCCESS;
 
 	D3D11GraphicsEngine* e = (D3D11GraphicsEngine*)Engine::GraphicsEngine; // TODO: This has to be a cast to D3D11GraphicsEngineBase!
-	GothicRendererState& state = *Engine::GAPI->GetRendererState();
+	GothicRendererState& state = Engine::GAPI->GetRendererState();
 
 	CameraReplacement& cr = RainShadowmapCameraRepl;
 
 	// Get the section we are currently in
 	XMVECTOR p = Engine::GAPI->GetCameraPositionXM();
-	XMVECTOR dir = XMVector3Normalize( XMLoadFloat3( &Engine::GAPI->GetRendererState()->RendererSettings.RainGlobalVelocity ) * -1 );
+	XMVECTOR dir = XMVector3Normalize( XMLoadFloat3( &Engine::GAPI->GetRendererState().RendererSettings.RainGlobalVelocity ) * -1 );
 	// Set the camera height to the highest point in this section
 	//p.y = 0;
 	p += dir * 6000.0f;
@@ -285,8 +285,8 @@ XRESULT D3D11Effect::DrawRainShadowmap() {
 	XMMATRIX crViewReplacement = XMMatrixLookAtLH( p, lookAt, XMVectorSet( 0, 1, 0, 0 ) );
 
 	XMMATRIX crProjectionReplacement = XMMatrixOrthographicLH(
-		RainShadowmap->GetSizeX() * Engine::GAPI->GetRendererState()->RendererSettings.WorldShadowRangeScale,
-		RainShadowmap->GetSizeX() * Engine::GAPI->GetRendererState()->RendererSettings.WorldShadowRangeScale,
+		RainShadowmap->GetSizeX() * Engine::GAPI->GetRendererState().RendererSettings.WorldShadowRangeScale,
+		RainShadowmap->GetSizeX() * Engine::GAPI->GetRendererState().RendererSettings.WorldShadowRangeScale,
 		1,
 		20000.0f
 	);
@@ -301,30 +301,30 @@ XRESULT D3D11Effect::DrawRainShadowmap() {
 
 	// Make alpharef a bit more aggressive, to make trees less rain-proof
 
-	float oldAlphaRef = Engine::GAPI->GetRendererState()->GraphicsState.FF_AlphaRef;
+	float oldAlphaRef = Engine::GAPI->GetRendererState().GraphicsState.FF_AlphaRef;
 
-	Engine::GAPI->GetRendererState()->GraphicsState.FF_AlphaRef = -1.0f;
+	Engine::GAPI->GetRendererState().GraphicsState.FF_AlphaRef = -1.0f;
 
 	// Bind the FF-Info to the first PS slot
-	D3D11PShader* PS_Diffuse = e->GetShaderManager()->GetPShader( "PS_Diffuse" );
+	auto PS_Diffuse = e->GetShaderManager().GetPShader( "PS_Diffuse" );
 	if ( PS_Diffuse ) {
-		PS_Diffuse->GetConstantBuffer()[0]->UpdateBuffer( &Engine::GAPI->GetRendererState()->GraphicsState );
+		PS_Diffuse->GetConstantBuffer()[0]->UpdateBuffer( &Engine::GAPI->GetRendererState().GraphicsState );
 		PS_Diffuse->GetConstantBuffer()[0]->BindToPixelShader( 0 );
 	}
 
 	// Disable stuff like NPCs and usable things as they don't need to cast rain-shadows
-	bool oldDrawSkel = Engine::GAPI->GetRendererState()->RendererSettings.DrawSkeletalMeshes;
-	Engine::GAPI->GetRendererState()->RendererSettings.DrawSkeletalMeshes = false;
+	bool oldDrawSkel = Engine::GAPI->GetRendererState().RendererSettings.DrawSkeletalMeshes;
+	Engine::GAPI->GetRendererState().RendererSettings.DrawSkeletalMeshes = false;
 
 	// Draw rain-shadowmap
 	e->RenderShadowmaps( p, RainShadowmap.get(), true, false );
 
 
 	// Restore old settings
-	Engine::GAPI->GetRendererState()->RendererSettings.DrawSkeletalMeshes = oldDrawSkel;
-	Engine::GAPI->GetRendererState()->GraphicsState.FF_AlphaRef = oldAlphaRef;
+	Engine::GAPI->GetRendererState().RendererSettings.DrawSkeletalMeshes = oldDrawSkel;
+	Engine::GAPI->GetRendererState().GraphicsState.FF_AlphaRef = oldAlphaRef;
 	if ( PS_Diffuse ) {
-		PS_Diffuse->GetConstantBuffer()[0]->UpdateBuffer( &Engine::GAPI->GetRendererState()->GraphicsState );
+		PS_Diffuse->GetConstantBuffer()[0]->UpdateBuffer( &Engine::GAPI->GetRendererState().GraphicsState );
 	}
 
 	e->SetDefaultStates();
@@ -340,8 +340,8 @@ XRESULT D3D11Effect::DrawRainShadowmap() {
 // of textures on disk.
 //--------------------------------------------------------------------------------------
 HRESULT LoadTextureArray( ID3D11Device* pd3dDevice, ID3D11DeviceContext* context, char* sTexturePrefix, int iNumTextures, ID3D11Texture2D** ppTex2D, ID3D11ShaderResourceView** ppSRV ) {
-	if ( !ppTex2D || !*ppTex2D ) {
-		LogError() << "invalid argument: ppTex2D. should not be null/pointing to null";
+	if ( !ppTex2D ) {
+		LogError() << "invalid argument: ppTex2D. should not be null";
 		return E_FAIL;
 	}
 	HRESULT hr = S_OK;

@@ -174,13 +174,13 @@ public:
 	ID3D11ShaderResourceView* GetBackbufferSRV() { return BackbufferSRV.Get(); }
 
 	/** Returns the first GBuffer */
-	RenderToTextureBuffer* GetGBuffer0() { return GBuffer0_Diffuse.get(); }
+	RenderToTextureBuffer& GetGBuffer0() { return *GBuffer0_Diffuse; }
 
 	/** Returns the second GBuffer */
-	RenderToTextureBuffer* GetGBuffer1() { return GBuffer1_Normals_SpecIntens_SpecPower.get(); }
+	RenderToTextureBuffer& GetGBuffer1() { return *GBuffer1_Normals_SpecIntens_SpecPower; }
 
 	/** Returns the HDRBackbuffer */
-	RenderToTextureBuffer* GetHDRBackBuffer() { return HDRBackBuffer.get(); }
+	RenderToTextureBuffer& GetHDRBackBuffer() { return *HDRBackBuffer; }
 
 	/** Unbinds the texture at the given slot */
 	virtual XRESULT UnbindTexture( int slot );
@@ -249,7 +249,7 @@ public:
 	/** Renders the shadowmaps for a pointlight */
 	void XM_CALLCONV RenderShadowCube( DirectX::FXMVECTOR position,
 		float range,
-		RenderToDepthStencilBuffer* targetCube,
+		const RenderToDepthStencilBuffer& targetCube,
 		ID3D11DepthStencilView* face,
 		ID3D11RenderTargetView* debugRTV = nullptr,
 		bool cullFront = true,
@@ -264,7 +264,7 @@ public:
 	XRESULT UpdateRenderStates();
 
 	/** Returns the textures drawn this frame */
-	const std::set<zCTexture*> GetFrameTextures() override { return FrameTextures; }
+	const std::set<zCTexture*>& GetFrameTextures() override { return FrameTextures; }
 
 	/** Draws a fullscreenquad, copying the given texture to the viewport */
 	void DrawQuad( INT2 position, INT2 size );

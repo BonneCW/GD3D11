@@ -173,8 +173,8 @@ HRESULT FakeDirectDrawSurface7::Lock( LPRECT lpDestRect, LPDDSURFACEDESC2 lpDDSu
 	lpDDSurfaceDesc->lpSurface = Data;
 	lpDDSurfaceDesc->lPitch = Resource->GetEngineTexture()->GetRowPitchBytes( MipLevel );
 
-	int px = (int)std::max( 1.0f, floor( OriginalDesc.dwWidth / pow( 2.0f, MipLevel ) ) );
-	int py = (int)std::max( 1.0f, floor( OriginalDesc.dwHeight / pow( 2.0f, MipLevel ) ) );
+	int px = (int)std::max( 1.0, floor( OriginalDesc.dwWidth / pow( 2.0f, MipLevel ) ) );
+	int py = (int)std::max( 1.0, floor( OriginalDesc.dwHeight / pow( 2.0f, MipLevel ) ) );
 
 	lpDDSurfaceDesc->dwWidth = px;
 	lpDDSurfaceDesc->dwHeight = py;

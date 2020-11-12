@@ -294,7 +294,7 @@ void GVegetationBox::InitSpotsRandom( const std::vector<DirectX::XMFLOAT3>& tris
 
 /** Draws this vegetation box */
 void GVegetationBox::RenderVegetation( const DirectX::XMFLOAT3& eye ) {
-	float drawRadius = Engine::GAPI->GetRendererState()->RendererSettings.OutdoorSmallVobDrawRadius;
+	float drawRadius = Engine::GAPI->GetRendererState().RendererSettings.OutdoorSmallVobDrawRadius;
 
 	float dist = Toolbox::ComputePointAABBDistance( eye, BoxMin, BoxMax );
 	if ( dist > drawRadius )
@@ -315,18 +315,18 @@ void GVegetationBox::RenderVegetation( const DirectX::XMFLOAT3& eye ) {
 
 	VegetationTexture->BindToPixelShader( 1 );
 
-	Engine::GAPI->GetRendererState()->RasterizerState.CullMode = GothicRasterizerStateInfo::CM_CULL_NONE;
-	Engine::GAPI->GetRendererState()->RasterizerState.SetDirty();
+	Engine::GAPI->GetRendererState().RasterizerState.CullMode = GothicRasterizerStateInfo::CM_CULL_NONE;
+	Engine::GAPI->GetRendererState().RasterizerState.SetDirty();
 
 	// Enable alpha-to-coverage
 
-	if ( Engine::GAPI->GetRendererState()->RendererSettings.VegetationAlphaToCoverage ) {
-		Engine::GAPI->GetRendererState()->BlendState.SetDefault();
-		Engine::GAPI->GetRendererState()->BlendState.BlendEnabled = false;
-		Engine::GAPI->GetRendererState()->BlendState.AlphaToCoverage = Engine::GAPI->GetRendererState()->RendererSettings.VegetationAlphaToCoverage;
+	if ( Engine::GAPI->GetRendererState().RendererSettings.VegetationAlphaToCoverage ) {
+		Engine::GAPI->GetRendererState().BlendState.SetDefault();
+		Engine::GAPI->GetRendererState().BlendState.BlendEnabled = false;
+		Engine::GAPI->GetRendererState().BlendState.AlphaToCoverage = Engine::GAPI->GetRendererState().RendererSettings.VegetationAlphaToCoverage;
 	}
 
-	Engine::GAPI->GetRendererState()->BlendState.SetDirty();
+	Engine::GAPI->GetRendererState().BlendState.SetDirty();
 
 	Engine::GraphicsEngine->SetActiveVertexShader( "VS_GrassInstanced" );
 	Engine::GraphicsEngine->SetActivePixelShader( "PS_Grass" );
@@ -347,7 +347,7 @@ void GVegetationBox::RenderVegetation( const DirectX::XMFLOAT3& eye ) {
 	XMStoreFloat3( &G_NormalVS, DirectX::XMVector3TransformNormal( XMVectorSet( 0.0f, 1.0f, 0.0f, 0.0f ), XMM_view ) );
 	gcb.G_NormalVS = G_NormalVS;
 	gcb.G_Time = Engine::GAPI->GetTimeSeconds();
-	gcb.G_WindStrength = Engine::GAPI->GetRendererState()->RendererSettings.GlobalWindStrength;
+	gcb.G_WindStrength = Engine::GAPI->GetRendererState().RendererSettings.GlobalWindStrength;
 	GrassCB->UpdateBuffer( &gcb );
 	GrassCB->BindToVertexShader( 1 );
 
@@ -367,11 +367,11 @@ void GVegetationBox::RenderVegetation( const DirectX::XMFLOAT3& eye ) {
 	if ( DrawBoundingBox )
 		Engine::GraphicsEngine->GetLineRenderer()->AddAABBMinMax( BoxMin, BoxMax );
 
-	Engine::GAPI->GetRendererState()->RasterizerState.CullMode = GothicRasterizerStateInfo::CM_CULL_FRONT;
-	Engine::GAPI->GetRendererState()->RasterizerState.SetDirty();
+	Engine::GAPI->GetRendererState().RasterizerState.CullMode = GothicRasterizerStateInfo::CM_CULL_FRONT;
+	Engine::GAPI->GetRendererState().RasterizerState.SetDirty();
 
-	Engine::GAPI->GetRendererState()->BlendState.AlphaToCoverage = false;
-	Engine::GAPI->GetRendererState()->BlendState.SetDirty();
+	Engine::GAPI->GetRendererState().BlendState.AlphaToCoverage = false;
+	Engine::GAPI->GetRendererState().BlendState.SetDirty();
 }
 
 /** Sets bounding box rendering */

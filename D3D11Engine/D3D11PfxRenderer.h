@@ -49,9 +49,9 @@ public:
 	XRESULT DrawHBAO( ID3D11RenderTargetView* rtv );
 
 	/** Accessors */
-	RenderToTextureBuffer* GetTempBuffer() { return TempBuffer.get(); }
-	RenderToTextureBuffer* GetTempBufferDS4_1() { return TempBufferDS4_1.get(); }
-	RenderToTextureBuffer* GetTempBufferDS4_2() { return TempBufferDS4_2.get(); }
+	RenderToTextureBuffer& GetTempBuffer() { return *TempBuffer; }
+	RenderToTextureBuffer& GetTempBufferDS4_1() { return *TempBufferDS4_1; }
+	RenderToTextureBuffer& GetTempBufferDS4_2() { return *TempBufferDS4_2; }
 
 private:
 	/** Temporary buffer in the same size/format as the backbuffer */

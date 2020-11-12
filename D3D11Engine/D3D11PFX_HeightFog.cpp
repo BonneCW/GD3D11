@@ -28,8 +28,8 @@ XRESULT D3D11PFX_HeightFog::Render( RenderToTextureBuffer* fxbuffer ) {
 	ID3D11DepthStencilView* oldDSV = nullptr;
 	engine->GetContext()->OMGetRenderTargets( 1, &oldRTV, &oldDSV );
 
-	D3D11VShader* vs = engine->GetShaderManager()->GetVShader( "VS_PFX" );
-	D3D11PShader* hfPS = engine->GetShaderManager()->GetPShader( "PS_PFX_Heightfog" );
+	auto vs = engine->GetShaderManager().GetVShader( "VS_PFX" );
+	auto hfPS = engine->GetShaderManager().GetPShader( "PS_PFX_Heightfog" );
 
 	hfPS->Apply();
 	vs->Apply();
@@ -44,18 +44,18 @@ XRESULT D3D11PFX_HeightFog::Render( RenderToTextureBuffer* fxbuffer ) {
 	XMStoreFloat4x4( &cb.InvView, xmInvView );
 
 	cb.CameraPosition = Engine::GAPI->GetCameraPosition();
-	float NearPlane = Engine::GAPI->GetRendererState()->RendererInfo.NearPlane;
-	float FarPlane = Engine::GAPI->GetRendererState()->RendererInfo.FarPlane;
+	float NearPlane = Engine::GAPI->GetRendererState().RendererInfo.NearPlane;
+	float FarPlane = Engine::GAPI->GetRendererState().RendererInfo.FarPlane;
 
-	cb.HF_GlobalDensity = Engine::GAPI->GetRendererState()->RendererSettings.FogGlobalDensity;
-	cb.HF_HeightFalloff = Engine::GAPI->GetRendererState()->RendererSettings.FogHeightFalloff;
+	cb.HF_GlobalDensity = Engine::GAPI->GetRendererState().RendererSettings.FogGlobalDensity;
+	cb.HF_HeightFalloff = Engine::GAPI->GetRendererState().RendererSettings.FogHeightFalloff;
 
-	float height = Engine::GAPI->GetRendererState()->RendererSettings.FogHeight;
-	DirectX::XMFLOAT3 color = *Engine::GAPI->GetRendererState()->RendererSettings.FogColorMod.toXMFLOAT3();
+	float height = Engine::GAPI->GetRendererState().RendererSettings.FogHeight;
+	DirectX::XMFLOAT3 color = *Engine::GAPI->GetRendererState().RendererSettings.FogColorMod.toXMFLOAT3();
 
 	float fnear = 15000.0f;
 	float ffar = 60000.0f;
-	float secScale = Engine::GAPI->GetRendererState()->RendererSettings.SectionDrawRadius;
+	float secScale = Engine::GAPI->GetRendererState().RendererSettings.SectionDrawRadius;
 
 	cb.HF_WeightZNear = std::max( 0.0f, WORLD_SECTION_SIZE * ((secScale - 0.5f) * 0.7f) - (ffar - fnear) ); // Keep distance from original fog but scale the near-fog up to section draw distance
 	cb.HF_WeightZFar = WORLD_SECTION_SIZE * ((secScale - 0.5f) * 0.8f);
@@ -85,11 +85,11 @@ XRESULT D3D11PFX_HeightFog::Render( RenderToTextureBuffer* fxbuffer ) {
 		cb.HF_WeightZFar = Toolbox::lerp( cb.HF_WeightZFar, WORLD_SECTION_SIZE * 0.8, Engine::GAPI->GetFogOverride() );
 	}
 
-	cb.HF_FogColorMod = color;//Engine::GAPI->GetRendererState()->RendererSettings.FogColorMod;
+	cb.HF_FogColorMod = color;//Engine::GAPI->GetRendererState().RendererSettings.FogColorMod;
 
 	cb.HF_FogHeight = height;
 
-	//cb.HF_FogColorMod = Engine::GAPI->GetRendererState()->GraphicsState.FF_FogColor;
+	//cb.HF_FogColorMod = Engine::GAPI->GetRendererState().GraphicsState.FF_FogColor;
 	cb.HF_ProjAB = float2( Engine::GAPI->GetProjectionMatrix()._33,
 		Engine::GAPI->GetProjectionMatrix()._34 );
 
@@ -102,10 +102,10 @@ XRESULT D3D11PFX_HeightFog::Render( RenderToTextureBuffer* fxbuffer ) {
 	FogColorMod.x = cb.HF_FogColorMod.x;
 	FogColorMod.y = cb.HF_FogColorMod.y;
 	FogColorMod.z = cb.HF_FogColorMod.z;
-	XMStoreFloat3( &FogColorMod, DirectX::XMVectorLerpV( XMLoadFloat3( &FogColorMod ), XMLoadFloat3( &Engine::GAPI->GetRendererState()->RendererSettings.RainFogColor ), XMVectorSet( std::min( 1.0f, rain * 2.0f ), std::min( 1.0f, rain * 2.0f ), std::min( 1.0f, rain * 2.0f ), 0 ) ) ); // Scale color faster here, so it looks better on light rain //check if it works
+	XMStoreFloat3( &FogColorMod, DirectX::XMVectorLerpV( XMLoadFloat3( &FogColorMod ), XMLoadFloat3( &Engine::GAPI->GetRendererState().RendererSettings.RainFogColor ), XMVectorSet( std::min( 1.0f, rain * 2.0f ), std::min( 1.0f, rain * 2.0f ), std::min( 1.0f, rain * 2.0f ), 0 ) ) ); // Scale color faster here, so it looks better on light rain //check if it works
 	cb.HF_FogColorMod = FogColorMod;
 	// Raining Density, only when not in fogzone
-	cb.HF_GlobalDensity = Toolbox::lerp( cb.HF_GlobalDensity, Engine::GAPI->GetRendererState()->RendererSettings.RainFogDensity, rain * (1.0f - Engine::GAPI->GetFogOverride()) );
+	cb.HF_GlobalDensity = Toolbox::lerp( cb.HF_GlobalDensity, Engine::GAPI->GetRendererState().RendererSettings.RainFogDensity, rain * (1.0f - Engine::GAPI->GetFogOverride()) );
 
 
 
@@ -126,10 +126,10 @@ XRESULT D3D11PFX_HeightFog::Render( RenderToTextureBuffer* fxbuffer ) {
 	// Bind depthbuffer
 	engine->GetDepthBuffer()->BindToPixelShader( engine->GetContext(), 1 );
 
-	Engine::GAPI->GetRendererState()->BlendState.SetDefault();
-	//Engine::GAPI->GetRendererState()->BlendState.SetAdditiveBlending();
-	Engine::GAPI->GetRendererState()->BlendState.BlendEnabled = true;
-	Engine::GAPI->GetRendererState()->BlendState.SetDirty();
+	Engine::GAPI->GetRendererState().BlendState.SetDefault();
+	//Engine::GAPI->GetRendererState().BlendState.SetAdditiveBlending();
+	Engine::GAPI->GetRendererState().BlendState.BlendEnabled = true;
+	Engine::GAPI->GetRendererState().BlendState.SetDirty();
 
 	// Copy
 	FxRenderer->DrawFullScreenQuad();

@@ -42,16 +42,16 @@ public:
 	XRESULT BindToDomainShader( int slot );
 
 	/** Returns the texture-object */
-	ID3D11Texture2D* GetTextureObject() { return Texture.Get(); }
+	const Microsoft::WRL::ComPtr<ID3D11Texture2D>& GetTextureObject() { return Texture; }
 
 	/** Returns the shader resource view */
-	ID3D11ShaderResourceView* GetShaderResourceView() { return ShaderResourceView; }
+	const Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>& GetShaderResourceView() { return ShaderResourceView; }
 
 	/** Creates a thumbnail for this */
 	XRESULT CreateThumbnail();
 
 	/** Returns the thumbnail of this texture. If this returns nullptr, you need to create one first */
-	ID3D11Texture2D* GetThumbnail();
+	const Microsoft::WRL::ComPtr<ID3D11Texture2D>& GetThumbnail();
 
 	/** Generates mipmaps for this texture (may be slow!) */
 	XRESULT GenerateMipMaps();
@@ -65,12 +65,12 @@ private:
 
 	/** D3D11 objects */
 	Microsoft::WRL::ComPtr<ID3D11Texture2D> Texture;
-	ID3D11ShaderResourceView* ShaderResourceView;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> ShaderResourceView;
 	DXGI_FORMAT TextureFormat;
 	INT2 TextureSize;
 	int MipMapCount;
 
 	/** Thumbnail */
-	ID3D11Texture2D* Thumbnail;
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> Thumbnail;
 };
 

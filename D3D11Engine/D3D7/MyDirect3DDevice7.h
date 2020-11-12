@@ -167,20 +167,20 @@ public:
 	HRESULT STDMETHODCALLTYPE SetRenderState( D3DRENDERSTATETYPE State, DWORD Value ) {
 		//DebugWrite("MyDirect3DDevice7::SetRenderState");
 
-		GothicRendererState* state = Engine::GAPI->GetRendererState();
+		GothicRendererState& state = Engine::GAPI->GetRendererState();
 
 		// Extract the needed renderstates
 		switch ( State ) {
 		case D3DRENDERSTATETYPE::D3DRENDERSTATE_FOGENABLE:
-			state->GraphicsState.FF_FogWeight = Value != 0 ? 1.0f : 0.0f;
+			state.GraphicsState.FF_FogWeight = Value != 0 ? 1.0f : 0.0f;
 			break;
 
 		case D3DRENDERSTATETYPE::D3DRENDERSTATE_FOGSTART:
-			state->GraphicsState.FF_FogNear = *(float*)&Value;
+			state.GraphicsState.FF_FogNear = *(float*)&Value;
 			break;
 
 		case D3DRENDERSTATETYPE::D3DRENDERSTATE_FOGEND:
-			state->GraphicsState.FF_FogFar = *(float*)&Value;
+			state.GraphicsState.FF_FogFar = *(float*)&Value;
 			//LogInfo() << "Set fogFar to " << data->fogFar;
 			break;
 
@@ -190,7 +190,7 @@ public:
 			BYTE r = (Value >> 16) & 0xFF;
 			BYTE g = (Value >> 8) & 0xFF;
 			BYTE b = Value & 0xFF;
-			state->GraphicsState.FF_FogColor = float3( r / 255.0f, g / 255.0f, b / 255.0f );
+			state.GraphicsState.FF_FogColor = float3( r / 255.0f, g / 255.0f, b / 255.0f );
 		}
 		break;
 
@@ -200,24 +200,24 @@ public:
 			BYTE r = (Value >> 16) & 0xFF;
 			BYTE g = (Value >> 8) & 0xFF;
 			BYTE b = Value & 0xFF;
-			state->GraphicsState.FF_AmbientLighting = float3( r / 255.0f, g / 255.0f, b / 255.0f );
+			state.GraphicsState.FF_AmbientLighting = float3( r / 255.0f, g / 255.0f, b / 255.0f );
 
 			// Does this enable the ambientlighting?
 			//data->lightEnabled = 1.0f;
 		}
 		break;
 
-		case D3DRENDERSTATE_ZENABLE: state->DepthState.DepthBufferEnabled = Value != 0; state->DepthState.SetDirty(); break;
-		case D3DRENDERSTATE_ALPHATESTENABLE: state->GraphicsState.SetGraphicsSwitch( GSWITCH_ALPHAREF, Value != 0 );	break;
-		case D3DRENDERSTATE_SRCBLEND: state->BlendState.SrcBlend = static_cast<GothicBlendStateInfo::EBlendFunc>(Value); state->BlendState.SetDirty(); break;
-		case D3DRENDERSTATE_DESTBLEND: state->BlendState.DestBlend = static_cast<GothicBlendStateInfo::EBlendFunc>(Value); state->BlendState.SetDirty(); break;
-		case D3DRENDERSTATE_CULLMODE: state->RasterizerState.CullMode = static_cast<GothicRasterizerStateInfo::ECullMode>(Value); state->RasterizerState.SetDirty(); break;
-		case D3DRENDERSTATE_ZFUNC: state->DepthState.DepthBufferCompareFunc = static_cast<GothicDepthBufferStateInfo::ECompareFunc>(Value); state->DepthState.SetDirty(); break;
-		case D3DRENDERSTATE_ALPHAREF: state->GraphicsState.FF_AlphaRef = static_cast<float>(Value) / 255.0f; break; // Ref for masked
-		case D3DRENDERSTATE_ALPHABLENDENABLE: state->BlendState.BlendEnabled = Value != 0; state->BlendState.SetDirty(); break;
-		case D3DRENDERSTATE_ZBIAS: state->RasterizerState.ZBias = Value; state->DepthState.SetDirty(); break;
-		case D3DRENDERSTATE_TEXTUREFACTOR: state->GraphicsState.FF_TextureFactor = float4( Value ); break;
-		case D3DRENDERSTATE_LIGHTING: state->GraphicsState.SetGraphicsSwitch( GSWITCH_LIGHING, Value != 0 ); break;
+		case D3DRENDERSTATE_ZENABLE: state.DepthState.DepthBufferEnabled = Value != 0; state.DepthState.SetDirty(); break;
+		case D3DRENDERSTATE_ALPHATESTENABLE: state.GraphicsState.SetGraphicsSwitch( GSWITCH_ALPHAREF, Value != 0 );	break;
+		case D3DRENDERSTATE_SRCBLEND: state.BlendState.SrcBlend = static_cast<GothicBlendStateInfo::EBlendFunc>(Value); state.BlendState.SetDirty(); break;
+		case D3DRENDERSTATE_DESTBLEND: state.BlendState.DestBlend = static_cast<GothicBlendStateInfo::EBlendFunc>(Value); state.BlendState.SetDirty(); break;
+		case D3DRENDERSTATE_CULLMODE: state.RasterizerState.CullMode = static_cast<GothicRasterizerStateInfo::ECullMode>(Value); state.RasterizerState.SetDirty(); break;
+		case D3DRENDERSTATE_ZFUNC: state.DepthState.DepthBufferCompareFunc = static_cast<GothicDepthBufferStateInfo::ECompareFunc>(Value); state.DepthState.SetDirty(); break;
+		case D3DRENDERSTATE_ALPHAREF: state.GraphicsState.FF_AlphaRef = static_cast<float>(Value) / 255.0f; break; // Ref for masked
+		case D3DRENDERSTATE_ALPHABLENDENABLE: state.BlendState.BlendEnabled = Value != 0; state.BlendState.SetDirty(); break;
+		case D3DRENDERSTATE_ZBIAS: state.RasterizerState.ZBias = Value; state.DepthState.SetDirty(); break;
+		case D3DRENDERSTATE_TEXTUREFACTOR: state.GraphicsState.FF_TextureFactor = float4( Value ); break;
+		case D3DRENDERSTATE_LIGHTING: state.GraphicsState.SetGraphicsSwitch( GSWITCH_LIGHING, Value != 0 ); break;
 
 
 			/*case D3DRENDERSTATE_DITHERENABLE       		: break; // Used by gothic, but not needed here
@@ -439,38 +439,38 @@ public:
 		}*/
 
 
-		GothicRendererState* state = Engine::GAPI->GetRendererState();
+		GothicRendererState& state = Engine::GAPI->GetRendererState();
 		switch ( Type ) {
 		case D3DTSS_COLOROP:
 			if ( Stage < 2 )
-				state->GraphicsState.FF_Stages[Stage].ColorOp = (FixedFunctionStage::EColorOp)Value;
+				state.GraphicsState.FF_Stages[Stage].ColorOp = (FixedFunctionStage::EColorOp)Value;
 			else
 				LogWarn() << "Gothic uses more than 2 TextureStages!";
 			break;
 
 		case D3DTSS_COLORARG1:
 			if ( Stage < 2 )
-				state->GraphicsState.FF_Stages[Stage].ColorArg1 = (FixedFunctionStage::ETextureArg)Value;
+				state.GraphicsState.FF_Stages[Stage].ColorArg1 = (FixedFunctionStage::ETextureArg)Value;
 			break;
 
 		case D3DTSS_COLORARG2:
 			if ( Stage < 2 )
-				state->GraphicsState.FF_Stages[Stage].ColorArg2 = (FixedFunctionStage::ETextureArg)Value;
+				state.GraphicsState.FF_Stages[Stage].ColorArg2 = (FixedFunctionStage::ETextureArg)Value;
 			break;
 
 		case D3DTSS_ALPHAOP:
 			if ( Stage < 2 )
-				state->GraphicsState.FF_Stages[Stage].AlphaOp = (FixedFunctionStage::EColorOp)Value;
+				state.GraphicsState.FF_Stages[Stage].AlphaOp = (FixedFunctionStage::EColorOp)Value;
 			break;
 
 		case D3DTSS_ALPHAARG1:
 			if ( Stage < 2 )
-				state->GraphicsState.FF_Stages[Stage].ColorArg1 = (FixedFunctionStage::ETextureArg)Value;
+				state.GraphicsState.FF_Stages[Stage].ColorArg1 = (FixedFunctionStage::ETextureArg)Value;
 			break;
 
 		case D3DTSS_ALPHAARG2:
 			if ( Stage < 2 )
-				state->GraphicsState.FF_Stages[Stage].ColorArg2 = (FixedFunctionStage::ETextureArg)Value;
+				state.GraphicsState.FF_Stages[Stage].ColorArg2 = (FixedFunctionStage::ETextureArg)Value;
 			break;
 
 		case D3DTSS_BUMPENVMAT00: break;
@@ -480,23 +480,23 @@ public:
 		case D3DTSS_TEXCOORDINDEX:
 			if ( Value > 7 ) // This means that some other flag was set, and the only case that happens is for reflections
 			{
-				state->GraphicsState.SetGraphicsSwitch( GSWITCH_REFLECTIONS, true );
+				state.GraphicsState.SetGraphicsSwitch( GSWITCH_REFLECTIONS, true );
 			} else {
-				state->GraphicsState.SetGraphicsSwitch( GSWITCH_REFLECTIONS, false );
+				state.GraphicsState.SetGraphicsSwitch( GSWITCH_REFLECTIONS, false );
 			}
 			break;
 
-		case D3DTSS_ADDRESS: state->SamplerState.AddressU = (GothicSamplerStateInfo::ETextureAddress)Value;
-			state->SamplerState.AddressV = (GothicSamplerStateInfo::ETextureAddress)Value;
-			state->SamplerState.SetDirty();
+		case D3DTSS_ADDRESS: state.SamplerState.AddressU = (GothicSamplerStateInfo::ETextureAddress)Value;
+			state.SamplerState.AddressV = (GothicSamplerStateInfo::ETextureAddress)Value;
+			state.SamplerState.SetDirty();
 			break;
 
-		case D3DTSS_ADDRESSU:   state->SamplerState.AddressU = (GothicSamplerStateInfo::ETextureAddress)Value;
-			state->SamplerState.SetDirty();
+		case D3DTSS_ADDRESSU:   state.SamplerState.AddressU = (GothicSamplerStateInfo::ETextureAddress)Value;
+			state.SamplerState.SetDirty();
 			break;
 
-		case D3DTSS_ADDRESSV:   state->SamplerState.AddressV = (GothicSamplerStateInfo::ETextureAddress)Value;
-			state->SamplerState.SetDirty();
+		case D3DTSS_ADDRESSV:   state.SamplerState.AddressV = (GothicSamplerStateInfo::ETextureAddress)Value;
+			state.SamplerState.SetDirty();
 			break;
 
 		case D3DTSS_BORDERCOLOR: break;
@@ -524,21 +524,21 @@ public:
 
 		//LogInfo() << "SetTransform: " << dtstTransformStateType;
 
-		GothicRendererState* state = Engine::GAPI->GetRendererState();
+		GothicRendererState& state = Engine::GAPI->GetRendererState();
 		switch ( dtstTransformStateType ) {
 		case D3DTRANSFORMSTATE_WORLD:
 			DirectX::XMMATRIX matrixWorld = DirectX::XMLoadFloat4x4( (DirectX::XMFLOAT4X4*)lpD3DMatrix );
-			DirectX::XMStoreFloat4x4( &state->TransformState.TransformWorld, DirectX::XMMatrixTranspose( matrixWorld ) );
+			DirectX::XMStoreFloat4x4( &state.TransformState.TransformWorld, DirectX::XMMatrixTranspose( matrixWorld ) );
 			break;
 
 		case D3DTRANSFORMSTATE_VIEW:
 			DirectX::XMMATRIX matrixView = DirectX::XMLoadFloat4x4( (DirectX::XMFLOAT4X4*)lpD3DMatrix );
-			DirectX::XMStoreFloat4x4( &state->TransformState.TransformView, DirectX::XMMatrixTranspose( matrixView ) );
+			DirectX::XMStoreFloat4x4( &state.TransformState.TransformView, DirectX::XMMatrixTranspose( matrixView ) );
 			break;
 
 		case D3DTRANSFORMSTATE_PROJECTION:
 			DirectX::XMMATRIX matrixProj = DirectX::XMLoadFloat4x4( (DirectX::XMFLOAT4X4*)lpD3DMatrix );
-			DirectX::XMStoreFloat4x4( &state->TransformState.TransformProj, DirectX::XMMatrixTranspose( matrixProj ) );
+			DirectX::XMStoreFloat4x4( &state.TransformState.TransformProj, DirectX::XMMatrixTranspose( matrixProj ) );
 			break;
 		}
 
@@ -554,7 +554,7 @@ public:
 	HRESULT STDMETHODCALLTYPE SetViewport( LPD3DVIEWPORT7 lpViewport ) {
 		DebugWrite( "MyDirect3DDevice7::SetViewport" );
 
-		float scale = std::max( 0.1f, Engine::GAPI->GetRendererState()->RendererSettings.GothicUIScale );
+		float scale = std::max( 0.1f, Engine::GAPI->GetRendererState().RendererSettings.GothicUIScale );
 
 		ViewportInfo vp;
 		vp.TopLeftX = (unsigned int)(lpViewport->dwX * scale);
@@ -669,8 +669,8 @@ public:
 			}
 
 			// Gothic wants that for the sky
-			Engine::GAPI->GetRendererState()->RasterizerState.FrontCounterClockwise = true;
-			Engine::GAPI->GetRendererState()->RasterizerState.SetDirty();
+			Engine::GAPI->GetRendererState().RasterizerState.FrontCounterClockwise = true;
+			Engine::GAPI->GetRendererState().RasterizerState.SetDirty();
 			Engine::GraphicsEngine->SetActiveVertexShader( "VS_TransformedEx" );
 			Engine::GraphicsEngine->BindViewportInformation( "VS_TransformedEx", 0 );
 			break;
@@ -737,8 +737,8 @@ public:
 			Engine::GraphicsEngine->BindViewportInformation( "VS_XYZRHW_DIF_T1", 0 );
 
 			// Gothic wants that for the sky
-			Engine::GAPI->GetRendererState()->RasterizerState.FrontCounterClockwise = true;
-			Engine::GAPI->GetRendererState()->RasterizerState.SetDirty();
+			Engine::GAPI->GetRendererState().RasterizerState.FrontCounterClockwise = true;
+			Engine::GAPI->GetRendererState().RasterizerState.SetDirty();
 			Engine::GraphicsEngine->DrawVertexBufferFF( ((MyDirect3DVertexBuffer7*)lpd3dVertexBuffer)->GetVertexBuffer(), dwNumVertices, dwStartVertex, sizeof( Gothic_XYZRHW_DIF_T1_Vertex ) );
 			break;
 

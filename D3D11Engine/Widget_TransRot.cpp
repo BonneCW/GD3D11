@@ -183,8 +183,8 @@ void Widget_TransRot::DoHoverTest( HWND hw ) {
 	float Width = 0.15f;
 	float Eps = 0.01f;
 
-	D3D11PShader* ColorShader = ((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetShaderManager()->GetPShader( "PS_Lines" );
-	D3D11PShader* SelectedShader = ((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetShaderManager()->GetPShader( "PS_LinesSel" );
+	auto ColorShader = ((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetShaderManager().GetPShader( "PS_Lines" );
+	auto SelectedShader = ((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetShaderManager().GetPShader( "PS_LinesSel" );
 
 	for ( int i = 0; i < 3; i++ ) {
 		Arrows[i]->SetSolidShader( ColorShader );

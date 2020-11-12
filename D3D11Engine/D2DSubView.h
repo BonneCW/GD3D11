@@ -80,6 +80,10 @@ public:
 	/** Returns if this control is hidden */
 	bool IsHidden() const;
 
+	virtual void SetDisabled( bool disabled );
+
+	bool IsDisabled() const;
+
 protected:
 	/** List of children */
 	std::list<D2DSubView*> Children;
@@ -101,4 +105,5 @@ protected:
 
 	/** If true, the object will not render or process inputs */
 	bool Hidden;
+	bool Disabled;
 };

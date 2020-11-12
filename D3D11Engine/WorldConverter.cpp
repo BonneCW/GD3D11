@@ -812,7 +812,7 @@ void WorldConverter::GenerateFullSectionMesh( WorldMeshSectionInfo& section ) {
 
 	// Init and fill them
 	section.FullStaticMesh->MeshVertexBuffer->Init( &section.FullStaticMesh->Vertices[0], section.FullStaticMesh->Vertices.size() * sizeof( ExVertexStruct ), D3D11VertexBuffer::B_VERTEXBUFFER, D3D11VertexBuffer::U_IMMUTABLE );
-	Engine::GAPI->GetRendererState()->RendererInfo.SkeletalVerticesDataSize += section.FullStaticMesh->Vertices.size() * sizeof( ExVertexStruct );
+	Engine::GAPI->GetRendererState().RendererInfo.SkeletalVerticesDataSize += section.FullStaticMesh->Vertices.size() * sizeof( ExVertexStruct );
 }
 
 /** Returns what section the given position is in */
@@ -1021,8 +1021,8 @@ void WorldConverter::ExtractSkeletalMeshFromVob( zCModel* model, SkeletalMeshVis
 			bmi->MeshVertexBuffer->Init( &bmi->Vertices[0], bmi->Vertices.size() * sizeof( ExVertexStruct ), D3D11VertexBuffer::B_VERTEXBUFFER, D3D11VertexBuffer::U_IMMUTABLE );
 			bmi->MeshIndexBuffer->Init( &bmi->Indices[0], bmi->Indices.size() * sizeof( VERTEX_INDEX ), D3D11VertexBuffer::B_INDEXBUFFER, D3D11VertexBuffer::U_IMMUTABLE );
 
-			Engine::GAPI->GetRendererState()->RendererInfo.SkeletalVerticesDataSize += mi->Vertices.size() * sizeof( ExVertexStruct );
-			Engine::GAPI->GetRendererState()->RendererInfo.SkeletalVerticesDataSize += mi->Indices.size() * sizeof( VERTEX_INDEX );
+			Engine::GAPI->GetRendererState().RendererInfo.SkeletalVerticesDataSize += mi->Vertices.size() * sizeof( ExVertexStruct );
+			Engine::GAPI->GetRendererState().RendererInfo.SkeletalVerticesDataSize += mi->Indices.size() * sizeof( VERTEX_INDEX );
 
 			skeletalMeshInfo->SkeletalMeshes[mat].push_back( mi );
 			skeletalMeshInfo->Meshes[mat].push_back( bmi );
@@ -1037,7 +1037,7 @@ void WorldConverter::ExtractSkeletalMeshFromVob( zCModel* model, SkeletalMeshVis
 
 	// Create additional information
 	if ( skeletalMeshInfo->TesselationInfo.buffer.VT_TesselationFactor > 0.0f
-		&& Engine::GAPI->GetRendererState()->RendererSettings.AllowWorldMeshTesselation ) // TODO: PNAEN for skeletals causes huge lags in the game and is barely
+		&& Engine::GAPI->GetRendererState().RendererSettings.AllowWorldMeshTesselation ) // TODO: PNAEN for skeletals causes huge lags in the game and is barely
 																						 // noticable anyways. Disable for now.
 		skeletalMeshInfo->CreatePNAENInfo( skeletalMeshInfo->TesselationInfo.buffer.VT_DisplacementStrength > 0.0f );
 }
@@ -1149,8 +1149,8 @@ void WorldConverter::ExtractSkeletalMeshFromProto( zCModelMeshLib* model, Skelet
 
 
 
-			Engine::GAPI->GetRendererState()->RendererInfo.SkeletalVerticesDataSize += mi->Vertices.size() * sizeof( ExVertexStruct );
-			Engine::GAPI->GetRendererState()->RendererInfo.SkeletalVerticesDataSize += mi->Indices.size() * sizeof( VERTEX_INDEX );
+			Engine::GAPI->GetRendererState().RendererInfo.SkeletalVerticesDataSize += mi->Vertices.size() * sizeof( ExVertexStruct );
+			Engine::GAPI->GetRendererState().RendererInfo.SkeletalVerticesDataSize += mi->Indices.size() * sizeof( VERTEX_INDEX );
 
 			skeletalMeshInfo->SkeletalMeshes[mat].push_back( mi );
 			skeletalMeshInfo->Meshes[mat].push_back( bmi );
@@ -1279,8 +1279,8 @@ void WorldConverter::Extract3DSMeshFromVisual2PNAEN( zCProgMeshProto* visual, Me
 		mi->MeshVertexBuffer->Init( &mi->Vertices[0], mi->Vertices.size() * sizeof( ExVertexStruct ), D3D11VertexBuffer::B_VERTEXBUFFER, D3D11VertexBuffer::U_IMMUTABLE );
 		mi->MeshIndexBuffer->Init( &mi->Indices[0], mi->Indices.size() * sizeof( VERTEX_INDEX ), D3D11VertexBuffer::B_INDEXBUFFER, D3D11VertexBuffer::U_IMMUTABLE );
 
-		Engine::GAPI->GetRendererState()->RendererInfo.VOBVerticesDataSize += mi->Vertices.size() * sizeof( ExVertexStruct );
-		Engine::GAPI->GetRendererState()->RendererInfo.VOBVerticesDataSize += mi->Indices.size() * sizeof( VERTEX_INDEX );
+		Engine::GAPI->GetRendererState().RendererInfo.VOBVerticesDataSize += mi->Vertices.size() * sizeof( ExVertexStruct );
+		Engine::GAPI->GetRendererState().RendererInfo.VOBVerticesDataSize += mi->Indices.size() * sizeof( VERTEX_INDEX );
 
 		zCMaterial* mat = visual->GetSubmesh( i )->Material;
 		meshInfo->Meshes[mat].push_back( mi );
@@ -1424,8 +1424,8 @@ void WorldConverter::Extract3DSMeshFromVisual2( zCProgMeshProto* visual, MeshVis
 		mi->MeshVertexBuffer->Init( &mi->Vertices[0], mi->Vertices.size() * sizeof( ExVertexStruct ), D3D11VertexBuffer::B_VERTEXBUFFER, D3D11VertexBuffer::U_IMMUTABLE );
 		mi->MeshIndexBuffer->Init( &mi->Indices[0], mi->Indices.size() * sizeof( VERTEX_INDEX ), D3D11VertexBuffer::B_INDEXBUFFER, D3D11VertexBuffer::U_IMMUTABLE );
 
-		Engine::GAPI->GetRendererState()->RendererInfo.VOBVerticesDataSize += mi->Vertices.size() * sizeof( ExVertexStruct );
-		Engine::GAPI->GetRendererState()->RendererInfo.VOBVerticesDataSize += mi->Indices.size() * sizeof( VERTEX_INDEX );
+		Engine::GAPI->GetRendererState().RendererInfo.VOBVerticesDataSize += mi->Vertices.size() * sizeof( ExVertexStruct );
+		Engine::GAPI->GetRendererState().RendererInfo.VOBVerticesDataSize += mi->Indices.size() * sizeof( VERTEX_INDEX );
 
 		zCMaterial* mat = visual->GetSubmesh( i )->Material;
 		meshInfo->Meshes[mat].push_back( mi );

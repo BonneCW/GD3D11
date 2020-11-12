@@ -10,7 +10,7 @@ public:
 	~D3D11VShader();
 
 	/** Loads both shader at the same time */
-	XRESULT LoadShader( const char* vertexShader, int layoput = 1, std::vector<D3D_SHADER_MACRO>& makros = std::vector<D3D_SHADER_MACRO>() );
+	XRESULT LoadShader( const char* vertexShader, int layoput = 1, const std::vector<D3D_SHADER_MACRO>& makros = std::vector<D3D_SHADER_MACRO>() );
 
 	/** Applys the shader */
 	XRESULT Apply();
@@ -29,7 +29,7 @@ public:
 private:
 
 	/** Compiles a shader from file and outputs error messages if needed */
-	HRESULT CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, std::vector<D3D_SHADER_MACRO>& makros );
+	HRESULT CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, const std::vector<D3D_SHADER_MACRO>& makros );
 
 	ID3D11VertexShader* VertexShader;
 	ID3D11InputLayout* InputLayout;

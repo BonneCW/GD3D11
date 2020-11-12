@@ -559,7 +559,13 @@ struct GothicRendererSettings {
 		EnableCustomFontRendering = false;
 		FontFileDefault = "Gothic_14.spritefont";
 		FontFileMenu = "Gothic_14.spritefont";
+
+#ifdef BUILD_GOTHIC_1_08k
 		ForceFOV = false;
+#else
+		ForceFOV = true;
+#endif
+
 		StretchWindow = false;
 	}
 

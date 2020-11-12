@@ -170,7 +170,7 @@ public:
 	virtual void GetBackbufferData( byte** data, int& pixelsize ) {}
 
 	/** Returns the textures drawn this frame */
-	virtual const std::set<zCTexture*> GetFrameTextures() { return std::set<zCTexture*>(); }
+	virtual const std::set<zCTexture*>& GetFrameTextures() { static auto empty = std::set<zCTexture*>(); return empty; }
 
 	/** Draws a fullscreenquad, copying the given texture to the viewport */
 	virtual void DrawQuad( INT2 position, INT2 size ) {}

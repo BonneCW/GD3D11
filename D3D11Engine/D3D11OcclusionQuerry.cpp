@@ -147,7 +147,7 @@ void D3D11OcclusionQuerry::DoOcclusionForBSP( BspInfo* root ) {
 		root->OcclusionInfo.LastVisitedFrameID = FrameID;
 	}
 
-	if ( !Engine::GAPI->GetRendererState()->RendererSettings.DisableWatermark && root->OriginalNode->IsLeaf() ) {
+	if ( !Engine::GAPI->GetRendererState().RendererSettings.DisableWatermark && root->OriginalNode->IsLeaf() ) {
 		if ( !root->OcclusionInfo.VisibleLastFrame ) {
 			//DebugVisualizeNodeMesh(root->OcclusionInfo.NodeMesh, c);
 			Engine::GraphicsEngine->GetLineRenderer()->AddAABBMinMax( root->OriginalNode->BBox3D.Min,

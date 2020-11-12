@@ -158,7 +158,7 @@ int __fastcall HookedFunctionInfo::hooked_zBinkPlayerOpenVideo( void* thisptr, v
 	BinkInfo* res = *(BinkInfo**)(((char*)thisptr) + (GothicMemoryLocations::zCBinkPlayer::Offset_VideoHandle));
 
 	if ( res ) {
-		Engine::GAPI->GetRendererState()->RendererInfo.PlayingMovieResolution = INT2( res->ResX, res->ResY );
+		Engine::GAPI->GetRendererState().RendererInfo.PlayingMovieResolution = INT2( res->ResX, res->ResY );
 	}
 
 	return r;

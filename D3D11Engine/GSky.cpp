@@ -208,7 +208,7 @@ XRESULT GSky::RenderSky() {
 	DirectX::XMFLOAT3 camPos = Engine::GAPI->GetCameraPosition();
 	DirectX::XMFLOAT3 LightDir = {};
 
-	if ( Engine::GAPI->GetRendererState()->RendererSettings.ReplaceSunDirection ) {
+	if ( Engine::GAPI->GetRendererState().RendererSettings.ReplaceSunDirection ) {
 		LightDir = Atmosphere.LightDirection;
 	} else {
 		zCSkyController_Outdoor* sc = oCGame::GetGame()->_zCSession_world->GetSkyControllerOutdoor();
@@ -255,9 +255,9 @@ XRESULT GSky::RenderSky() {
 
 	// Extract fog settings
 	/*zCSkyController_Outdoor* sky = oCGame::GetGame()->_zCSession_world->GetSkyControllerOutdoor();
-	Engine::GAPI->GetRendererState()->GraphicsState.FF_FogColor = float3(sky->GetMasterState()->FogColor / 255.0f);
-	Engine::GAPI->GetRendererState()->GraphicsState.FF_FogNear = 0.3f * sky->GetMasterState()->FogDist; // That 0.3f is hardcoded in gothic
-	Engine::GAPI->GetRendererState()->GraphicsState.FF_FogFar = sky->GetMasterState()->FogDist;
+	Engine::GAPI->GetRendererState().GraphicsState.FF_FogColor = float3(sky->GetMasterState()->FogColor / 255.0f);
+	Engine::GAPI->GetRendererState().GraphicsState.FF_FogNear = 0.3f * sky->GetMasterState()->FogDist; // That 0.3f is hardcoded in gothic
+	Engine::GAPI->GetRendererState().GraphicsState.FF_FogFar = sky->GetMasterState()->FogDist;
 	*/
 	return XR_SUCCESS;
 }

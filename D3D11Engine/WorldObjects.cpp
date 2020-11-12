@@ -200,8 +200,8 @@ SectionInstanceCache::~SectionInstanceCache() {
 }
 
 MeshInfo::~MeshInfo() {
-	//Engine::GAPI->GetRendererState()->RendererInfo.VOBVerticesDataSize -= Indices.size() * sizeof(VERTEX_INDEX);
-	//Engine::GAPI->GetRendererState()->RendererInfo.VOBVerticesDataSize -= Vertices.size() * sizeof(ExVertexStruct);
+	//Engine::GAPI->GetRendererState().RendererInfo.VOBVerticesDataSize -= Indices.size() * sizeof(VERTEX_INDEX);
+	//Engine::GAPI->GetRendererState().RendererInfo.VOBVerticesDataSize -= Vertices.size() * sizeof(ExVertexStruct);
 
 	delete MeshVertexBuffer;
 	delete MeshIndexBuffer;
@@ -210,8 +210,8 @@ MeshInfo::~MeshInfo() {
 }
 
 SkeletalMeshInfo::~SkeletalMeshInfo() {
-	Engine::GAPI->GetRendererState()->RendererInfo.SkeletalVerticesDataSize -= Indices.size() * sizeof( VERTEX_INDEX );
-	Engine::GAPI->GetRendererState()->RendererInfo.SkeletalVerticesDataSize -= Vertices.size() * sizeof( ExSkelVertexStruct );
+	Engine::GAPI->GetRendererState().RendererInfo.SkeletalVerticesDataSize -= Indices.size() * sizeof( VERTEX_INDEX );
+	Engine::GAPI->GetRendererState().RendererInfo.SkeletalVerticesDataSize -= Vertices.size() * sizeof( ExSkelVertexStruct );
 
 	delete MeshVertexBuffer;
 	delete MeshIndexBuffer;
@@ -283,8 +283,8 @@ XRESULT MeshInfo::Create( ExVertexStruct* vertices, unsigned int numVertices, VE
 	MeshVertexBuffer->Init( vertices, numVertices * sizeof( ExVertexStruct ) );
 	MeshIndexBuffer->Init( indices, numIndices * sizeof( VERTEX_INDEX ), D3D11VertexBuffer::B_INDEXBUFFER );
 
-	Engine::GAPI->GetRendererState()->RendererInfo.VOBVerticesDataSize += numVertices * sizeof( ExVertexStruct );
-	Engine::GAPI->GetRendererState()->RendererInfo.VOBVerticesDataSize += numIndices * sizeof( VERTEX_INDEX );
+	Engine::GAPI->GetRendererState().RendererInfo.VOBVerticesDataSize += numVertices * sizeof( ExVertexStruct );
+	Engine::GAPI->GetRendererState().RendererInfo.VOBVerticesDataSize += numIndices * sizeof( VERTEX_INDEX );
 
 	return XR_SUCCESS;
 }

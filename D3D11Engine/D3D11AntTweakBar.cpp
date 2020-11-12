@@ -14,7 +14,7 @@ XRESULT D3D11AntTweakBar::Init() {
 	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
 	LogInfo() << "Initializing AntTweakBar";
-	if ( !TwInit( TW_DIRECT3D11, engine->GetDevice() ) )
+	if ( !TwInit( TW_DIRECT3D11, engine->GetDevice().Get() ) )
 		return XR_FAILED;
 
 	TwWindowSize( engine->GetResolution().x, engine->GetResolution().y );

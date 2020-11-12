@@ -9,6 +9,7 @@
 #include "ConstantBufferStructs.h"
 #include "GothicAPI.h"
 #include "Engine.h"
+#include "Threadpool.h"
 
 const int NUM_MAX_BONES = 96;
 
@@ -23,8 +24,8 @@ D3D11ShaderManager::~D3D11ShaderManager() {
 /** Creates list with ShaderInfos */
 XRESULT D3D11ShaderManager::Init() {
 	Shaders = std::vector<ShaderInfo>();
-	VShaders = std::unordered_map<std::string, D3D11VShader*>();
-	PShaders = std::unordered_map<std::string, D3D11PShader*>();
+	VShaders = std::unordered_map<std::string, std::shared_ptr<D3D11VShader>>();
+	PShaders = std::unordered_map<std::string, std::shared_ptr<D3D11PShader>>();
 
 	Shaders.push_back( ShaderInfo( "VS_Ex", "VS_Ex.hlsl", "v", 1 ) );
 	Shaders.back().cBufferSizes.push_back( sizeof( VS_ExConstantBuffer_PerFrame ) );
@@ -438,126 +439,133 @@ XRESULT D3D11ShaderManager::Init() {
 	return XR_SUCCESS;
 }
 
-/** Loads/Compiles Shaderes from list */
-XRESULT D3D11ShaderManager::LoadShaders() {
-	for ( unsigned int i = 0; i < Shaders.size(); i++ ) {
-		//Check if shader src-file exists
-		std::string fileName = Engine::GAPI->GetStartDirectory() + "\\system\\GD3D11\\shaders\\" + Shaders[i].fileName;
-		if ( FILE* f = fopen( fileName.c_str(), "r" ) ) {
-			//Check shader's type
-			if ( Shaders[i].type == "v" ) {
-				// See if this is a reload
-				if ( VShaders.count( Shaders[i].name ) > 0 ) {
-					if ( Engine::GAPI->GetRendererState()->RendererSettings.EnableDebugLog )
-						LogInfo() << "Reloading shader: " << Shaders[i].name;
-
-					D3D11VShader* vs = new D3D11VShader();
-					if ( XR_SUCCESS != vs->LoadShader( ("system\\GD3D11\\shaders\\" + Shaders[i].fileName).c_str(), Shaders[i].layout, Shaders[i].shaderMakros ) ) {
-						LogError() << "Failed to reload shader: " << Shaders[i].fileName;
-
-						delete vs;
-					} else {
-						// Compilation succeeded, switch the shader
-						delete VShaders[Shaders[i].name];
-						VShaders[Shaders[i].name] = vs;
-
-						for ( unsigned int j = 0; j < Shaders[i].cBufferSizes.size(); j++ ) {
-							VShaders[Shaders[i].name]->GetConstantBuffer().push_back( new D3D11ConstantBuffer( Shaders[i].cBufferSizes[j], nullptr ) );
-						}
-					}
-				} else {
-					if ( Engine::GAPI->GetRendererState()->RendererSettings.EnableDebugLog )
-						LogInfo() << "Reloading shader: " << Shaders[i].name;
-
-					VShaders[Shaders[i].name] = new D3D11VShader();
-					XLE( VShaders[Shaders[i].name]->LoadShader( ("system\\GD3D11\\shaders\\" + Shaders[i].fileName).c_str(), Shaders[i].layout, Shaders[i].shaderMakros ) );
-					for ( unsigned int j = 0; j < Shaders[i].cBufferSizes.size(); j++ ) {
-						VShaders[Shaders[i].name]->GetConstantBuffer().push_back( new D3D11ConstantBuffer( Shaders[i].cBufferSizes[j], nullptr ) );
-					}
-				}
-			} else if ( Shaders[i].type == "p" ) {
-				// See if this is a reload
-				if ( PShaders.count( Shaders[i].name ) > 0 ) {
-					D3D11PShader* ps = new D3D11PShader();
-					if ( XR_SUCCESS != ps->LoadShader( ("system\\GD3D11\\shaders\\" + Shaders[i].fileName).c_str(), Shaders[i].shaderMakros ) ) {
-						LogError() << "Failed to reload shader: " << Shaders[i].fileName;
-
-						delete ps;
-					} else {
-						// Compilation succeeded, switch the shader
-						delete PShaders[Shaders[i].name];
-						PShaders[Shaders[i].name] = ps;
-
-						for ( unsigned int j = 0; j < Shaders[i].cBufferSizes.size(); j++ ) {
-							PShaders[Shaders[i].name]->GetConstantBuffer().push_back( new D3D11ConstantBuffer( Shaders[i].cBufferSizes[j], nullptr ) );
-						}
-					}
-				} else {
-					PShaders[Shaders[i].name] = new D3D11PShader();
-					XLE( PShaders[Shaders[i].name]->LoadShader( ("system\\GD3D11\\shaders\\" + Shaders[i].fileName).c_str(), Shaders[i].shaderMakros ) );
-					for ( unsigned int j = 0; j < Shaders[i].cBufferSizes.size(); j++ ) {
-						PShaders[Shaders[i].name]->GetConstantBuffer().push_back( new D3D11ConstantBuffer( Shaders[i].cBufferSizes[j], nullptr ) );
-					}
-				}
-			} else if ( Shaders[i].type == "g" ) {
-				// See if this is a reload
-				if ( GShaders.count( Shaders[i].name ) > 0 ) {
-					D3D11GShader* gs = new D3D11GShader();
-					if ( XR_SUCCESS != gs->LoadShader( ("system\\GD3D11\\shaders\\" + Shaders[i].fileName).c_str(), Shaders[i].shaderMakros, Shaders[i].layout != 0, Shaders[i].layout ) ) {
-						LogError() << "Failed to reload shader: " << Shaders[i].fileName;
-
-						delete gs;
-					} else {
-						// Compilation succeeded, switch the shader
-						delete GShaders[Shaders[i].name];
-						GShaders[Shaders[i].name] = gs;
-
-						for ( unsigned int j = 0; j < Shaders[i].cBufferSizes.size(); j++ ) {
-							GShaders[Shaders[i].name]->GetConstantBuffer().push_back( new D3D11ConstantBuffer( Shaders[i].cBufferSizes[j], nullptr ) );
-						}
-					}
-				} else {
-					GShaders[Shaders[i].name] = new D3D11GShader();
-					XLE( GShaders[Shaders[i].name]->LoadShader( ("system\\GD3D11\\shaders\\" + Shaders[i].fileName).c_str(), Shaders[i].shaderMakros, Shaders[i].layout != 0, Shaders[i].layout ) );
-					for ( unsigned int j = 0; j < Shaders[i].cBufferSizes.size(); j++ ) {
-						GShaders[Shaders[i].name]->GetConstantBuffer().push_back( new D3D11ConstantBuffer( Shaders[i].cBufferSizes[j], nullptr ) );
-					}
-				}
-			}
-
-			fclose( f );
-		}
-
-		// Hull/Domain shaders are handled differently, they check inside for missing file
-		if ( Shaders[i].type == std::string( "hd" ) ) {
+XRESULT D3D11ShaderManager::CompileShader( const ShaderInfo& si ) {
+	//Check if shader src-file exists
+	std::string fileName = Engine::GAPI->GetStartDirectory() + "\\system\\GD3D11\\shaders\\" + si.fileName;
+	if ( FILE* f = fopen( fileName.c_str(), "r" ) ) {
+		//Check shader's type
+		if ( si.type == "v" ) {
 			// See if this is a reload
-			if ( HDShaders.count( Shaders[i].name ) > 0 ) {
-				D3D11HDShader* hds = new D3D11HDShader();
-				if ( XR_SUCCESS != hds->LoadShader( ("system\\GD3D11\\shaders\\" + Shaders[i].fileName).c_str(),
-					("system\\GD3D11\\shaders\\" + Shaders[i].fileName).c_str() ) ) {
-					LogError() << "Failed to reload shader: " << Shaders[i].fileName;
+			D3D11VShader* vs = new D3D11VShader();
+			if ( IsVShaderKnown( si.name ) ) {
+				if ( Engine::GAPI->GetRendererState().RendererSettings.EnableDebugLog )
+					LogInfo() << "Reloading shader: " << si.name;
 
-					delete hds;
+				if ( XR_SUCCESS != vs->LoadShader( ("system\\GD3D11\\shaders\\" + si.fileName).c_str(), si.layout, si.shaderMakros ) ) {
+					LogError() << "Failed to reload shader: " << si.fileName;
+
+					delete vs;
 				} else {
 					// Compilation succeeded, switch the shader
-					delete HDShaders[Shaders[i].name];
-					HDShaders[Shaders[i].name] = hds;
 
-					for ( unsigned int j = 0; j < Shaders[i].cBufferSizes.size(); j++ ) {
-						HDShaders[Shaders[i].name]->GetConstantBuffer().push_back( new D3D11ConstantBuffer( Shaders[i].cBufferSizes[j], nullptr ) );
+					for ( unsigned int j = 0; j < si.cBufferSizes.size(); j++ ) {
+						vs->GetConstantBuffer().push_back( new D3D11ConstantBuffer( si.cBufferSizes[j], nullptr ) );
 					}
+					UpdateVShader( si.name, vs );
 				}
 			} else {
-				HDShaders[Shaders[i].name] = new D3D11HDShader();
-				XLE( HDShaders[Shaders[i].name]->LoadShader( ("system\\GD3D11\\shaders\\" + Shaders[i].fileName).c_str(),
-					("system\\GD3D11\\shaders\\" + Shaders[i].fileName).c_str() ) );
-				for ( unsigned int j = 0; j < Shaders[i].cBufferSizes.size(); j++ ) {
-					HDShaders[Shaders[i].name]->GetConstantBuffer().push_back( new D3D11ConstantBuffer( Shaders[i].cBufferSizes[j], nullptr ) );
+				if ( Engine::GAPI->GetRendererState().RendererSettings.EnableDebugLog )
+					LogInfo() << "Reloading shader: " << si.name;
+
+				XLE( vs->LoadShader( ("system\\GD3D11\\shaders\\" + si.fileName).c_str(), si.layout, si.shaderMakros ) );
+				for ( unsigned int j = 0; j < si.cBufferSizes.size(); j++ ) {
+					vs->GetConstantBuffer().push_back( new D3D11ConstantBuffer( si.cBufferSizes[j], nullptr ) );
 				}
+				UpdateVShader( si.name, vs );
+			}
+		} else if ( si.type == "p" ) {
+			// See if this is a reload
+			D3D11PShader* ps = new D3D11PShader();
+			if ( IsPShaderKnown( si.name ) ) {
+				if ( XR_SUCCESS != ps->LoadShader( ("system\\GD3D11\\shaders\\" + si.fileName).c_str(), si.shaderMakros ) ) {
+					LogError() << "Failed to reload shader: " << si.fileName;
+
+					delete ps;
+				} else {
+					// Compilation succeeded, switch the shader
+
+					for ( unsigned int j = 0; j < si.cBufferSizes.size(); j++ ) {
+						ps->GetConstantBuffer().push_back( new D3D11ConstantBuffer( si.cBufferSizes[j], nullptr ) );
+					}
+					UpdatePShader( si.name, ps );
+				}
+			} else {
+				XLE( ps->LoadShader( ("system\\GD3D11\\shaders\\" + si.fileName).c_str(), si.shaderMakros ) );
+				for ( unsigned int j = 0; j < si.cBufferSizes.size(); j++ ) {
+					ps->GetConstantBuffer().push_back( new D3D11ConstantBuffer( si.cBufferSizes[j], nullptr ) );
+				}
+				UpdatePShader( si.name, ps );
+			}
+		} else if ( si.type == "g" ) {
+			// See if this is a reload
+			D3D11GShader* gs = new D3D11GShader();
+			if ( IsGShaderKnown( si.name ) ) {
+				if ( XR_SUCCESS != gs->LoadShader( ("system\\GD3D11\\shaders\\" + si.fileName).c_str(), si.shaderMakros, si.layout != 0, si.layout ) ) {
+					LogError() << "Failed to reload shader: " << si.fileName;
+
+					delete gs;
+				} else {
+					// Compilation succeeded, switch the shader
+					for ( unsigned int j = 0; j < si.cBufferSizes.size(); j++ ) {
+						gs->GetConstantBuffer().push_back( new D3D11ConstantBuffer( si.cBufferSizes[j], nullptr ) );
+					}
+					UpdateGShader( si.name, gs );
+				}
+			} else {
+				XLE( gs->LoadShader( ("system\\GD3D11\\shaders\\" + si.fileName).c_str(), si.shaderMakros, si.layout != 0, si.layout ) );
+				for ( unsigned int j = 0; j < si.cBufferSizes.size(); j++ ) {
+					gs->GetConstantBuffer().push_back( new D3D11ConstantBuffer( si.cBufferSizes[j], nullptr ) );
+				}
+				UpdateGShader( si.name, gs );
 			}
 		}
 
+		fclose( f );
 	}
+
+	// Hull/Domain shaders are handled differently, they check inside for missing file
+	if ( si.type == std::string( "hd" ) ) {
+		// See if this is a reload
+		D3D11HDShader* hds = new D3D11HDShader();
+		if ( IsHDShaderKnown( si.name ) ) {
+			if ( XR_SUCCESS != hds->LoadShader( ("system\\GD3D11\\shaders\\" + si.fileName).c_str(),
+				("system\\GD3D11\\shaders\\" + si.fileName).c_str() ) ) {
+				LogError() << "Failed to reload shader: " << si.fileName;
+
+				delete hds;
+			} else {
+				// Compilation succeeded, switch the shader
+				for ( unsigned int j = 0; j < si.cBufferSizes.size(); j++ ) {
+					hds->GetConstantBuffer().push_back( new D3D11ConstantBuffer( si.cBufferSizes[j], nullptr ) );
+				}
+				UpdateHDShader( si.name, hds );
+			}
+		} else {
+			XLE( hds->LoadShader( ("system\\GD3D11\\shaders\\" + si.fileName).c_str(),
+				("system\\GD3D11\\shaders\\" + si.fileName).c_str() ) );
+			for ( unsigned int j = 0; j < si.cBufferSizes.size(); j++ ) {
+				hds->GetConstantBuffer().push_back( new D3D11ConstantBuffer( si.cBufferSizes[j], nullptr ) );
+			}
+			UpdateHDShader( si.name, hds );
+		}
+	}
+	return XR_SUCCESS;
+}
+
+/** Loads/Compiles Shaderes from list */
+XRESULT D3D11ShaderManager::LoadShaders() {
+	size_t numThreads = std::thread::hardware_concurrency();
+	if ( numThreads > 1 ) {
+		numThreads = numThreads - 1;
+	}
+	auto compilationTP = std::make_unique<ThreadPool>( numThreads );
+	LogInfo() << "Compiling/Reloading shaders with " << compilationTP->getNumThreads() << " threads";
+	for ( const ShaderInfo& si : Shaders) {
+		compilationTP->enqueue( [this, si]() { CompileShader( si ); } );
+	}
+
+	// Join all threads (call Threadpool destructor)
+	compilationTP.reset();
 
 	return XR_SUCCESS;
 }
@@ -581,21 +589,18 @@ XRESULT D3D11ShaderManager::OnFrameStart() {
 
 /** Deletes all shaders */
 XRESULT D3D11ShaderManager::DeleteShaders() {
-	std::unordered_map<std::string, D3D11VShader*>::iterator vIter;
-	for ( vIter = VShaders.begin(); vIter != VShaders.end(); vIter++ ) {
-		delete vIter->second;
+	for ( auto vIter = VShaders.begin(); vIter != VShaders.end(); vIter++ ) {
+		vIter->second.reset();
 	}
 	VShaders.clear();
 
-	std::unordered_map<std::string, D3D11PShader*>::iterator pIter;
-	for ( pIter = PShaders.begin(); pIter != PShaders.end(); pIter++ ) {
-		delete pIter->second;
+	for ( auto pIter = PShaders.begin(); pIter != PShaders.end(); pIter++ ) {
+		pIter->second.reset();
 	}
 	PShaders.clear();
 
-	std::unordered_map<std::string, D3D11HDShader*>::iterator hdIter;
-	for ( hdIter = HDShaders.begin(); hdIter != HDShaders.end(); hdIter++ ) {
-		delete hdIter->second;
+	for ( auto hdIter = HDShaders.begin(); hdIter != HDShaders.end(); hdIter++ ) {
+		hdIter->second.reset();
 	}
 	HDShaders.clear();
 
@@ -603,18 +608,15 @@ XRESULT D3D11ShaderManager::DeleteShaders() {
 }
 
 /** Return a specific shader */
-D3D11VShader* D3D11ShaderManager::GetVShader( std::string shader ) {
+std::shared_ptr<D3D11VShader> D3D11ShaderManager::GetVShader( std::string shader ) {
 	return VShaders[shader];
 }
-D3D11PShader* D3D11ShaderManager::GetPShader( std::string shader ) {
+std::shared_ptr<D3D11PShader> D3D11ShaderManager::GetPShader( std::string shader ) {
 	return PShaders[shader];
 }
-
-D3D11HDShader* D3D11ShaderManager::GetHDShader( std::string shader ) {
+std::shared_ptr<D3D11HDShader> D3D11ShaderManager::GetHDShader( std::string shader ) {
 	return HDShaders[shader];
 }
-
-
-D3D11GShader* D3D11ShaderManager::GetGShader( std::string shader ) {
+std::shared_ptr<D3D11GShader> D3D11ShaderManager::GetGShader( std::string shader ) {
 	return GShaders[shader];
 }

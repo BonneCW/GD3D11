@@ -5,6 +5,17 @@
 #include "GothicGraphicsState.h"
 
 class SV_Slider;
+class SV_Label;
+class SV_Checkbox;
+class D2DSettingsDialog;
+
+struct FovOverrideCheckedChangedState {
+	D2DSettingsDialog* SettingsDialog;
+	SV_Label* horizFOVLabel;
+	SV_Slider* horizFOVSlider;
+	SV_Label* vertFOVLabel;
+	SV_Slider* vertFOVSlider;
+};
 
 class D2DSettingsDialog : public D2DDialog {
 public:
@@ -33,11 +44,12 @@ protected:
 
 	/** Apply button */
 	static void ApplyButtonPressed( SV_Button* sender, void* userdata );
-
+	static void FovOverrideCheckedChanged( SV_Checkbox* sender, void* userdata );
 	/** Initial renderer settings, used to determine a change */
 	GothicRendererSettings InitialSettings;
 
 	/** Current resolution setting */
 	int ResolutionSetting;
 	std::vector<DisplayModeInfo> Resolutions;
+	FovOverrideCheckedChangedState* CheckedChangedState;
 };

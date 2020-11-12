@@ -60,8 +60,8 @@ public:
 	HRESULT CreateLineGrid( int LinesX, int LinesY, DirectX::XMFLOAT2* Middle, const float4& Color );
 
 	/** Sets the shader to render with */
-	void SetShader( D3D11PShader* Shader );
-	void SetSolidShader( D3D11PShader* SolidShader );
+	void SetShader( std::shared_ptr<D3D11PShader> Shader );
+	void SetSolidShader( std::shared_ptr<D3D11PShader> SolidShader );
 
 	/** Sets the transforms */
 	void __vectorcall SetLocation( DirectX::FXMVECTOR NewLoc );
@@ -91,8 +91,8 @@ public:
 	GETSET( DirectX::XMFLOAT3, RotationMatrixAngles );
 
 
-	GET_PTR( D3D11PShader*, PrimShader );
-	GET_PTR( D3D11PShader*, SolidPrimShader );
+	GET( std::shared_ptr<D3D11PShader>, PrimShader );
+	GET( std::shared_ptr<D3D11PShader>, SolidPrimShader );
 	GETSET_MEMBER( bool, bLocalRotation );
 	GETSET_MEMBER( bool, bJustUseRotationMatrix ); // If true we will just multiply the existing rotation matrix when creating a new world matrix
 private:
@@ -119,8 +119,8 @@ private:
 	ID3D11Buffer* PrimVB;
 
 	/** Primitives shaders */
-	D3D11PShader* PrimShader;
-	D3D11PShader* SolidPrimShader;
+	std::shared_ptr<D3D11PShader> PrimShader;
+	std::shared_ptr<D3D11PShader> SolidPrimShader;
 
 
 	/** Solid vertices we have */

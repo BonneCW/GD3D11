@@ -53,7 +53,7 @@ public:
 
 #if BUILD_GOTHIC_2_6_fix
 	static void __fastcall hooked_Print( _zCView* thisptr, void* unknwn, int x, int y, const zSTRING& s ) {
-		if ( !Engine::GAPI->GetRendererState()->RendererSettings.EnableCustomFontRendering ) {
+		if ( !Engine::GAPI->GetRendererState().RendererSettings.EnableCustomFontRendering ) {
 			HookedFunctions::OriginalFunctions.original_zCViewPrint( thisptr, x, y, s );
 			return;
 		}
@@ -76,7 +76,7 @@ public:
 	}
 
 	static void __fastcall hooked_BlitText( _zCView* thisptr, void* unknwn ) {
-		if ( !Engine::GAPI->GetRendererState()->RendererSettings.EnableCustomFontRendering ) {
+		if ( !Engine::GAPI->GetRendererState().RendererSettings.EnableCustomFontRendering ) {
 			HookedFunctions::OriginalFunctions.original_zCViewBlitText( thisptr );
 			return;
 		}
@@ -142,7 +142,7 @@ public:
 		}
 	}
 	static int __fastcall hooked_FontSize( _zCView* thisptr, void* unknwn, const zSTRING& str ) {
-		if ( !Engine::GAPI->GetRendererState()->RendererSettings.EnableCustomFontRendering ) {
+		if ( !Engine::GAPI->GetRendererState().RendererSettings.EnableCustomFontRendering ) {
 			return HookedFunctions::OriginalFunctions.original_zCViewFontSize( thisptr, str );
 		}
 

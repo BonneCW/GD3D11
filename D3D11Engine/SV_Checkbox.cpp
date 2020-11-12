@@ -7,6 +7,7 @@ SV_Checkbox::SV_Checkbox( D2DView* view, D2DSubView* parent ) : D2DSubView( view
 	CaptionLayout = nullptr;
 	DataToUpdate = nullptr;
 	IsChecked = false;
+	SetCheckedChangedCallback( nullptr, nullptr );
 }
 
 SV_Checkbox::~SV_Checkbox() {
@@ -108,6 +109,11 @@ void SV_Checkbox::SetRect( const D2D1_RECT_F& rect ) {
 	SetCaption( Caption );
 }
 
+void SV_Checkbox::SetCheckedChangedCallback( SV_CheckboxCheckedChangedCallback cb, void* userdata ) {
+	CheckedChangedUserdata = userdata;
+	CheckedChangedCallback = cb;
+}
+
 /** Processes a window-message. Return false to stop the message from going to children */
 bool SV_Checkbox::OnWindowMessage( HWND hWnd, unsigned int msg, WPARAM wParam, LPARAM lParam, const D2D1_RECT_F& clientRectAbs ) {
 	switch ( msg ) {
@@ -115,7 +121,11 @@ bool SV_Checkbox::OnWindowMessage( HWND hWnd, unsigned int msg, WPARAM wParam, L
 	{
 		POINT p = D2DView::GetCursorPosition();
 		if ( PointInsideRect( D2D1::Point2F( (float)p.x, (float)p.y ), clientRectAbs ) ) {
+			auto oldVal = GetChecked();
 			SetChecked( !GetChecked() );
+			if ( CheckedChangedCallback ) {
+				CheckedChangedCallback( this, CheckedChangedUserdata );
+			}
 			return false;
 		}
 	}

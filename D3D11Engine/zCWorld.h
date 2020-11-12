@@ -148,7 +148,7 @@ public:
 			Engine::GAPI->OnWorldUpdate();
 
 			// Main world
-			if ( Engine::GAPI->GetRendererState()->RendererSettings.AtmosphericScattering ) {
+			if ( Engine::GAPI->GetRendererState().RendererSettings.AtmosphericScattering ) {
 				HookedFunctions::OriginalFunctions.original_zCWorldRender( thisptr, camera );
 				//zCWorld::fake_zCWorldRender(thisptr, camera);
 			} else {
@@ -196,9 +196,9 @@ public:
 
 		HookedFunctions::OriginalFunctions.original_zCWorldRender( thisptr, camera );
 
-		/*D3DXVECTOR4 cc = D3DXVECTOR4(Engine::GAPI->GetRendererState()->GraphicsState.FF_FogColor.x,
-			Engine::GAPI->GetRendererState()->GraphicsState.FF_FogColor.y,
-			Engine::GAPI->GetRendererState()->GraphicsState.FF_FogColor.z, 0);
+		/*D3DXVECTOR4 cc = D3DXVECTOR4(Engine::GAPI->GetRendererState().GraphicsState.FF_FogColor.x,
+			Engine::GAPI->GetRendererState().GraphicsState.FF_FogColor.y,
+			Engine::GAPI->GetRendererState().GraphicsState.FF_FogColor.z, 0);
 
 		Engine::GraphicsEngine->Clear(*(float4 *)&cc);*/
 

@@ -119,8 +119,8 @@ void SV_GMeshInfoView::UpdateView() {
 	XMStoreFloat4x4( &ObjectProjMatrix, xmObjectProjMatrix );
 
 	g->SetDefaultStates();
-	Engine::GAPI->GetRendererState()->RasterizerState.CullMode = GothicRasterizerStateInfo::CM_CULL_NONE;
-	Engine::GAPI->GetRendererState()->RasterizerState.SetDirty();
+	Engine::GAPI->GetRendererState().RasterizerState.CullMode = GothicRasterizerStateInfo::CM_CULL_NONE;
+	Engine::GAPI->GetRendererState().RasterizerState.SetDirty();
 
 	XMFLOAT4X4 oldProj = Engine::GAPI->GetProjTransformDx();
 
@@ -145,11 +145,11 @@ void SV_GMeshInfoView::UpdateView() {
 	g->GetContext()->RSSetViewports( 1, &vp );
 
 	// Clear
-	g->GetContext()->ClearRenderTargetView( RT->GetRenderTargetView(), (float*)&float4( 0, 0, 0, 0 ) );
-	g->GetContext()->ClearDepthStencilView( DS->GetDepthStencilView(), D3D11_CLEAR_DEPTH, 1.0f, 0 );
+	g->GetContext()->ClearRenderTargetView( RT->GetRenderTargetView().Get(), (float*)&float4( 0, 0, 0, 0 ) );
+	g->GetContext()->ClearDepthStencilView( DS->GetDepthStencilView().Get(), D3D11_CLEAR_DEPTH, 1.0f, 0 );
 
 	// Bind RTV
-	g->GetContext()->OMSetRenderTargets( 1, RT->GetRenderTargetViewPtr(), DS->GetDepthStencilView() );
+	g->GetContext()->OMSetRenderTargets( 1, RT->GetRenderTargetView().GetAddressOf(), DS->GetDepthStencilView().Get() );
 
 	// Setup shaders
 	g->SetActiveVertexShader( "VS_Ex" );
@@ -173,11 +173,11 @@ void SV_GMeshInfoView::UpdateView() {
 
 	case RM_Wireframe:
 		g->SetActivePixelShader( "PS_Preview_White" );
-		Engine::GAPI->GetRendererState()->RasterizerState.Wireframe = true;
-		Engine::GAPI->GetRendererState()->RasterizerState.SetDirty();
+		Engine::GAPI->GetRendererState().RasterizerState.Wireframe = true;
+		Engine::GAPI->GetRendererState().RasterizerState.SetDirty();
 		DrawMeshes();
-		Engine::GAPI->GetRendererState()->RasterizerState.Wireframe = false;
-		Engine::GAPI->GetRendererState()->RasterizerState.SetDirty();
+		Engine::GAPI->GetRendererState().RasterizerState.Wireframe = false;
+		Engine::GAPI->GetRendererState().RasterizerState.SetDirty();
 		break;
 	}
 	// Reset viewport
@@ -185,7 +185,7 @@ void SV_GMeshInfoView::UpdateView() {
 	Engine::GAPI->SetProjTransformDX( oldProj );
 
 	// Update panel
-	Panel->SetD3D11TextureAsImage( RT->GetTexture(), INT2( RT->GetSizeX(), RT->GetSizeY() ) );
+	Panel->SetD3D11TextureAsImage( RT->GetTexture().Get(), INT2( RT->GetSizeX(), RT->GetSizeY() ) );
 }
 
 /** Draws the meshes to the buffer */
@@ -209,9 +209,6 @@ void SV_GMeshInfoView::DrawMeshes() {
 			ts->Constantbuffer->BindToHullShader( 1 );
 
 			if ( it->first->CacheIn( -1 ) == zRES_CACHED_IN ) {
-				MyDirectDrawSurface7* surface = it->first->GetSurface();
-				ID3D11ShaderResourceView* srv = surface->GetNormalmap() ? ((D3D11Texture*)surface->GetNormalmap())->GetShaderResourceView() : nullptr;
-
 				// Draw
 				it->first->Bind( 0 );
 				g->DrawVertexBufferIndexed( it->second->MeshVertexBuffer, it->second->MeshIndexBufferPNAEN, it->second->IndicesPNAEN.size() );

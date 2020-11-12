@@ -32,8 +32,8 @@ EditorLinePrimitive::EditorLinePrimitive() {
 
 	bJustUseRotationMatrix = false;
 
-	SetSolidShader( ((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetShaderManager()->GetPShader( "PS_Lines" ) );
-	SetShader( ((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetShaderManager()->GetPShader( "PS_Lines" ) );
+	SetSolidShader( ((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetShaderManager().GetPShader( "PS_Lines" ) );
+	SetShader( ((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetShaderManager().GetPShader( "PS_Lines" ) );
 }
 
 
@@ -860,12 +860,12 @@ HRESULT EditorLinePrimitive::CreatePrimitive( LineVertex* PrimVerts, UINT NumVer
 }
 
 /** Sets the shader to render with */
-void EditorLinePrimitive::SetShader( D3D11PShader* Shader ) {
+void EditorLinePrimitive::SetShader( std::shared_ptr<D3D11PShader> Shader ) {
 	PrimShader = Shader;
 }
 
 /** Sets the solid shader to render with */
-void EditorLinePrimitive::SetSolidShader( D3D11PShader* SolidShader ) {
+void EditorLinePrimitive::SetSolidShader( std::shared_ptr<D3D11PShader> SolidShader ) {
 	SolidPrimShader = SolidShader;
 }
 
@@ -884,8 +884,8 @@ void EditorLinePrimitive::RenderVertexBuffer( ID3D11Buffer* VB, UINT NumVertices
 	engine->SetupVS_ExPerInstanceConstantBuffer();
 
 	engine->SetDefaultStates();
-	Engine::GAPI->GetRendererState()->BlendState.SetAlphaBlending();
-	Engine::GAPI->GetRendererState()->BlendState.SetDirty();
+	Engine::GAPI->GetRendererState().BlendState.SetAlphaBlending();
+	Engine::GAPI->GetRendererState().BlendState.SetDirty();
 	engine->UpdateRenderStates();
 
 	Shader->Apply();
@@ -911,11 +911,11 @@ HRESULT EditorLinePrimitive::RenderPrimitive( int Pass ) {
 	}
 
 	if ( NumVertices > 0 && PrimShader ) {
-		RenderVertexBuffer( PrimVB, NumVertices, PrimShader, PrimitiveTopology, Pass );
+		RenderVertexBuffer( PrimVB, NumVertices, PrimShader.get(), PrimitiveTopology, Pass );
 	}
 
 	if ( NumSolidVertices > 0 && SolidPrimShader ) {
-		RenderVertexBuffer( SolidPrimVB, NumSolidVertices, SolidPrimShader, SolidPrimitiveTopology, Pass );
+		RenderVertexBuffer( SolidPrimVB, NumSolidVertices, SolidPrimShader.get(), SolidPrimitiveTopology, Pass );
 	}
 
 	return S_OK;

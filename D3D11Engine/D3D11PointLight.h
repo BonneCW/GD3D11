@@ -54,11 +54,11 @@ protected:
 	bool WorldCacheInvalid;
 
 	VobLightInfo* LightInfo;
-	RenderToDepthStencilBuffer* DepthCubemap;
+	std::unique_ptr<RenderToDepthStencilBuffer> DepthCubemap;
 	DirectX::XMFLOAT4X4 CubeMapViewMatrices[6];
 	DirectX::XMFLOAT3 LastUpdatePosition;
 	DWORD LastUpdateColor;
-	D3D11ConstantBuffer* ViewMatricesCB;
+	std::unique_ptr<D3D11ConstantBuffer> ViewMatricesCB;
 	bool DynamicLight;
 	bool InitDone;
 	bool DrawnOnce;

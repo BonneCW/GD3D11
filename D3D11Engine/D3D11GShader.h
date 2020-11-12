@@ -11,7 +11,7 @@ public:
 
 
 	/** Loads shader */
-	XRESULT LoadShader( const char* geometryShader, std::vector<D3D_SHADER_MACRO>& makros = std::vector<D3D_SHADER_MACRO>(), bool createStreamOutFromVS = false, int soLayout = 0 );
+	XRESULT LoadShader( const char* geometryShader, const std::vector<D3D_SHADER_MACRO>& makros = std::vector<D3D_SHADER_MACRO>(), bool createStreamOutFromVS = false, int soLayout = 0 );
 
 	/** Applys the shader */
 	XRESULT Apply();
@@ -28,7 +28,7 @@ public:
 private:
 
 	/** Compiles the shader from file and outputs error messages if needed */
-	HRESULT CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, std::vector<D3D_SHADER_MACRO>& makros );
+	HRESULT CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, const std::vector<D3D_SHADER_MACRO>& makros );
 
 	ID3D11GeometryShader* GeometryShader;
 	std::vector<D3D11ConstantBuffer*> ConstantBuffers;

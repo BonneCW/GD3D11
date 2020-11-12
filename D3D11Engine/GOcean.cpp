@@ -64,13 +64,13 @@ XRESULT GOcean::InitOcean() {
 	// pointy crests.
 	ocean_param.choppy_scale = 1.3f;
 
-	FFTOceanSimulator = new OceanSimulator( ocean_param, engine->GetDevice() );
+	FFTOceanSimulator = new OceanSimulator( ocean_param, engine->GetDevice().Get() );
 
 	// Update the simulation for the first time.
 	FFTOceanSimulator->updateDisplacementMap( 0 );
 
 	// Create fresnel map
-	CreateFresnelMap( engine->GetDevice() );
+	CreateFresnelMap( engine->GetDevice().Get() );
 
 	return XR_SUCCESS;
 }
@@ -117,7 +117,7 @@ void GOcean::GetFFTResources( ID3D11ShaderResourceView** tex_displacement, ID3D1
 	// Multiple reflection workaround
 	settingsCB->OS_BendParam = bendParam;
 	// Sun streaks
-	settingsCB->OS_SunColor = Engine::GAPI->GetRendererState()->RendererSettings.SunLightColor;
+	settingsCB->OS_SunColor = Engine::GAPI->GetRendererState().RendererSettings.SunLightColor;
 	settingsCB->OS_SunDir = Engine::GAPI->GetSky()->GetAtmoshpereSettings().LightDirection;
 	settingsCB->OS_Shineness = shineness;
 

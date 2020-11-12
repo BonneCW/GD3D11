@@ -8,6 +8,7 @@
 #include "D2DMessageBox.h"
 
 const D2D1_COLOR_F SV_DEF_INNER_LINE_COLOR = D2D1::ColorF( 0.3f, 0.3f, 0.6f, 1.0f );
+const D2D1_COLOR_F SV_DEF_DISABLED_COLOR = D2D1::ColorF( 0.3f, 0.3f, 0.6f, 0.3f );
 const float SV_DEF_SHADOW_RANGE = 19.0f;
 
 class D2DDialog;

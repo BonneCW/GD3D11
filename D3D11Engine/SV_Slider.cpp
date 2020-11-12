@@ -123,7 +123,7 @@ void SV_Slider::RenderSlider() {
 	D2D1_RECT_F sc = ViewRect;
 	D2D1_RECT_F bc = ViewRect;
 
-	D2D1_COLOR_F BarBackgroundColor = D2D1::ColorF( 0.2f, 0.2f, 0.2f, 1.0f );
+	D2D1_COLOR_F BarBackgroundColor = D2D1::ColorF( 0.2f, 0.2f, 0.2f, IsDisabled() ? 0.3f : 1.0f );
 	float BarInnerShadowStrength = 0.8f;
 
 	MainView->GetBrush()->SetColor( BarBackgroundColor );
@@ -135,7 +135,7 @@ void SV_Slider::RenderSlider() {
 	MainView->GetLinearReflectBrushHigh()->SetEndPoint( D2D1::Point2F( ViewRect.right, ViewRect.bottom ) );
 	MainView->GetRenderTarget()->DrawRectangle( sc, MainView->GetLinearReflectBrushHigh() );
 
-	MainView->GetBrush()->SetColor( SV_DEF_INNER_LINE_COLOR );
+	MainView->GetBrush()->SetColor(IsDisabled() ? SV_DEF_DISABLED_COLOR : SV_DEF_INNER_LINE_COLOR );
 	D2DView::ShrinkRect( &sc, 1 );
 
 	MainView->GetRenderTarget()->DrawRectangle( sc, MainView->GetBrush() );
@@ -171,6 +171,7 @@ void SV_Slider::RenderSlider() {
 		ValueLabel->SetSize( D2D1::SizeF( (BarPosition - 2 - SV_SLIDERCONTROL_SLIDER_SIZEX), GetSize().height ) );
 		ValueLabel->SetHorizAlignment( DWRITE_TEXT_ALIGNMENT_TRAILING );
 	}
+	ValueLabel->SetDisabled( IsDisabled() );
 
 	// Only change when needed
 	if ( (DraggingSlider && (!DataToUpdate)) || (DataToUpdate && *DataToUpdate != Value) || !ValueLabel ) {

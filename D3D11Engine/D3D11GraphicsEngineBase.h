@@ -46,8 +46,77 @@ namespace D3D11ObjectIDs {
 		int BlendStateCounter;
 		int RasterizerCounter;
 	} Counters;
-
 }
+
+class D3D11ObjectIdManager {
+public:
+	static UINT8 AddVShader( D3D11VShader* s ) {
+		std::unique_lock<std::mutex> lock( VShadersByIDMutex );
+		UINT8 id = 0;
+		if ( !D3D11ObjectIDs::VShadersByID.empty() ) {
+			id = D3D11ObjectIDs::Counters.VShadersCounter++;
+		}
+		D3D11ObjectIDs::VShadersByID[id] = s;
+		return id;
+	}
+	static UINT8 AddPShader( D3D11PShader* s ) {
+		std::unique_lock<std::mutex> lock( PShadersByIDMutex );
+		UINT8 id = 0;
+		if ( !D3D11ObjectIDs::PShadersByID.empty() ) {
+			id = D3D11ObjectIDs::Counters.PShadersCounter++;
+		}
+		D3D11ObjectIDs::PShadersByID[id] = s;
+		return id;
+	}
+	static UINT8 AddHDShader( D3D11HDShader* s ) {
+		std::unique_lock<std::mutex> lock( HDShadersByIDMutex );
+		UINT8 id = 0;
+		if ( !D3D11ObjectIDs::HDShadersByID.empty() ) {
+			id = D3D11ObjectIDs::Counters.HDShadersCounter++;
+		}
+		D3D11ObjectIDs::HDShadersByID[id] = s;
+		return id;
+	}
+	static UINT8 AddGShader( D3D11GShader* s ) {
+		std::unique_lock<std::mutex> lock( GShadersByIDMutex );
+		UINT8 id = 0;
+		if ( !D3D11ObjectIDs::GShadersByID.empty() ) {
+			id = D3D11ObjectIDs::Counters.GShadersCounter++;
+		}
+		D3D11ObjectIDs::GShadersByID[id] = s;
+		return id;
+	}
+
+	static void EraseVShader( D3D11VShader* s ) {
+		std::unique_lock<std::mutex> lock( VShadersByIDMutex );
+		for ( auto it = D3D11ObjectIDs::VShadersByID.begin(); it != D3D11ObjectIDs::VShadersByID.end();) {
+			if ( it->second == s ) { it = D3D11ObjectIDs::VShadersByID.erase( it ); } else { ++it; }
+		}
+	}
+	static void ErasePShader( D3D11PShader* s ) {
+		std::unique_lock<std::mutex> lock( PShadersByIDMutex );
+		for ( auto it = D3D11ObjectIDs::PShadersByID.begin(); it != D3D11ObjectIDs::PShadersByID.end();) {
+			if ( it->second == s ) { it = D3D11ObjectIDs::PShadersByID.erase( it ); } else { ++it; }
+		}
+	}
+	static void EraseHDShader( D3D11HDShader* s ) {
+		std::unique_lock<std::mutex> lock( HDShadersByIDMutex );
+		for ( auto it = D3D11ObjectIDs::HDShadersByID.begin(); it != D3D11ObjectIDs::HDShadersByID.end();) {
+			if ( it->second == s ) { it = D3D11ObjectIDs::HDShadersByID.erase( it ); } else { ++it; }
+		}
+	}
+	static void EraseGShader( D3D11GShader* s ) {
+		std::unique_lock<std::mutex> lock( GShadersByIDMutex );
+		for ( auto it = D3D11ObjectIDs::GShadersByID.begin(); it != D3D11ObjectIDs::GShadersByID.end();) {
+			if ( it->second == s ) { it = D3D11ObjectIDs::GShadersByID.erase( it ); } else { ++it; }
+		}
+	}
+private:
+	inline static std::mutex VShadersByIDMutex;
+	inline static std::mutex PShadersByIDMutex;
+	inline static std::mutex HDShadersByIDMutex;
+	inline static std::mutex GShadersByIDMutex;
+};
 
 struct RenderToTextureBuffer;
 struct RenderToDepthStencilBuffer;
@@ -114,7 +183,7 @@ public:
 	virtual void SaveScreenshot() {}
 
 	/** Returns the shadermanager */
-	D3D11ShaderManager* GetShaderManager();
+	D3D11ShaderManager& GetShaderManager();
 
 	/** Draws a vertexarray, used for rendering gothics UI */
 	virtual XRESULT DrawVertexArray( ExVertexStruct* vertices, unsigned int numVertices, unsigned int startVertex = 0, unsigned int stride = sizeof( ExVertexStruct ) );
@@ -126,9 +195,9 @@ public:
 	XRESULT D3D11GraphicsEngineBase::BindViewportInformation( const std::string& shader, int slot );
 
 	/** Returns the Device/Context */
-	ID3D11Device* GetDevice() { return Device.Get(); }
-	ID3D11DeviceContext* GetContext() { return Context.Get(); }
-	ID3D11DeviceContext* GetDeferredMediaContext() { return DeferredContext.Get(); }
+	const Microsoft::WRL::ComPtr<ID3D11Device>& GetDevice() { return Device; }
+	const Microsoft::WRL::ComPtr<ID3D11DeviceContext>& GetContext() { return Context; }
+	const Microsoft::WRL::ComPtr<ID3D11DeviceContext>& GetDeferredMediaContext() { return DeferredContext; }
 
 	/** Returns the current resolution */
 	virtual INT2 GetResolution() { return Resolution; }
@@ -201,25 +270,25 @@ protected:
 	std::unique_ptr<D3D11ConstantBuffer> TransformsCB; // Holds View/Proj-Transforms
 
 	/** Shaders */
-	D3D11PShader* PS_DiffuseNormalmapped;
-	D3D11PShader* PS_DiffuseNormalmappedFxMap;
-	D3D11PShader* PS_Diffuse;
-	D3D11PShader* PS_DiffuseNormalmappedAlphatest;
-	D3D11PShader* PS_DiffuseNormalmappedAlphatestFxMap;
-	D3D11PShader* PS_DiffuseAlphatest;
-	D3D11PShader* PS_Simple;
-	D3D11PShader* PS_SimpleAlphaTest;
-	D3D11PShader* PS_LinDepth;
-	D3D11VShader* VS_Ex;
-	D3D11VShader* VS_ExInstancedObj;
-	D3D11VShader* VS_ExRemapInstancedObj;
-	D3D11VShader* VS_ExSkeletal;
-	D3D11GShader* GS_Billboard;
+	std::shared_ptr<D3D11PShader> PS_DiffuseNormalmapped;
+	std::shared_ptr<D3D11PShader> PS_DiffuseNormalmappedFxMap;
+	std::shared_ptr<D3D11PShader> PS_Diffuse;
+	std::shared_ptr<D3D11PShader> PS_DiffuseNormalmappedAlphatest;
+	std::shared_ptr<D3D11PShader> PS_DiffuseNormalmappedAlphatestFxMap;
+	std::shared_ptr<D3D11PShader> PS_DiffuseAlphatest;
+	std::shared_ptr<D3D11PShader> PS_Simple;
+	std::shared_ptr<D3D11PShader> PS_SimpleAlphaTest;
+	std::shared_ptr<D3D11PShader> PS_LinDepth;
+	std::shared_ptr<D3D11VShader> VS_Ex;
+	std::shared_ptr<D3D11VShader> VS_ExInstancedObj;
+	std::shared_ptr<D3D11VShader> VS_ExRemapInstancedObj;
+	std::shared_ptr<D3D11VShader> VS_ExSkeletal;
+	std::shared_ptr<D3D11GShader> GS_Billboard;
 
-	D3D11VShader* ActiveVS;
-	D3D11PShader* ActivePS;
-	D3D11HDShader* ActiveHDS;
-	D3D11GShader* ActiveGS;
+	std::shared_ptr<D3D11VShader> ActiveVS;
+	std::shared_ptr<D3D11PShader> ActivePS;
+	std::shared_ptr<D3D11HDShader> ActiveHDS;
+	std::shared_ptr<D3D11GShader> ActiveGS;
 
 	/** FixedFunction-State render states */
 	Microsoft::WRL::ComPtr<ID3D11RasterizerState> FFRasterizerState;

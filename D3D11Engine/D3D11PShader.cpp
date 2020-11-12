@@ -12,14 +12,12 @@ D3D11PShader::D3D11PShader() {
 	PixelShader = nullptr;
 
 	// Insert into state-map
-	ID = D3D11ObjectIDs::Counters.PShadersCounter++;
-
-	D3D11ObjectIDs::PShadersByID[ID] = this;
+	ID = D3D11ObjectIdManager::AddPShader( this );
 }
 
 D3D11PShader::~D3D11PShader() {
 	// Remove from state map
-	Toolbox::EraseByElement( D3D11ObjectIDs::PShadersByID, this );
+	D3D11ObjectIdManager::ErasePShader( this );
 
 	if ( PixelShader )PixelShader->Release();
 
@@ -31,7 +29,7 @@ D3D11PShader::~D3D11PShader() {
 //--------------------------------------------------------------------------------------
 // Find and compile the specified shader
 //--------------------------------------------------------------------------------------
-HRESULT D3D11PShader::CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, std::vector<D3D_SHADER_MACRO>& makros ) {
+HRESULT D3D11PShader::CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, const std::vector<D3D_SHADER_MACRO>& makros ) {
 	HRESULT hr = S_OK;
 
 	char dir[260];
@@ -75,13 +73,13 @@ HRESULT D3D11PShader::CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEn
 }
 
 /** Loads both shaders at the same time */
-XRESULT D3D11PShader::LoadShader( const char* pixelShader, std::vector<D3D_SHADER_MACRO>& makros ) {
+XRESULT D3D11PShader::LoadShader( const char* pixelShader, const std::vector<D3D_SHADER_MACRO>& makros ) {
 	HRESULT hr;
 	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
 	ID3DBlob* psBlob;
 
-	if ( Engine::GAPI->GetRendererState()->RendererSettings.EnableDebugLog )
+	if ( Engine::GAPI->GetRendererState().RendererSettings.EnableDebugLog )
 		LogInfo() << "Compilling pixel shader: " << pixelShader;
 	File = pixelShader;
 

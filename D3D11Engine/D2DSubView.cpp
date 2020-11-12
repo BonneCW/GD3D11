@@ -11,7 +11,7 @@ D2DSubView::D2DSubView( D2DView* view, D2DSubView* parent ) {
 	Level = 0;
 
 	Hidden = false;
-
+	Disabled = false;
 	if ( parent ) {
 		parent->AddChild( this );
 	} else {
@@ -121,7 +121,7 @@ bool D2DSubView::OnWindowMessage( HWND hWnd, unsigned int msg, WPARAM wParam, LP
 		cr.right = clientRectAbs.left + (*it)->GetRect().right;
 		cr.bottom = clientRectAbs.top + (*it)->GetRect().bottom;
 
-		if ( !(*it)->IsHidden() )
+		if ( !(*it)->IsHidden()  && !(*it)->IsDisabled())
 			if ( !(*it)->OnWindowMessage( hWnd, msg, wParam, lParam, cr ) )
 				return false;
 	}
@@ -212,4 +212,14 @@ void D2DSubView::SetHidden( bool hidden ) {
 /** Returns if this control is hidden */
 bool D2DSubView::IsHidden() const {
 	return Hidden;
+}
+
+/** Sets if this control is disabled */
+void D2DSubView::SetDisabled( bool disabled ) {
+	Disabled = disabled;
+}
+
+/** Returns if this control is disabled */
+bool D2DSubView::IsDisabled() const {
+	return Disabled;
 }

@@ -61,8 +61,8 @@ XRESULT D3D11LineRenderer::Flush() {
 	engine->GetContext()->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_LINELIST );
 
 	engine->SetDefaultStates();
-	Engine::GAPI->GetRendererState()->BlendState.SetAlphaBlending();
-	Engine::GAPI->GetRendererState()->BlendState.SetDirty();
+	Engine::GAPI->GetRendererState().BlendState.SetAlphaBlending();
+	Engine::GAPI->GetRendererState().BlendState.SetDirty();
 	engine->UpdateRenderStates();
 
 	// Draw the lines

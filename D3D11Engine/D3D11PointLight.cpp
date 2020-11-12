@@ -42,8 +42,8 @@ D3D11PointLight::~D3D11PointLight() {
 	// Make sure we are out of the init-queue
 	while ( !InitDone );
 
-	SAFE_DELETE(DepthCubemap);
-	SAFE_DELETE(ViewMatricesCB);
+	DepthCubemap.reset();
+	ViewMatricesCB.reset();
 
 	for ( auto it = WorldMeshCache.begin(); it != WorldMeshCache.end(); it++ ) {
 		SAFE_DELETE(it->second);
@@ -62,7 +62,7 @@ void D3D11PointLight::InitResources() {
 	Engine::GAPI->EnterResourceCriticalSection();
 
 	// Create texture-cube for this light
-	DepthCubemap = new RenderToDepthStencilBuffer( engine->GetDevice(),
+	DepthCubemap = std::make_unique<RenderToDepthStencilBuffer>( engine->GetDevice(),
 		POINTLIGHT_SHADOWMAP_SIZE,
 		POINTLIGHT_SHADOWMAP_SIZE,
 		DXGI_FORMAT_R32_TYPELESS,
@@ -72,7 +72,9 @@ void D3D11PointLight::InitResources() {
 		6 );
 
 	// Create constantbuffer for the view-matrices
-	engine->CreateConstantBuffer( &ViewMatricesCB, nullptr, sizeof( CubemapGSConstantBuffer ) );
+	D3D11ConstantBuffer* cb = nullptr;
+	engine->CreateConstantBuffer( &cb, nullptr, sizeof( CubemapGSConstantBuffer ) );
+	ViewMatricesCB.reset( cb );
 
 	// Generate worldmesh cache if we aren't a dynamically added light
 	if ( !DynamicLight ) {
@@ -97,7 +99,7 @@ bool D3D11PointLight::NeedsUpdate() {
 bool D3D11PointLight::WantsUpdate() {
 	// If dynamic, update colorchanging lights too, because they are mostly lamps and campfires
 	// They wouldn't need an update just because of the colorchange, but most of them are dominant lights so it looks better
-	if ( Engine::GAPI->GetRendererState()->RendererSettings.EnablePointlightShadows >= GothicRendererSettings::PLS_UPDATE_DYNAMIC )
+	if ( Engine::GAPI->GetRendererState().RendererSettings.EnablePointlightShadows >= GothicRendererSettings::PLS_UPDATE_DYNAMIC )
 		if ( LightInfo->Vob->GetLightColor() != LastUpdateColor )
 			return true;
 
@@ -172,12 +174,12 @@ void D3D11PointLight::RenderCubemap( bool forceUpdate ) {
 	proj = XMMatrixTranspose( proj );
 
 	// Setup near/far-planes. We need linear viewspace depth for the cubic shadowmaps.
-	Engine::GAPI->GetRendererState()->GraphicsState.FF_zNear = zNear;
-	Engine::GAPI->GetRendererState()->GraphicsState.FF_zFar = zFar;
-	Engine::GAPI->GetRendererState()->GraphicsState.SetGraphicsSwitch( GSWITCH_LINEAR_DEPTH, true );
+	Engine::GAPI->GetRendererState().GraphicsState.FF_zNear = zNear;
+	Engine::GAPI->GetRendererState().GraphicsState.FF_zFar = zFar;
+	Engine::GAPI->GetRendererState().GraphicsState.SetGraphicsSwitch( GSWITCH_LINEAR_DEPTH, true );
 
-	bool oldDepthClip = Engine::GAPI->GetRendererState()->RasterizerState.DepthClipEnable;
-	Engine::GAPI->GetRendererState()->RasterizerState.DepthClipEnable = true;
+	bool oldDepthClip = Engine::GAPI->GetRendererState().RasterizerState.DepthClipEnable;
+	Engine::GAPI->GetRendererState().RasterizerState.DepthClipEnable = true;
 
 	// Upload view-matrices to the GPU
 	CubemapGSConstantBuffer gcb;
@@ -191,8 +193,8 @@ void D3D11PointLight::RenderCubemap( bool forceUpdate ) {
 
 	RenderFullCubemap();
 
-	Engine::GAPI->GetRendererState()->RasterizerState.DepthClipEnable = oldDepthClip;
-	Engine::GAPI->GetRendererState()->GraphicsState.SetGraphicsSwitch( GSWITCH_LINEAR_DEPTH, false );
+	Engine::GAPI->GetRendererState().RasterizerState.DepthClipEnable = oldDepthClip;
+	Engine::GAPI->GetRendererState().GraphicsState.SetGraphicsSwitch( GSWITCH_LINEAR_DEPTH, false );
 
 	LastUpdateColor = LightInfo->Vob->GetLightColor();
 	XMStoreFloat3( &LastUpdatePosition, vEyePt );
@@ -206,8 +208,8 @@ void D3D11PointLight::RenderFullCubemap() {
 
 	// Disable shadows for NPCs
 	// TODO: Only for the player himself, because his shadows look ugly when using a torch
-	//bool oldDrawSkel = Engine::GAPI->GetRendererState()->RendererSettings.DrawSkeletalMeshes;
-	//Engine::GAPI->GetRendererState()->RendererSettings.DrawSkeletalMeshes = false;
+	//bool oldDrawSkel = Engine::GAPI->GetRendererState().RendererSettings.DrawSkeletalMeshes;
+	//Engine::GAPI->GetRendererState().RendererSettings.DrawSkeletalMeshes = false;
 
 	float range = LightInfo->Vob->GetLightRange() * 1.1f;
 
@@ -221,9 +223,9 @@ void D3D11PointLight::RenderFullCubemap() {
 	if ( WorldCacheInvalid )
 		wc = nullptr;
 
-	engine->RenderShadowCube( LightInfo->Vob->GetPositionWorldXM(), range, DepthCubemap, nullptr, nullptr, false, LightInfo->IsIndoorVob, noNPCs, &VobCache, &SkeletalVobCache, wc );
+	engine->RenderShadowCube( LightInfo->Vob->GetPositionWorldXM(), range, *DepthCubemap, nullptr, nullptr, false, LightInfo->IsIndoorVob, noNPCs, &VobCache, &SkeletalVobCache, wc );
 
-	//Engine::GAPI->GetRendererState()->RendererSettings.DrawSkeletalMeshes = oldDrawSkel;
+	//Engine::GAPI->GetRendererState().RendererSettings.DrawSkeletalMeshes = oldDrawSkel;
 }
 
 /** Renders the scene with the given view-proj-matrices */
@@ -243,16 +245,16 @@ void D3D11PointLight::RenderCubemapFace( const DirectX::XMFLOAT4X4& view, const 
 
 	// Disable shadows for NPCs
 	// TODO: Only for the player himself, because his shadows look ugly when using a torch
-	//bool oldDrawSkel = Engine::GAPI->GetRendererState()->RendererSettings.DrawSkeletalMeshes;
-	//Engine::GAPI->GetRendererState()->RendererSettings.DrawSkeletalMeshes = false;
+	//bool oldDrawSkel = Engine::GAPI->GetRendererState().RendererSettings.DrawSkeletalMeshes;
+	//Engine::GAPI->GetRendererState().RendererSettings.DrawSkeletalMeshes = false;
 
 	float range = LightInfo->Vob->GetLightRange() * 1.1f;
 
 	// Draw cubemap face
 	ID3D11RenderTargetView* debugRTV = engine->GetDummyCubeRT() != nullptr ? engine->GetDummyCubeRT()->GetRTVCubemapFace( faceIdx ) : nullptr;
-	engine->RenderShadowCube( LightInfo->Vob->GetPositionWorldXM(), range, DepthCubemap, DepthCubemap->GetDSVCubemapFace( faceIdx ), debugRTV, false );
+	engine->RenderShadowCube( LightInfo->Vob->GetPositionWorldXM(), range, *DepthCubemap, DepthCubemap->GetDSVCubemapFace( faceIdx ), debugRTV, false );
 
-	//Engine::GAPI->GetRendererState()->RendererSettings.DrawSkeletalMeshes = oldDrawSkel;
+	//Engine::GAPI->GetRendererState().RendererSettings.DrawSkeletalMeshes = oldDrawSkel;
 
 	// Reset settings
 	Engine::GAPI->SetCameraReplacementPtr( nullptr );

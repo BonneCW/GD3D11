@@ -13,14 +13,12 @@ D3D11VShader::D3D11VShader() {
 	InputLayout = nullptr;
 
 	// Insert into state-map
-	ID = D3D11ObjectIDs::Counters.VShadersCounter++;
-
-	D3D11ObjectIDs::VShadersByID[ID] = this;
+	ID = D3D11ObjectIdManager::AddVShader(this);
 }
 
 D3D11VShader::~D3D11VShader() {
 	// Remove from state map
-	Toolbox::EraseByElement( D3D11ObjectIDs::VShadersByID, this );
+	D3D11ObjectIdManager::EraseVShader( this );
 
 	if ( VertexShader )VertexShader->Release();
 	if ( InputLayout )InputLayout->Release();
@@ -33,7 +31,7 @@ D3D11VShader::~D3D11VShader() {
 //--------------------------------------------------------------------------------------
 // Find and compile the specified shader
 //--------------------------------------------------------------------------------------
-HRESULT D3D11VShader::CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, std::vector<D3D_SHADER_MACRO>& makros ) {
+HRESULT D3D11VShader::CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, const std::vector<D3D_SHADER_MACRO>& makros ) {
 	HRESULT hr = S_OK;
 
 	char dir[260];
@@ -76,13 +74,13 @@ HRESULT D3D11VShader::CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEn
 
 
 /** Loads shader */
-XRESULT D3D11VShader::LoadShader( const char* vertexShader, int layout, std::vector<D3D_SHADER_MACRO>& makros ) {
+XRESULT D3D11VShader::LoadShader( const char* vertexShader, int layout, const std::vector<D3D_SHADER_MACRO>& makros ) {
 	HRESULT hr;
 	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
 	ID3DBlob* vsBlob;
 
-	if ( Engine::GAPI->GetRendererState()->RendererSettings.EnableDebugLog )
+	if ( Engine::GAPI->GetRendererState().RendererSettings.EnableDebugLog )
 		LogInfo() << "Compilling vertex shader: " << vertexShader;
 	File = vertexShader;
 

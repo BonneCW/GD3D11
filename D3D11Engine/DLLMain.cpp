@@ -236,10 +236,10 @@ BOOL WINAPI DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
 
 		*(void**)&DirectDrawCreateEx_t = (void*)GetProcAddress( ddraw.dll, "DirectDrawCreateEx" );
 	} else if ( reason == DLL_PROCESS_DETACH ) {
+		Engine::OnShutDown();
+		
 		CoUninitialize();
 		FreeLibrary( hDDRAW );
-
-		Engine::OnShutDown();
 
 		LogInfo() << "DDRAW Proxy DLL signing off.\n";
 	}

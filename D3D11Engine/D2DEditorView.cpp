@@ -345,7 +345,7 @@ void D2DEditorView::Draw( const D2D1_RECT_F& clientRectAbs, float deltaTime ) {
 	// If the editor is not open, dont draw it. Slide it in otherwise.
 
 	std::wstring str;
-	if ( !Engine::GAPI->GetRendererState()->RendererSettings.DisableWatermark ) {
+	if ( !Engine::GAPI->GetRendererState().RendererSettings.DisableWatermark ) {
 		// Draw GD3D11-Text
 		str = (L"Development preview\n" + Toolbox::ToWideChar( VERSION_STRING ));
 
@@ -844,12 +844,12 @@ void D2DEditorView::UpdateSelectionPanel() {
 		MyDirectDrawSurface7* surface = Engine::GAPI->GetSurface( Selection.SelectedMaterial->GetTexture()->GetNameWithoutExt() );
 
 		if ( surface ) {
-			ID3D11Texture2D* thumb = ((D3D11Texture*)surface->GetEngineTexture())->GetThumbnail();
+			auto thumb = (surface->GetEngineTexture())->GetThumbnail();
 			if ( !thumb ) {
-				XLE( ((D3D11Texture*)surface->GetEngineTexture())->CreateThumbnail() );
-				thumb = ((D3D11Texture*)surface->GetEngineTexture())->GetThumbnail();
+				XLE( (surface->GetEngineTexture())->CreateThumbnail() );
+				thumb = (surface->GetEngineTexture())->GetThumbnail();
 			}
-			SelectedImagePanel->SetD3D11TextureAsImage( thumb, INT2( 256, 256 ) );
+			SelectedImagePanel->SetD3D11TextureAsImage( thumb.Get(), INT2( 256, 256 ) );
 		}
 	}
 
@@ -1041,7 +1041,7 @@ bool D2DEditorView::OnWindowMessage( HWND hWnd, unsigned int msg, WPARAM wParam,
 			return false;
 
 		IsEnabled = !IsEnabled;
-		Engine::GAPI->GetRendererState()->RendererSettings.DisableWatermark = false;
+		Engine::GAPI->GetRendererState().RendererSettings.DisableWatermark = false;
 
 		if ( IsEnabled ) {
 			// Enable free-cam, the easy way

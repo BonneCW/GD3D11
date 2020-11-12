@@ -160,6 +160,8 @@ public:
 	/** Called when the object is getting destroyed, which happens immediately if simply calling the constructor of this class */
 	inline void Flush() {
 		FILE* f;
+		std::unique_lock<std::mutex> lock( LogCache::LogMutex );
+
 		f = fopen( LOGFILE.c_str(), "a" );
 
 		if ( f ) {

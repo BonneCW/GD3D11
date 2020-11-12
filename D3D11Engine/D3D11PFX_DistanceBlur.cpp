@@ -25,20 +25,20 @@ XRESULT D3D11PFX_DistanceBlur::Render( RenderToTextureBuffer* fxbuffer ) {
 	ID3D11DepthStencilView* oldDSV = nullptr;
 	engine->GetContext()->OMGetRenderTargets( 1, &oldRTV, &oldDSV );
 
-	engine->GetShaderManager()->GetVShader( "VS_PFX" )->Apply();
-	D3D11PShader* ps = engine->GetShaderManager()->GetPShader( "PS_PFX_DistanceBlur" );
+	engine->GetShaderManager().GetVShader( "VS_PFX" )->Apply();
+	auto ps = engine->GetShaderManager().GetPShader( "PS_PFX_DistanceBlur" );
 
-	Engine::GAPI->GetRendererState()->BlendState.SetDefault();
-	Engine::GAPI->GetRendererState()->BlendState.SetDirty();
+	Engine::GAPI->GetRendererState().BlendState.SetDefault();
+	Engine::GAPI->GetRendererState().BlendState.SetDirty();
 
 	// Copy scene
-	engine->GetContext()->ClearRenderTargetView( FxRenderer->GetTempBuffer()->GetRenderTargetView(), (float*)&float4( 0, 0, 0, 0 ) );
-	FxRenderer->CopyTextureToRTV( engine->GetGBuffer0()->GetShaderResView(), FxRenderer->GetTempBuffer()->GetRenderTargetView(), Engine::GraphicsEngine->GetResolution() );
+	engine->GetContext()->ClearRenderTargetView( FxRenderer->GetTempBuffer().GetRenderTargetView().Get(), (float*)&float4( 0, 0, 0, 0 ) );
+	FxRenderer->CopyTextureToRTV( engine->GetGBuffer0().GetShaderResView().Get(), FxRenderer->GetTempBuffer().GetRenderTargetView().Get(), Engine::GraphicsEngine->GetResolution() );
 
 	engine->GetContext()->OMSetRenderTargets( 1, &oldRTV, nullptr );
 
 	// Bind textures
-	FxRenderer->GetTempBuffer()->BindToPixelShader( engine->GetContext(), 0 );
+	FxRenderer->GetTempBuffer().BindToPixelShader( engine->GetContext(), 0 );
 	engine->GetDepthBuffer()->BindToPixelShader( engine->GetContext(), 1 );
 
 	// Blur/Copy

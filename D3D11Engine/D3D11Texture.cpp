@@ -10,10 +10,6 @@
 using namespace DirectX;
 
 D3D11Texture::D3D11Texture() {
-	Texture = nullptr;
-	ShaderResourceView = nullptr;
-	Thumbnail = nullptr;
-
 	// Insert into state-map
 	ID = D3D11ObjectIDs::Counters.TextureCounter++;
 
@@ -24,9 +20,9 @@ D3D11Texture::~D3D11Texture() {
 	// Remove from state map
 	Toolbox::EraseByElement( D3D11ObjectIDs::TextureByID, this );
 
-	SAFE_RELEASE( Thumbnail );
-	SAFE_RELEASE( Texture );
-	SAFE_RELEASE( ShaderResourceView );
+	Thumbnail.Reset();
+	Texture.Reset();
+	ShaderResourceView.Reset();
 }
 
 /** Initializes the texture object */
@@ -59,7 +55,7 @@ XRESULT D3D11Texture::Init( INT2 size, ETextureFormat format, UINT mipMapCount, 
 	descRV.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	descRV.Texture2D.MipLevels = mipMapCount;
 	descRV.Texture2D.MostDetailedMip = 0;
-	LE( engine->GetDevice()->CreateShaderResourceView( Texture.Get(), &descRV, &ShaderResourceView ) );
+	LE( engine->GetDevice()->CreateShaderResourceView( Texture.Get(), &descRV, ShaderResourceView.ReleaseAndGetAddressOf() ) );
 
 	//Engine::GAPI->LeaveResourceCriticalSection();
 
@@ -76,7 +72,7 @@ XRESULT D3D11Texture::Init( const std::string& file ) {
 	//Engine::GAPI->EnterResourceCriticalSection();
 
 	Microsoft::WRL::ComPtr<ID3D11Texture2D> res;
-	LE( CreateDDSTextureFromFile( engine->GetDevice(), Toolbox::ToWideChar( file.c_str() ).c_str(), (ID3D11Resource**)res.ReleaseAndGetAddressOf(), &ShaderResourceView ) );
+	LE( CreateDDSTextureFromFile( engine->GetDevice().Get(), Toolbox::ToWideChar( file.c_str() ).c_str(), (ID3D11Resource**)res.ReleaseAndGetAddressOf(), &ShaderResourceView ) );
 
 	if ( !ShaderResourceView || !res.Get() )
 		return XR_FAILED;
@@ -125,8 +121,8 @@ XRESULT D3D11Texture::UpdateDataDeferred( void* data, int mip, bool noLock ) {
 
 /** Returns the RowPitch-Bytes */
 UINT D3D11Texture::GetRowPitchBytes( int mip ) {
-	int px = (int)std::max( 1.0f, floor( TextureSize.x / pow( 2.0f, mip ) ) );
-	int py = (int)std::max( 1.0f, floor( TextureSize.y / pow( 2.0f, mip ) ) );
+	int px = (int)std::max( 1.0, floor( TextureSize.x / pow( 2.0f, mip ) ) );
+	int py = (int)std::max( 1.0, floor( TextureSize.y / pow( 2.0f, mip ) ) );
 	//int px = TextureSize.x;
 	//int py = TextureSize.y;
 
@@ -141,8 +137,8 @@ UINT D3D11Texture::GetRowPitchBytes( int mip ) {
 
 /** Returns the size of the texture in bytes */
 UINT D3D11Texture::GetSizeInBytes( int mip ) {
-	int px = (int)std::max( 1.0f, floor( TextureSize.x / pow( 2.0f, mip ) ) );
-	int py = (int)std::max( 1.0f, floor( TextureSize.y / pow( 2.0f, mip ) ) );
+	int px = (int)std::max( 1.0, floor( TextureSize.x / pow( 2.0f, mip ) ) );
+	int py = (int)std::max( 1.0, floor( TextureSize.y / pow( 2.0f, mip ) ) );
 	//int px = TextureSize.x;
 	//int py = TextureSize.y;
 
@@ -159,8 +155,7 @@ UINT D3D11Texture::GetSizeInBytes( int mip ) {
 XRESULT D3D11Texture::BindToPixelShader( int slot ) {
 	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
-	ID3D11ShaderResourceView* srv = ShaderResourceView;
-	engine->GetContext()->PSSetShaderResources( slot, 1, &srv );
+	engine->GetContext()->PSSetShaderResources( slot, 1, ShaderResourceView.GetAddressOf() );
 
 	return XR_SUCCESS;
 }
@@ -169,9 +164,8 @@ XRESULT D3D11Texture::BindToPixelShader( int slot ) {
 XRESULT D3D11Texture::BindToVertexShader( int slot ) {
 	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
-	ID3D11ShaderResourceView* srv = ShaderResourceView;
-	engine->GetContext()->VSSetShaderResources( slot, 1, &srv );
-	engine->GetContext()->DSSetShaderResources( slot, 1, &srv );
+	engine->GetContext()->VSSetShaderResources( slot, 1, ShaderResourceView.GetAddressOf() );
+	engine->GetContext()->DSSetShaderResources( slot, 1, ShaderResourceView.GetAddressOf() );
 
 	return XR_SUCCESS;
 }
@@ -180,8 +174,7 @@ XRESULT D3D11Texture::BindToVertexShader( int slot ) {
 XRESULT D3D11Texture::BindToDomainShader( int slot ) {
 	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
-	ID3D11ShaderResourceView* srv = ShaderResourceView;
-	engine->GetContext()->DSSetShaderResources( slot, 1, &srv );
+	engine->GetContext()->DSSetShaderResources( slot, 1, ShaderResourceView.GetAddressOf() );
 
 	return XR_SUCCESS;
 }
@@ -205,14 +198,14 @@ XRESULT D3D11Texture::CreateThumbnail() {
 
 	// Create temporary RTV
 	ID3D11RenderTargetView* tempRTV;
-	LE( engine->GetDevice()->CreateRenderTargetView( Thumbnail, nullptr, &tempRTV ) );
+	LE( engine->GetDevice()->CreateRenderTargetView( Thumbnail.Get(), nullptr, &tempRTV ) );
 	if ( !tempRTV )
 		return XR_FAILED;
 
 	engine->GetContext()->ClearRenderTargetView( tempRTV, (float*)&float4( 1, 0, 0, 1 ) );
 
 	// Copy main texture to it
-	engine->GetContext()->PSSetShaderResources( 0, 1, &ShaderResourceView );
+	engine->GetContext()->PSSetShaderResources( 0, 1, ShaderResourceView.GetAddressOf() );
 
 	ID3D11RenderTargetView* oldRTV[2];
 	ID3D11DepthStencilView* oldDSV;
@@ -233,7 +226,7 @@ XRESULT D3D11Texture::CreateThumbnail() {
 }
 
 /** Returns the thumbnail of this texture. If this returns nullptr, you need to create one first */
-ID3D11Texture2D* D3D11Texture::GetThumbnail() {
+const Microsoft::WRL::ComPtr<ID3D11Texture2D>& D3D11Texture::GetThumbnail() {
 	return Thumbnail;
 }
 
@@ -246,15 +239,15 @@ XRESULT D3D11Texture::GenerateMipMaps() {
 
 	Engine::GAPI->EnterResourceCriticalSection();
 
-	RenderToTextureBuffer* b = new RenderToTextureBuffer( engine->GetDevice(), TextureSize.x, TextureSize.y, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, MipMapCount );
+	RenderToTextureBuffer* b = new RenderToTextureBuffer( engine->GetDevice().Get(), TextureSize.x, TextureSize.y, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, MipMapCount );
 
-	engine->GetDeferredMediaContext()->CopySubresourceRegion( b->GetTexture(), 0, 0, 0, 0, Texture.Get(), 0, nullptr );
+	engine->GetDeferredMediaContext()->CopySubresourceRegion( b->GetTexture().Get(), 0, 0, 0, 0, Texture.Get(), 0, nullptr );
 
 	// Generate mips
-	engine->GetDeferredMediaContext()->GenerateMips( b->GetShaderResView() );
+	engine->GetDeferredMediaContext()->GenerateMips( b->GetShaderResView().Get() );
 
 	// Copy the full chain back
-	engine->GetDeferredMediaContext()->CopyResource( Texture.Get(), b->GetTexture() );
+	engine->GetDeferredMediaContext()->CopyResource( Texture.Get(), b->GetTexture().Get() );
 	delete b;
 
 	Engine::GAPI->LeaveResourceCriticalSection();

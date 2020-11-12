@@ -97,7 +97,7 @@ void MyDirectDrawSurface7::LoadAdditionalResources( zCTexture* ownedTexture ) {
 		SAFE_DELETE( FxMap );
 	}
 
-	if ( TextureName.empty() || Normalmap || FxMap || !Engine::GAPI->GetRendererState()->RendererSettings.AllowNormalmaps ) {
+	if ( TextureName.empty() || Normalmap || FxMap || !Engine::GAPI->GetRendererState().RendererSettings.AllowNormalmaps ) {
 		return;
 	}
 
@@ -445,10 +445,10 @@ HRESULT MyDirectDrawSurface7::Unlock( LPRECT lpRect ) {
 			EngineTexture->UpdateData( LockedData, 0 );
 
 			EngineTexture->BindToPixelShader( 0 );
-			Engine::GAPI->GetRendererState()->BlendState.SetDefault();
-			Engine::GAPI->GetRendererState()->BlendState.SetDirty();
+			Engine::GAPI->GetRendererState().BlendState.SetDefault();
+			Engine::GAPI->GetRendererState().BlendState.SetDirty();
 
-			INT2 vidRes = Engine::GAPI->GetRendererState()->RendererInfo.PlayingMovieResolution;
+			INT2 vidRes = Engine::GAPI->GetRendererState().RendererInfo.PlayingMovieResolution;
 
 			// Catch unset resolution 
 			if ( vidRes.x == 0 || vidRes.y == 0 )

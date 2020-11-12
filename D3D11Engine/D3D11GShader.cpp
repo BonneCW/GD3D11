@@ -12,14 +12,12 @@ D3D11GShader::D3D11GShader() {
 	GeometryShader = nullptr;
 
 	// Insert into state-map
-	ID = D3D11ObjectIDs::Counters.GShadersCounter++;
-
-	D3D11ObjectIDs::GShadersByID[ID] = this;
+	ID = D3D11ObjectIdManager::AddGShader( this );
 }
 
 D3D11GShader::~D3D11GShader() {
 	// Remove from state map
-	Toolbox::EraseByElement( D3D11ObjectIDs::GShadersByID, this );
+	D3D11ObjectIdManager::EraseGShader( this );
 
 	if ( GeometryShader )GeometryShader->Release();
 
@@ -31,7 +29,7 @@ D3D11GShader::~D3D11GShader() {
 //--------------------------------------------------------------------------------------
 // Find and compile the specified shader
 //--------------------------------------------------------------------------------------
-HRESULT D3D11GShader::CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, std::vector<D3D_SHADER_MACRO>& makros ) {
+HRESULT D3D11GShader::CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, const std::vector<D3D_SHADER_MACRO>& makros ) {
 	HRESULT hr = S_OK;
 
 	char dir[260];
@@ -73,7 +71,7 @@ HRESULT D3D11GShader::CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEn
 }
 
 /** Loads both shaders at the same time */
-XRESULT D3D11GShader::LoadShader( const char* geometryShader, std::vector<D3D_SHADER_MACRO>& makros, bool createStreamOutFromVS, int soLayout ) {
+XRESULT D3D11GShader::LoadShader( const char* geometryShader, const std::vector<D3D_SHADER_MACRO>& makros, bool createStreamOutFromVS, int soLayout ) {
 	HRESULT hr;
 	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
