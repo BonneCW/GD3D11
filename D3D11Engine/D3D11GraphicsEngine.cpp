@@ -5099,11 +5099,8 @@ void D3D11GraphicsEngine::DrawDecalList( const std::vector<zCVob*>& decals,
 
 		XMMATRIX mat = view * world;
 
+		// E.g battle focus borders
 		if ( alignment == zVISUAL_CAM_ALIGN_FULL ) {
-			mat.r[0] = XMVectorPermute<4, 5, 5, 3>( mat.r[0], DirectX::g_XMOne );
-			mat.r[1] = XMVectorPermute<5, 4, 5, 3>( mat.r[1], DirectX::g_XMOne );
-			mat.r[2] = XMVectorPermute<5, 5, 4, 3>( mat.r[2], DirectX::g_XMOne );
-			/*
 			for (int x = 0; x < 3; x++) {
 				for (int y = 0; y < 3; y++) {
 					if (x == y)
@@ -5112,7 +5109,6 @@ void D3D11GraphicsEngine::DrawDecalList( const std::vector<zCVob*>& decals,
 						mat.r[x].m128_f32[y] = 0.0f;
 				}
 			}
-			*/
 		}
 
 		mat = mat * offset * scale;
