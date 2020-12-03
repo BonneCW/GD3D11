@@ -137,7 +137,7 @@ public:
 	}
 
 	/** Returns the world-position of this vob */
-	DirectX::XMVECTOR __vectorcall GetPositionWorldXM() const {
+	DirectX::XMVECTOR XM_CALLCONV GetPositionWorldXM() const {
 		// Get the data right off the memory to save a function call
 		DirectX::XMVECTOR pos = DirectX::XMVectorSet( *(float*)THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WorldPosX ),
 			*(float*)THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WorldPosY ),
@@ -159,7 +159,7 @@ public:
 #endif
 	}
 	/** Sets this vobs position */
-	void __vectorcall SetPositionWorldXM( DirectX::FXMVECTOR v ) {
+	void XM_CALLCONV SetPositionWorldXM( DirectX::FXMVECTOR v ) {
 		DirectX::XMFLOAT3 store; DirectX::XMStoreFloat3( &store, v );
 		SetPositionWorldDX( store );
 	}

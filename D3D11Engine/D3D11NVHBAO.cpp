@@ -37,6 +37,10 @@ XRESULT D3D11NVHBAO::Init() {
 XRESULT D3D11NVHBAO::Render( ID3D11RenderTargetView* pOutputColorRTV ) {
 	D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
 
+	D3D11_VIEWPORT vp;
+	UINT num = 1;
+	engine->GetContext()->RSGetViewports(&num, &vp);
+
 	HBAOSettings& settings = Engine::GAPI->GetRendererState().RendererSettings.HbaoSettings;
 
 	GFSDK_SSAO_InputData_D3D11 Input;
@@ -51,7 +55,7 @@ XRESULT D3D11NVHBAO::Render( ID3D11RenderTargetView* pOutputColorRTV ) {
 	Params.Bias = settings.Bias;
 	Params.PowerExponent = settings.PowerExponent;
 	Params.StepCount = GFSDK_SSAO_StepCount( settings.SsaoStepCount );
-	Params.EnableDualLayerAO = settings.EnableDualLayerAO;
+	//Params.EnableDualLayerAO = settings.EnableDualLayerAO;
 	Params.Blur.Enable = settings.EnableBlur;
 	Params.Blur.Radius = GFSDK_SSAO_BlurRadius( settings.SsaoBlurRadius );
 	Params.Blur.Sharpness = settings.BlurSharpness;

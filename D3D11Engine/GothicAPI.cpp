@@ -594,7 +594,7 @@ void GothicAPI::OnWorldLoaded() {
 	}
 	
 	LoadRendererWorldSettings( RendererState.RendererSettings );
-
+	SaveRendererWorldSettings( RendererState.RendererSettings );
 	// Reset wetness
 	SceneWetness = GetRainFXWeight();
 
@@ -2036,6 +2036,10 @@ void GothicAPI::DrawTriangle( float3 pos = { 0.0f,0.0f,0.0f } ) {
 void GothicAPI::SetProjTransformDX( const DirectX::XMFLOAT4X4& proj ) {
 	RendererState.TransformState.TransformProj = proj;
 }
+/** Sets the Projection matrix */
+void XM_CALLCONV GothicAPI::SetProjTransformXM(const DirectX::XMMATRIX proj) {
+	XMStoreFloat4x4(&RendererState.TransformState.TransformProj, proj);
+}
 
 /** Sets the Projection matrix */
 DirectX::XMFLOAT4X4 GothicAPI::GetProjTransformDx() {
@@ -2044,7 +2048,7 @@ DirectX::XMFLOAT4X4 GothicAPI::GetProjTransformDx() {
 
 
 /** Sets the world matrix */
-void __vectorcall GothicAPI::SetWorldTransformXM( XMMATRIX world, bool transpose ) {
+void XM_CALLCONV GothicAPI::SetWorldTransformXM( XMMATRIX world, bool transpose ) {
 	if ( transpose )
 		XMStoreFloat4x4( &RendererState.TransformState.TransformWorld, XMMatrixTranspose( world ) );
 	else
@@ -2057,9 +2061,8 @@ void GothicAPI::SetWorldTransformDX( const XMFLOAT4X4& world, bool transpose ) {
 	else
 		RendererState.TransformState.TransformWorld = world;
 }
-
 /** Sets the world matrix */
-void __vectorcall GothicAPI::SetViewTransformXM( XMMATRIX view, bool transpose ) {
+void XM_CALLCONV GothicAPI::SetViewTransformXM( XMMATRIX view, bool transpose ) {
 	if ( transpose )
 		XMStoreFloat4x4( &RendererState.TransformState.TransformView, XMMatrixTranspose( view ) );
 	else
@@ -2078,7 +2081,7 @@ void GothicAPI::SetWorldViewTransform( const XMFLOAT4X4& world, const XMFLOAT4X4
 	RendererState.TransformState.TransformView = view;
 }
 /** Sets the world matrix */
-void __vectorcall  GothicAPI::SetWorldViewTransform( XMMATRIX world, CXMMATRIX view ) {
+void XM_CALLCONV  GothicAPI::SetWorldViewTransform( XMMATRIX world, CXMMATRIX view ) {
 	XMStoreFloat4x4( &RendererState.TransformState.TransformWorld, world );
 	XMStoreFloat4x4( &RendererState.TransformState.TransformView, view );
 }
@@ -2288,7 +2291,7 @@ bool GothicAPI::TraceWorldMesh( const DirectX::XMFLOAT3& origin, const DirectX::
 }
 
 /** Unprojects a pixel-position on the screen */
-void __vectorcall GothicAPI::UnprojectXM( FXMVECTOR p, XMVECTOR& worldPos, XMVECTOR& worldDir ) {
+void XM_CALLCONV GothicAPI::UnprojectXM( FXMVECTOR p, XMVECTOR& worldPos, XMVECTOR& worldDir ) {
 	XMMATRIX proj = XMLoadFloat4x4( &GetProjectionMatrix() );
 	XMFLOAT4X4 fInvView;
 	GetInverseViewMatrixDX( &fInvView );
@@ -3613,7 +3616,7 @@ XRESULT GothicAPI::SaveMenuSettings( const std::string& file ) {
 	WritePrivateProfileStringA( "HBAO", "Radius", std::to_string( s.HbaoSettings.Radius ).c_str(), ini.c_str() );
 	WritePrivateProfileStringA( "HBAO", "PowerExponent", std::to_string( s.HbaoSettings.PowerExponent ).c_str(), ini.c_str() );
 	WritePrivateProfileStringA( "HBAO", "BlurSharpness", std::to_string( s.HbaoSettings.BlurSharpness ).c_str(), ini.c_str() );
-	WritePrivateProfileStringA( "HBAO", "EnableDualLayerAO", std::to_string( s.HbaoSettings.EnableDualLayerAO ).c_str(), ini.c_str() );
+	//WritePrivateProfileStringA( "HBAO", "EnableDualLayerAO", std::to_string( s.HbaoSettings.EnableDualLayerAO ).c_str(), ini.c_str() );
 	WritePrivateProfileStringA( "HBAO", "EnableBlur", std::to_string( s.HbaoSettings.EnableBlur ).c_str(), ini.c_str() );
 	WritePrivateProfileStringA( "HBAO", "SsaoBlurRadius", std::to_string( s.HbaoSettings.SsaoBlurRadius ).c_str(), ini.c_str() );
 	WritePrivateProfileStringA( "HBAO", "SsaoStepCount", std::to_string( s.HbaoSettings.SsaoStepCount ).c_str(), ini.c_str() );
@@ -3712,7 +3715,7 @@ XRESULT GothicAPI::LoadMenuSettings( const std::string& file ) {
 	s.HbaoSettings.Radius = GetPrivateProfileFloatA( "HBAO", "Radius", defaultHBAOSettings.Radius, ini.c_str() );
 	s.HbaoSettings.PowerExponent = GetPrivateProfileFloatA( "HBAO", "PowerExponent", defaultHBAOSettings.PowerExponent, ini.c_str() );
 	s.HbaoSettings.BlurSharpness = GetPrivateProfileFloatA( "HBAO", "BlurSharpness", defaultHBAOSettings.BlurSharpness, ini.c_str() );
-	s.HbaoSettings.EnableDualLayerAO = GetPrivateProfileIntA( "HBAO", "EnableDualLayerAO", defaultHBAOSettings.EnableDualLayerAO, ini.c_str() );
+	//s.HbaoSettings.EnableDualLayerAO = GetPrivateProfileIntA( "HBAO", "EnableDualLayerAO", defaultHBAOSettings.EnableDualLayerAO, ini.c_str() );
 	s.HbaoSettings.EnableBlur = GetPrivateProfileBoolA( "HBAO", "EnableBlur", defaultHBAOSettings.EnableBlur, ini );
 	s.HbaoSettings.SsaoBlurRadius = GetPrivateProfileIntA( "HBAO", "SsaoBlurRadius", defaultHBAOSettings.SsaoBlurRadius, ini.c_str() );
 	s.HbaoSettings.SsaoStepCount = GetPrivateProfileIntA( "HBAO", "SsaoStepCount", defaultHBAOSettings.SsaoStepCount, ini.c_str() );

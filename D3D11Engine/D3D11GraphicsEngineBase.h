@@ -232,7 +232,7 @@ protected:
 
 	/** Device-objects */
 	Microsoft::WRL::ComPtr<IDXGIFactory2> DXGIFactory2;
-	Microsoft::WRL::ComPtr<IDXGIAdapter> DXGIAdapter;
+	Microsoft::WRL::ComPtr<IDXGIAdapter1> DXGIAdapter1;
 	std::string DeviceDescription;
 
 	Microsoft::WRL::ComPtr<ID3D11Device> Device;

@@ -64,10 +64,10 @@ public:
 	void SetSolidShader( std::shared_ptr<D3D11PShader> SolidShader );
 
 	/** Sets the transforms */
-	void __vectorcall SetLocation( DirectX::FXMVECTOR NewLoc );
-	void __vectorcall SetRotation( DirectX::FXMVECTOR NewRotation );
-	void __vectorcall SetScale( DirectX::FXMVECTOR NewScale );
-	void __vectorcall SetWorldMatrix( DirectX::XMMATRIX World, DirectX::FXMVECTOR Loc, DirectX::FXMVECTOR Rot, DirectX::GXMVECTOR Scale );
+	void XM_CALLCONV SetLocation( DirectX::FXMVECTOR NewLoc );
+	void XM_CALLCONV SetRotation( DirectX::FXMVECTOR NewRotation );
+	void XM_CALLCONV SetScale( DirectX::FXMVECTOR NewScale );
+	void XM_CALLCONV SetWorldMatrix( DirectX::XMMATRIX World, DirectX::FXMVECTOR Loc, DirectX::FXMVECTOR Rot, DirectX::GXMVECTOR Scale );
 
 	/** Renders the primitive */
 	HRESULT RenderPrimitive( int Pass = -1 );
@@ -78,9 +78,9 @@ public:
 	}
 
 	/** Intersects the whole primitive. If hit, it returns a distance other than -1 */
-	float __vectorcall IntersectPrimitive( DirectX::FXMVECTOR RayOrigin, DirectX::FXMVECTOR RayDirection, float Epsilon = 0.01 );
+	float XM_CALLCONV IntersectPrimitive( DirectX::FXMVECTOR RayOrigin, DirectX::FXMVECTOR RayDirection, float Epsilon = 0.01 );
 
-	bool __vectorcall IntersectTriangle( DirectX::FXMVECTOR orig, DirectX::FXMVECTOR dir,
+	bool XM_CALLCONV IntersectTriangle( DirectX::FXMVECTOR orig, DirectX::FXMVECTOR dir,
 		DirectX::FXMVECTOR v0, DirectX::GXMVECTOR v1, DirectX::HXMVECTOR v2,
 		FLOAT* t, FLOAT* u, FLOAT* v );
 

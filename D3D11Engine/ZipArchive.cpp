@@ -1,3 +1,4 @@
+#ifdef _ADD_ZIPARCHIVE_
 #include "pch.h"
 #include "ZipArchive.h"
 #include "XUnzip.h"
@@ -91,3 +92,4 @@ void ZipArchive::UnzipThreadFunc( const std::string& zip, const std::string& tar
 
 	CloseZip( hz );
 }
+#endif

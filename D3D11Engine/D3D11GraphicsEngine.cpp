@@ -109,16 +109,15 @@ XRESULT D3D11GraphicsEngine::Init() {
 	LogInfo() << "Initializing Device...";
 
 	// Create DXGI factory
-	LE( CreateDXGIFactory( __uuidof(IDXGIFactory), &DXGIFactory2 ) );
-	LE( DXGIFactory2->EnumAdapters( 0, &DXGIAdapter ) );  // Get first adapter
+	LE( CreateDXGIFactory1( __uuidof(IDXGIFactory2), &DXGIFactory2 ) );
+	LE( DXGIFactory2->EnumAdapters1( 0, &DXGIAdapter1 ) );  // Get first adapter
 
 	// Find out what we are rendering on to write it into the logfile
-	DXGI_ADAPTER_DESC adpDesc;
-	DXGIAdapter->GetDesc( &adpDesc );
+	DXGI_ADAPTER_DESC1 adpDesc;
+	DXGIAdapter1->GetDesc1( &adpDesc );
 
 	std::wstring wDeviceDescription( adpDesc.Description );
-	std::string deviceDescription( wDeviceDescription.begin(),
-		wDeviceDescription.end() );
+	std::string deviceDescription( wDeviceDescription.begin(), wDeviceDescription.end() );
 	DeviceDescription = deviceDescription;
 	LogInfo() << "Rendering on: " << deviceDescription.c_str();
 
@@ -128,11 +127,10 @@ XRESULT D3D11GraphicsEngine::Init() {
 
 	// Create D3D11-Device
 #ifndef DEBUG_D3D11
-	LE( D3D11CreateDevice( DXGIAdapter.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags,
-		&featurelevel, 1, D3D11_SDK_VERSION, &Device, nullptr,
-		&Context ) );
+	LE( D3D11CreateDevice( DXGIAdapter1.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags,
+		&featurelevel, 1, D3D11_SDK_VERSION, &Device, nullptr, &Context ) );
 #else
-	LE( D3D11CreateDevice( DXGIAdapter.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr,
+	LE( D3D11CreateDevice( DXGIAdapter1.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr,
 		flags | D3D11_CREATE_DEVICE_DEBUG, &featurelevel, 1,
 		D3D11_SDK_VERSION, &Device, nullptr, &Context ) );
 #endif
@@ -736,9 +734,9 @@ D3D11GraphicsEngine::GetDisplayModeList( std::vector<DisplayModeInfo>* modeList,
 	RECT desktop;
 	GetClientRect( GetDesktopWindow(), &desktop );
 
-	if ( !DXGIAdapter ) return XR_FAILED;
+	if ( !DXGIAdapter1 ) return XR_FAILED;
 
-	DXGIAdapter->EnumOutputs( 0, &output );
+	DXGIAdapter1->EnumOutputs( 0, &output );
 
 	if ( !output ) return XR_FAILED;
 

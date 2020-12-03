@@ -1,4 +1,5 @@
 #pragma once
+#ifdef _ADD_ZIPARCHIVE_
 #include "pch.h"
 #include <thread>
 
@@ -21,3 +22,4 @@ private:
 	std::thread* UnzipThread;
 };
 
+#endif

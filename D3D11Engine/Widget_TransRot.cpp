@@ -142,7 +142,7 @@ void Widget_TransRot::RenderWidget() {
 	}
 
 	//return;
-	XMVECTOR scale = XMVectorSet( 100, 100, 100, 0 );
+	static XMVECTOR scale = XMVECTORF32{ 100, 100, 100, 0 };
 	for ( int i = 0; i < 3; i++ ) {
 		Arrows[i]->RenderPrimitive();
 		Arrows[i]->SetScale( scale );

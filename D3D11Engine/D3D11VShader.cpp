@@ -46,7 +46,7 @@ HRESULT D3D11VShader::CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEn
 	// the release configuration of this program.
 	//dwShaderFlags |= D3DCOMPILE_DEBUG;
 #else
-	dwShaderFlags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+	dwShaderFlags |= D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
 #endif
 
 	// Construct makros

@@ -562,7 +562,7 @@ void EditorLinePrimitive::EncodeColor( LineVertex* vx, const float4& Color ) {
 
 
 /** Intersects the whole primitive. If hit, it returns a distance other than -1 */
-float __vectorcall EditorLinePrimitive::IntersectPrimitive( FXMVECTOR RayOrigin, FXMVECTOR RayDirection, float Epsilon ) {
+float XM_CALLCONV EditorLinePrimitive::IntersectPrimitive( FXMVECTOR RayOrigin, FXMVECTOR RayDirection, float Epsilon ) {
 	UINT i;
 	float Shortest = -1;
 
@@ -613,7 +613,7 @@ float __vectorcall EditorLinePrimitive::IntersectPrimitive( FXMVECTOR RayOrigin,
 	return Shortest;
 }
 
-bool __vectorcall EditorLinePrimitive::IntersectTriangle( FXMVECTOR orig, FXMVECTOR dir,
+bool XM_CALLCONV EditorLinePrimitive::IntersectTriangle( FXMVECTOR orig, FXMVECTOR dir,
 	FXMVECTOR v0, GXMVECTOR v1, HXMVECTOR v2,
 	FLOAT* t, FLOAT* u, FLOAT* v ) {
 	// Find vectors for two edges sharing vert0
@@ -728,24 +728,24 @@ float EditorLinePrimitive::IntersectLineSegment( FXMVECTOR rayOrigin, FXMVECTOR 
 	return Toolbox::XMVector3LengthFloat( dP );	// return the closest distance
 }
 
-void __vectorcall EditorLinePrimitive::SetWorldMatrix( XMMATRIX World, FXMVECTOR Loc, FXMVECTOR Rot, GXMVECTOR Scale ) {
+void XM_CALLCONV EditorLinePrimitive::SetWorldMatrix( XMMATRIX World, FXMVECTOR Loc, FXMVECTOR Rot, GXMVECTOR Scale ) {
 	XMStoreFloat4x4( &WorldMatrix, World );
 	XMStoreFloat3( &Location, Loc );
 	XMStoreFloat3( &Rotation, Rot );
 	XMStoreFloat3( &this->Scale, Scale );
 }
 
-void __vectorcall EditorLinePrimitive::SetLocation( FXMVECTOR NewLoc ) {
+void XM_CALLCONV EditorLinePrimitive::SetLocation( FXMVECTOR NewLoc ) {
 	XMStoreFloat3( &Location, NewLoc );
 	RecalcTransforms();
 }
 
-void __vectorcall EditorLinePrimitive::SetRotation( FXMVECTOR NewRotation ) {
+void XM_CALLCONV EditorLinePrimitive::SetRotation( FXMVECTOR NewRotation ) {
 	XMStoreFloat3( &Rotation, NewRotation );
 	RecalcTransforms();
 }
 
-void __vectorcall EditorLinePrimitive::SetScale( FXMVECTOR NewScale ) {
+void XM_CALLCONV EditorLinePrimitive::SetScale( FXMVECTOR NewScale ) {
 	XMStoreFloat3( &Scale, NewScale );
 	RecalcTransforms();
 }

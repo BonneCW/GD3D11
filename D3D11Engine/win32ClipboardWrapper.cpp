@@ -5,7 +5,7 @@
 int clipput(char *toclipdata)
 {
 	char far *buffer;
-	int bytes;
+	unsigned int bytes;
 
 	HGLOBAL clipbuffer;
 

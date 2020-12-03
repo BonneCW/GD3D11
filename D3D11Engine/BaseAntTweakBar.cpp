@@ -307,7 +307,7 @@ XRESULT BaseAntTweakBar::Init() {
 	TwType tbm = TwDefineEnumFromString( "BlendModeEnum", "0 {Replace}, 1 {Multiply}" );
 	TwAddVarRW( Bar_HBAO, "BlendMode", tbm, &Engine::GAPI->GetRendererState().RendererSettings.HbaoSettings.BlendMode, nullptr );
 
-	TwAddVarRW( Bar_HBAO, "DualLayerAO", TW_TYPE_BOOLCPP, &Engine::GAPI->GetRendererState().RendererSettings.HbaoSettings.EnableDualLayerAO, nullptr );
+	//TwAddVarRW( Bar_HBAO, "DualLayerAO", TW_TYPE_BOOLCPP, &Engine::GAPI->GetRendererState().RendererSettings.HbaoSettings.EnableDualLayerAO, nullptr );
 
 	TwEnumVal hbaoStepCounts [] = { {0, "4"}, {1, "8"} };
 	TwType hbaoStepCountType = TwDefineEnum( "GFSDK_SSAO_STEP_COUNT", hbaoStepCounts, 2 );

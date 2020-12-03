@@ -970,9 +970,8 @@ void D2DEditorView::DoEditorMovement() {
 	XMMATRIX world = DirectX::XMMatrixTranslation( position.x, position.y, position.z );
 
 	rot = DirectX::XMMatrixTranspose( rot );
-	world = DirectX::XMMatrixTranspose( world );
 
-	XMStoreFloat4x4( &*m, world );
+	XMStoreFloat4x4( &*m, DirectX::XMMatrixTranspose( world ) );
 
 	// Update camera
 	zCCamera::GetCamera()->Activate();

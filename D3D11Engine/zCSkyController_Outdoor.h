@@ -175,25 +175,24 @@ public:
 
 	/** Returns the sun position in world coords */
 	DirectX::XMFLOAT3 GetSunWorldPosition( float timeScale = 1.0f ) {
+		using namespace DirectX;
 		/*if (!GetSun())
 		{
-			return DirectX::XMFLOAT3(0, 0, 0);
+			return XMFLOAT3(0, 0, 0);
 		}*/
 
-		//float angle = GetMasterTime() * DirectX::XM_2PI; // Get mastertime into rad, 0 and 12 are now at the horizon, 18 is in the sky
-		//angle += DirectX::XM_PIDIV2; // 12 is now in the sky, 18 horizon
-		float angle = ((GetMasterTime() * timeScale - 0.3f) * 1.25f + 0.5f) * DirectX::XM_2PI;
+		//float angle = GetMasterTime() * XM_2PI; // Get mastertime into rad, 0 and 12 are now at the horizon, 18 is in the sky
+		//angle += XM_PIDIV2; // 12 is now in the sky, 18 horizon
+		float angle = ((GetMasterTime() * timeScale - 0.3f) * 1.25f + 0.5f) * XM_2PI;
 
-		XMVECTOR sunPos = XMVectorSet( -60, 0, 100, 0 );
-		sunPos = DirectX::XMVector3Normalize( sunPos );
-
-		DirectX::XMFLOAT3 rotAxis = DirectX::XMFLOAT3( 1, 0, 0 );
+		XMVECTOR sunPos = XMVector3Normalize(XMVectorSet(-60, 0, 100, 0));
+		XMFLOAT3 rotAxis = XMFLOAT3( 1, 0, 0 );
 
 		XMMATRIX r = XMLoadFloat4x4( &(HookedFunctions::OriginalFunctions.original_Alg_Rotation3DNRad( rotAxis, -angle )) );
-		r = DirectX::XMMatrixTranspose( r );
+		r = XMMatrixTranspose( r );
 
-		DirectX::XMFLOAT3 pos;
-		XMStoreFloat3( &pos, DirectX::XMVector3TransformNormal( sunPos, r ) );
+		XMFLOAT3 pos;
+		XMStoreFloat3( &pos, XMVector3TransformNormal( sunPos, r ) );
 
 		return pos;
 	}

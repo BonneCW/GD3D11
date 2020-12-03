@@ -18,11 +18,20 @@ public:
 
 	/** Draws a straight line from xyz1 to xyz2 */
 	static void __fastcall hooked_zCRndD3DDrawLineZ( void* thisptr, void* unknwn, float x1, float y1, float z1, float x2, float y2, float z2, zColor color ) {
-		return;
-		// TODO: Coordinates are kinda wonky. Wrong space? ScreenSpace to Worldspace neccessery?
+		// TODO: Implement occlusion culling for the lines.
+
 		auto lineRenderer = Engine::GraphicsEngine->GetLineRenderer();
-		if ( lineRenderer )
-			lineRenderer->AddLine( LineVertex( XMFLOAT3( x1, y1, z1 ), color.dword ), LineVertex( XMFLOAT3( x2, y2, z2 ), color.dword ) );
+		if ( lineRenderer ) {
+			static XMVECTOR pos1 = {}, pos2 = {}, discard = {};
+			// Coordinates are screen space. Unproject to Worldspace neccessery.
+			Engine::GAPI->UnprojectXM( XMVectorSet( x1, y1, z1, 0 ), pos1, discard );
+			Engine::GAPI->UnprojectXM( XMVectorSet( x2, y2, z2, 0 ), pos2, discard );
+
+			static XMFLOAT3 fPos1; XMStoreFloat3( &fPos1, pos1 );
+			static XMFLOAT3 fPos2; XMStoreFloat3( &fPos2, pos2 );
+			
+			lineRenderer->AddLine( LineVertex( fPos1, color.dword ), LineVertex( fPos2, color.dword ) );
+		}
 	}
 
 	static void __fastcall hooked_zCRndD3DDrawPoly( void* thisptr, void* unknwn, zCPolygon* poly ) {

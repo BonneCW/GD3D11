@@ -228,7 +228,7 @@ XRESULT WorldConverter::LoadWorldMeshFromFile( const std::string& file, std::map
 	// Dont need that anymore
 	delete mesh;
 
-	XMVECTOR avgSections = XMVectorSet( 0, 0, 0, 0 );
+	XMVECTOR avgSections = XMVectorZero();
 	int numSections = 0;
 
 	std::list<std::vector<ExVertexStruct>*> vertexBuffers;
@@ -345,8 +345,8 @@ HRESULT WorldConverter::ConvertWorldMeshPNAEN( zCPolygon** polys, unsigned int n
 		INT2 section = GetSectionOfPos( *poly->getVertices()[0]->Position.toXMFLOAT3() );
 		(*outSections)[section.x][section.y].WorldCoordinates = section;
 
-		DirectX::XMFLOAT3& bbmin = (*outSections)[section.x][section.y].BoundingBox.Min;
-		DirectX::XMFLOAT3& bbmax = (*outSections)[section.x][section.y].BoundingBox.Max;
+		XMFLOAT3& bbmin = (*outSections)[section.x][section.y].BoundingBox.Min;
+		XMFLOAT3& bbmax = (*outSections)[section.x][section.y].BoundingBox.Max;
 
 		DWORD sectionColor = float4( (section.x % 2) + 0.5f, (section.x % 2) + 0.5f, 1, 1 ).ToDWORD();
 
@@ -422,7 +422,7 @@ HRESULT WorldConverter::ConvertWorldMeshPNAEN( zCPolygon** polys, unsigned int n
 			(*outSections)[section.x][section.y].WorldMeshes[key]->Vertices.push_back( finalVertices[v] );
 	}
 
-	XMVECTOR avgSections = XMVectorSet( 0, 0, 0, 0 );
+	XMVECTOR avgSections = XMVectorZero();
 	int numSections = 0;
 
 	std::list<std::vector<ExVertexStruct>*> vertexBuffers;
@@ -544,8 +544,8 @@ HRESULT WorldConverter::ConvertWorldMesh( zCPolygon** polys, unsigned int numPol
 			//continue;
 		}
 
-		DirectX::XMFLOAT3& bbmin = (*outSections)[section.x][section.y].BoundingBox.Min;
-		DirectX::XMFLOAT3& bbmax = (*outSections)[section.x][section.y].BoundingBox.Max;
+		XMFLOAT3& bbmin = (*outSections)[section.x][section.y].BoundingBox.Min;
+		XMFLOAT3& bbmax = (*outSections)[section.x][section.y].BoundingBox.Max;
 
 		DWORD sectionColor = float4( (section.x % 2) + 0.5f, (section.x % 2) + 0.5f, 1, 1 ).ToDWORD();
 
@@ -637,7 +637,7 @@ HRESULT WorldConverter::ConvertWorldMesh( zCPolygon** polys, unsigned int numPol
 		}
 	}
 
-	XMVECTOR avgSections = XMVectorSet( 0, 0, 0, 0 );
+	XMVECTOR avgSections = XMVectorZero();
 	int numSections = 0;
 
 	std::list<std::vector<ExVertexStruct>*> vertexBuffers;
@@ -1216,10 +1216,10 @@ void WorldConverter::ExtractNodeVisual( int index, zCModelNodeInst* node, std::m
 
 /** Extracts a 3DS-Mesh from a zCVisual */
 void WorldConverter::Extract3DSMeshFromVisual2PNAEN( zCProgMeshProto* visual, MeshVisualInfo* meshInfo ) {
-	XMFLOAT3 bbmin = DirectX::XMFLOAT3( FLT_MAX, FLT_MAX, FLT_MAX );
-	XMFLOAT3 bbmax = DirectX::XMFLOAT3( -FLT_MAX, -FLT_MAX, -FLT_MAX );
+	XMFLOAT3 bbmin = XMFLOAT3( FLT_MAX, FLT_MAX, FLT_MAX );
+	XMFLOAT3 bbmax = XMFLOAT3( -FLT_MAX, -FLT_MAX, -FLT_MAX );
 
-	DirectX::XMFLOAT3* posList = (DirectX::XMFLOAT3*)visual->GetPositionList()->Array;
+	XMFLOAT3* posList = (XMFLOAT3*)visual->GetPositionList()->Array;
 
 	std::list<std::vector<ExVertexStruct>*> vertexBuffers;
 	std::list<std::vector<VERTEX_INDEX>*> indexBuffers;
@@ -1334,7 +1334,7 @@ void WorldConverter::Extract3DSMeshFromVisual2PNAEN( zCProgMeshProto* visual, Me
 
 	meshInfo->BBox.Min = bbmin;
 	meshInfo->BBox.Max = bbmax;
-	XMStoreFloat( &meshInfo->MeshSize, DirectX::XMVector3LengthEst( XMLoadFloat3( &bbmin ) - XMLoadFloat3( &bbmax ) ) );
+	XMStoreFloat( &meshInfo->MeshSize, XMVector3LengthEst( XMLoadFloat3( &bbmin ) - XMLoadFloat3( &bbmax ) ) );
 	XMStoreFloat3( &meshInfo->MidPoint, 0.5f * (XMLoadFloat3( &bbmin ) + XMLoadFloat3( &bbmax )) );
 
 	meshInfo->Visual = visual;
@@ -1344,8 +1344,8 @@ void WorldConverter::Extract3DSMeshFromVisual2PNAEN( zCProgMeshProto* visual, Me
 
 /** Extracts a 3DS-Mesh from a zCVisual */
 void WorldConverter::Extract3DSMeshFromVisual2( zCProgMeshProto* visual, MeshVisualInfo* meshInfo ) {
-	XMFLOAT3 bbmin = DirectX::XMFLOAT3( FLT_MAX, FLT_MAX, FLT_MAX );
-	XMFLOAT3 bbmax = DirectX::XMFLOAT3( -FLT_MAX, -FLT_MAX, -FLT_MAX );
+	XMFLOAT3 bbmin = XMFLOAT3( FLT_MAX, FLT_MAX, FLT_MAX );
+	XMFLOAT3 bbmax = XMFLOAT3( -FLT_MAX, -FLT_MAX, -FLT_MAX );
 
 	DirectX::XMFLOAT3* posList = (DirectX::XMFLOAT3*)visual->GetPositionList()->Array;
 
@@ -1630,10 +1630,10 @@ void WorldConverter::IndexVertices( ExSkelVertexStruct* input, unsigned int numI
 
 /** Computes vertex normals for a mesh with face normals */
 void WorldConverter::GenerateVertexNormals( std::vector<ExVertexStruct>& vertices, std::vector<VERTEX_INDEX>& indices ) {
-	std::vector<DirectX::XMFLOAT3> normals( vertices.size(), DirectX::XMFLOAT3( 0, 0, 0 ) );
+	std::vector<XMFLOAT3> normals( vertices.size(), XMFLOAT3( 0, 0, 0 ) );
 
 	for ( unsigned int i = 0; i < indices.size(); i += 3 ) {
-		DirectX::XMFLOAT3 v[3] = { *vertices[indices[i]].Position.toXMFLOAT3(), *vertices[indices[i + 1]].Position.toXMFLOAT3(), *vertices[indices[i + 2]].Position.toXMFLOAT3() };
+		XMFLOAT3 v[3] = { *vertices[indices[i]].Position.toXMFLOAT3(), *vertices[indices[i + 1]].Position.toXMFLOAT3(), *vertices[indices[i + 2]].Position.toXMFLOAT3() };
 		XMVECTOR normal = XMVector3Cross( (XMLoadFloat3( &v[1] ) - XMLoadFloat3( &v[0] )), (XMLoadFloat3( &v[2] ) - XMLoadFloat3( &v[0] )) );
 
 		for ( int j = 0; j < 3; ++j ) {

@@ -284,17 +284,20 @@ public:
 	/** Sets the Projection matrix */
 	void SetProjTransformDX( const DirectX::XMFLOAT4X4& proj );
 
+	/** Sets the Projection matrix */
+	void XM_CALLCONV SetProjTransformXM( const XMMATRIX proj );
+
 	/** Gets the Projection matrix */
 	DirectX::XMFLOAT4X4 GetProjTransformDx();
 
 	/** Sets the world matrix */
-	void __vectorcall  SetWorldTransformXM( DirectX::XMMATRIX world, bool transpose = false );
+	void XM_CALLCONV  SetWorldTransformXM( DirectX::XMMATRIX world, bool transpose = false );
 
 	/** Sets the world matrix */
 	void SetWorldTransformDX( const DirectX::XMFLOAT4X4& world, bool transpose = false );
 
 	/** Sets the world matrix */
-	void __vectorcall SetViewTransformXM( DirectX::XMMATRIX view, bool transpose = false );
+	void XM_CALLCONV SetViewTransformXM( DirectX::XMMATRIX view, bool transpose = false );
 
 	/** Sets the world matrix */
 	void SetViewTransformDX( const DirectX::XMFLOAT4X4& view, bool transpose = false );
@@ -303,7 +306,7 @@ public:
 	void SetWorldViewTransform( const DirectX::XMFLOAT4X4& world, const DirectX::XMFLOAT4X4& view );
 
 	/** Sets the world matrix */
-	void __vectorcall SetWorldViewTransform( DirectX::XMMATRIX world, DirectX::CXMMATRIX view );
+	void XM_CALLCONV SetWorldViewTransform( DirectX::XMMATRIX world, DirectX::CXMMATRIX view );
 
 	/** Sets the world matrix */
 	void ResetWorldTransform();
@@ -344,11 +347,11 @@ public:
 
 	/** Returns the current cameraposition */
 	DirectX::XMFLOAT3 GetCameraPosition();
-	DirectX::XMVECTOR __vectorcall GetCameraPositionXM();
+	DirectX::XMVECTOR XM_CALLCONV GetCameraPositionXM();
 
 	/** Returns the view matrix */
 	void GetViewMatrix( DirectX::XMFLOAT4X4* view );
-	DirectX::XMMATRIX __vectorcall GetViewMatrixXM();
+	DirectX::XMMATRIX XM_CALLCONV GetViewMatrixXM();
 
 	/** Returns the view matrix */
 	void GetInverseViewMatrixDX( DirectX::XMFLOAT4X4* invView );
@@ -357,10 +360,10 @@ public:
 	DirectX::XMFLOAT4X4& GetProjectionMatrix();
 
 	/** Unprojects a pixel-position on the screen */
-	void __vectorcall UnprojectXM( DirectX::FXMVECTOR p, DirectX::XMVECTOR& worldPos, DirectX::XMVECTOR& worldDir );
+	void XM_CALLCONV UnprojectXM( DirectX::FXMVECTOR p, DirectX::XMVECTOR& worldPos, DirectX::XMVECTOR& worldDir );
 
 	/** Unprojects the current cursor, returns it's direction in world-space */
-	DirectX::XMVECTOR __vectorcall UnprojectCursorXM();
+	DirectX::XMVECTOR XM_CALLCONV UnprojectCursorXM();
 
 	/** Traces the worldmesh and returns the hit-location */
 	bool TraceWorldMesh( const DirectX::XMFLOAT3& origin, const DirectX::XMFLOAT3& dir, DirectX::XMFLOAT3& hit, std::string* hitTextureName = nullptr, DirectX::XMFLOAT3* hitTriangle = nullptr, MeshInfo** hitMesh = nullptr, zCMaterial** hitMaterial = nullptr );

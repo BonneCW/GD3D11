@@ -46,8 +46,6 @@ void SV_GMeshInfoView::SetMeshes( const std::map<zCTexture*, MeshInfo*>& meshes,
 	VisualInfo = visInfo;
 	FOV = DEFAULT_FOV;
 
-	XMVECTOR _0p5 = XMVectorSet( 0.5f, 0.5f, 0.5f, 0.5f );
-	//XMVectorMultiply
 	// Find boundingbox of skeletal
 	XMFLOAT3 bbmin = XMFLOAT3( FLT_MAX, FLT_MAX, FLT_MAX );
 	XMFLOAT3 bbmax = XMFLOAT3( -FLT_MAX, -FLT_MAX, -FLT_MAX );

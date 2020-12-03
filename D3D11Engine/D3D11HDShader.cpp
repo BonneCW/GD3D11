@@ -54,7 +54,7 @@ HRESULT D3D11HDShader::CompileShaderFromFile( const CHAR* szFileName, LPCSTR szE
 	// the release configuration of this program.
 	//dwShaderFlags |= D3DCOMPILE_DEBUG;
 #else
-	dwShaderFlags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+	dwShaderFlags |= D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
 #endif
 
 	Microsoft::WRL::ComPtr<ID3DBlob> pErrorBlob;
