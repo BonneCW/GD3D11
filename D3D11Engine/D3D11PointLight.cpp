@@ -46,7 +46,7 @@ D3D11PointLight::~D3D11PointLight() {
 	ViewMatricesCB.reset();
 
 	for ( auto it = WorldMeshCache.begin(); it != WorldMeshCache.end(); it++ ) {
-		SAFE_DELETE(it->second);
+		SAFE_DELETE( it->second );
 	}
 }
 
@@ -251,8 +251,8 @@ void D3D11PointLight::RenderCubemapFace( const DirectX::XMFLOAT4X4& view, const 
 	float range = LightInfo->Vob->GetLightRange() * 1.1f;
 
 	// Draw cubemap face
-	ID3D11RenderTargetView* debugRTV = engine->GetDummyCubeRT() != nullptr ? engine->GetDummyCubeRT()->GetRTVCubemapFace( faceIdx ) : nullptr;
-	engine->RenderShadowCube( LightInfo->Vob->GetPositionWorldXM(), range, *DepthCubemap, DepthCubemap->GetDSVCubemapFace( faceIdx ), debugRTV, false );
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> debugRTV = engine->GetDummyCubeRT() != nullptr ? engine->GetDummyCubeRT()->GetRTVCubemapFace( faceIdx ) : nullptr;
+	engine->RenderShadowCube( LightInfo->Vob->GetPositionWorldXM(), range, *DepthCubemap, DepthCubemap->GetDSVCubemapFace( faceIdx ), debugRTV.Get(), false );
 
 	//Engine::GAPI->GetRendererState().RendererSettings.DrawSkeletalMeshes = oldDrawSkel;
 
@@ -312,8 +312,8 @@ void D3D11PointLight::DebugDrawCubeMap() {
 
 		INT2 pSize = INT2( previewSize / previewDownscale, previewSize / previewDownscale );
 
-		ID3D11ShaderResourceView* srv = engine->GetDummyCubeRT()->GetSRVCubemapFace( i );
-		engine->GetContext()->PSSetShaderResources( 0, 1, &srv );
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv = engine->GetDummyCubeRT()->GetSRVCubemapFace( i );
+		engine->GetContext()->PSSetShaderResources( 0, 1, srv.GetAddressOf() );
 		Engine::GraphicsEngine->DrawQuad( pPosition, pSize );
 	}
 }

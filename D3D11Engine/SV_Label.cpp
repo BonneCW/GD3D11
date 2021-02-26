@@ -20,7 +20,7 @@ SV_Label::~SV_Label() {
 /** Draws this sub-view */
 void SV_Label::Draw( const D2D1_RECT_F& clientRectAbs, float deltaTime ) {
 
-	D2D1_COLOR_F LabelTextColor = D2D1::ColorF(TextColor.r, TextColor.g, TextColor.b, TextColor.a * (IsDisabled() ? 0.3f : 1.0f));
+	D2D1_COLOR_F LabelTextColor = D2D1::ColorF( TextColor.r, TextColor.g, TextColor.b, TextColor.a * (IsDisabled() ? 0.3f : 1.0f) );
 	//Set up the layer for this control
 	MainView->GetRenderTarget()->SetTransform( D2D1::Matrix3x2F::Translation( clientRectAbs.left, clientRectAbs.top ) );
 

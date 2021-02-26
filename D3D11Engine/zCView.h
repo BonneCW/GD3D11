@@ -3,24 +3,7 @@
 #include "zTypes.h"
 #include "HookedFunctions.h"
 #include "oCGame.h"
-
-#if BUILD_GOTHIC_2_6_fix
 #include "zViewTypes.h"
-namespace zView {
-	enum EMenuRenderState {
-		None = 0,
-		Content,
-	};
-
-	static std::string FONT_DEFAULT = "FONT_DEFAULT.TGA";
-	static std::string FONT_OLD_10_WHITE = "FONT_OLD_10_WHITE.TGA";
-	static std::string FONT_OLD_10_WHITE_HI = "FONT_OLD_10_WHITE_HI.TGA";
-	static std::string MENU_ITEM_CONTENT_VIEWER = "MENU_ITEM_CONTENT_VIEWER";
-
-	static zColor DefaultColor = zColor( 158, 186, 203, 255 ); // BGRA
-	static float4 fDefaultColor = float4( 203.0f / 255.0f, 186.0f / 255.0f, 158.0f / 255.0f, 1.0f );
-}
-#endif
 
 class zCView {
 public:
@@ -37,11 +20,10 @@ public:
 		REPLACE_RANGE( GothicMemoryLocations::zCView::REPL_SetMode_ModechangeStart, GothicMemoryLocations::zCView::REPL_SetMode_ModechangeEnd - 1, INST_NOP );
 
 #if BUILD_GOTHIC_2_6_fix
-		// .text:007A9A10                             ; int __thiscall zCView::FontSize(zCView *this, struct zSTRING *)
-		XHook( HookedFunctions::OriginalFunctions.original_zCViewFontSize, GothicMemoryLocations::zCView::FontSize, hooked_FontSize );
 		// .text:007A62A0; void __thiscall zCView::BlitText(zCView * __hidden this)
 		XHook( HookedFunctions::OriginalFunctions.original_zCViewBlitText, GothicMemoryLocations::zCView::BlitText, hooked_BlitText );
 		XHook( HookedFunctions::OriginalFunctions.original_zCViewPrint, GothicMemoryLocations::zCView::Print, hooked_Print );
+		//XHook( HookedFunctions::OriginalFunctions.original_zCViewBlit, GothicMemoryLocations::zCView::Blit, hooked_Blit );
 #endif
 	}
 
@@ -52,6 +34,35 @@ public:
 	}
 
 #if BUILD_GOTHIC_2_6_fix
+    /*
+    static void __fastcall hooked_Blit(_zCView* thisptr, void* unknwn) {
+
+		if (true || !Engine::GAPI->GetRendererState().RendererSettings.EnableCustomFontRendering) {
+			HookedFunctions::OriginalFunctions.original_zCViewBlit(thisptr);
+			return;
+		}
+
+		if (thisptr->viewID == 1 /* VIEW_VIEWPORT *\/) return;
+		if (thisptr == GetScreen()) return;
+		hook_infunc
+			auto oldDepthState = Engine::GAPI->GetRendererState().DepthState.Clone();
+
+			if (!thisptr->m_bFillZ) Engine::GAPI->GetRendererState().DepthState.DepthWriteEnabled = false;
+			else Engine::GAPI->GetRendererState().DepthState.DepthWriteEnabled = true;
+
+			Engine::GAPI->GetRendererState().DepthState.DepthBufferCompareFunc = GothicDepthBufferStateInfo::CF_COMPARISON_ALWAYS;
+			Engine::GAPI->GetRendererState().DepthState.SetDirty();
+
+			Engine::GraphicsEngine->UpdateRenderStates();
+
+			HookedFunctions::OriginalFunctions.original_zCViewBlit(thisptr);
+
+			oldDepthState.ApplyTo(Engine::GAPI->GetRendererState().DepthState);
+			Engine::GraphicsEngine->UpdateRenderStates();
+		hook_outfunc
+	}
+    */
+
 	static void __fastcall hooked_Print( _zCView* thisptr, void* unknwn, int x, int y, const zSTRING& s ) {
 		if ( !Engine::GAPI->GetRendererState().RendererSettings.EnableCustomFontRendering ) {
 			HookedFunctions::OriginalFunctions.original_zCViewPrint( thisptr, x, y, s );
@@ -60,18 +71,16 @@ public:
 		if ( !thisptr->font ) return;
 		thisptr->scrollTimer = 0;
 
+		// Instantly blit Viewport/global-screen
 		if ( (thisptr->viewID == 1)
-			/*|| (thisptr == Engine::GAPI->GetScreen())*/
-			|| (thisptr->viewID == 0) ) {
-			auto const& col = zView::DefaultColor;
-			// Koordinaten auf Pixel umrechnen
+			|| (thisptr == GetScreen()) ) {
 			Engine::GraphicsEngine->DrawString(
 				s.ToChar(),
-				thisptr->nax( x ), thisptr->nay( y ),
-				zView::fDefaultColor,
-				thisptr->alphafunc );
+				thisptr->pposx + thisptr->nax(x), thisptr->pposy + thisptr->nay(y),
+				thisptr->font, thisptr->fontColor);
 		} else {
-			HookedFunctions::OriginalFunctions.original_zCViewPrint( thisptr, x, y, s );
+			// create a textview for later blitting
+			thisptr->CreateText(x, y, s);
 		}
 	}
 
@@ -84,87 +93,31 @@ public:
 		thisptr->CheckAutoScroll();
 		thisptr->CheckTimedText();
 
-		if ( !thisptr->isOpen || !thisptr->maxTextLength ) return;
+		if ( !thisptr->isOpen ) return;
 
-		if ( thisptr->owner ) {
-			if ( thisptr->owner->vtbl == 0x830F84 ) {
-				auto owner = (zCMenuItemText*)thisptr->owner;
-				const std::string& ownerId = owner->id.ToChar();
+		int x, y;
 
-				if ( owner->GetIsDisabled() ) return;
-				if ( owner->m_bDontRender ) return;
-				if ( !owner->m_bVisible ) return;
-			}
-		}
-
-		int x, y, pposx, pposy;
-
-		pposx = thisptr->pposx;
-		pposy = thisptr->pposy;
 		zCList <zCViewText>* textNode = thisptr->textLines.next;
 		zCViewText* text = nullptr;
-
-
-		zColor color = zView::DefaultColor;
+		zColor fontColor = thisptr->fontColor;
 		while ( textNode ) {
 
 			text = textNode->data;
 			textNode = textNode->next;
+			
+			if   (text->colored) { fontColor = text->color; }
+			//else                 { fontColor = thisptr->fontColor;}
 
-			x = pposx + thisptr->nax( text->posx );
+			x = thisptr->pposx + thisptr->nax( text->posx );
 			// TODO: Remove additional addition if we get the correct char positioning
-			y = pposy + thisptr->nay( text->posy ) - 2;
+			y = thisptr->pposy + thisptr->nay( text->posy );
 
-			// text->font auswerten!
-
-			if ( text->colored && !text->color.IsWhite() ) {
-				// TODO: REMOVE color.IsWhite() if Alpha Blending works!
-				color = text->color;
-			} else {
-				color = zView::DefaultColor;
-			}
 			if ( !thisptr->font ) continue;
-
-			const std::string& fontName = thisptr->font->name.ToChar();
-
-			if ( (!fontName.compare( zView::FONT_DEFAULT ) || !fontName.compare( zView::FONT_OLD_10_WHITE ) || !fontName.compare( zView::FONT_OLD_10_WHITE_HI )) ) {
-				auto blendFunc = thisptr->alphafunc;
-				auto col = !fontName.compare( zView::FONT_OLD_10_WHITE_HI ) ? zCOLOR_WHITE : color;
-				Engine::GraphicsEngine->DrawString( text->text.ToChar(), x, y, col.ToFloat4(), blendFunc );
-			} else {
-				if ( text->font )
-					thisptr->font = text->font;
-				if ( text->colored ) {
-					thisptr->color = text->color;
-				}
-				thisptr->PrintChars( x, y, text->text );
-			}
+			
+			Engine::GraphicsEngine->DrawString( text->text.ToChar(), x, y, text->font, fontColor);
 		}
 	}
-	static int __fastcall hooked_FontSize( _zCView* thisptr, void* unknwn, const zSTRING& str ) {
-		if ( !Engine::GAPI->GetRendererState().RendererSettings.EnableCustomFontRendering ) {
-			return HookedFunctions::OriginalFunctions.original_zCViewFontSize( thisptr, str );
-		}
-
-
-		if ( !thisptr->font ) return 0;
-
-		int result = 0;
-		const std::string& fontName = thisptr->font->name.ToChar();
-
-
-		if ( !fontName.compare( zView::FONT_DEFAULT ) || !fontName.compare( zView::FONT_OLD_10_WHITE ) || !fontName.compare( zView::FONT_OLD_10_WHITE_HI ) ) {
-			return thisptr->anx( Engine::GraphicsEngine->MeasureString( str.ToChar() ) );
-		}
-
-		hook_infunc
-
-			result = HookedFunctions::OriginalFunctions.original_zCViewFontSize( thisptr, str );
-
-		hook_outfunc
-
-			return result;
-	}
+	static _zCView* GetScreen() { return *(_zCView**)GothicMemoryLocations::GlobalObjects::screen; }
 
 #endif
 

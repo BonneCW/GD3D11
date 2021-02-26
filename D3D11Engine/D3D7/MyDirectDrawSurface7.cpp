@@ -638,7 +638,7 @@ HRESULT MyDirectDrawSurface7::SetSurfaceDesc( LPDDSURFACEDESC2 lpDDSurfaceDesc, 
 	}
 
 	// Create the texture
-	EngineTexture->Init( INT2( lpDDSurfaceDesc->dwWidth, lpDDSurfaceDesc->dwHeight ), format, mipMapCount, nullptr );
+	EngineTexture->Init( INT2( lpDDSurfaceDesc->dwWidth, lpDDSurfaceDesc->dwHeight ), format, mipMapCount, nullptr, "DirectDrawSurface7" );
 
 	return S_OK;
 }

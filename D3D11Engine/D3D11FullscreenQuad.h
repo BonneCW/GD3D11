@@ -17,9 +17,9 @@ public:
 	//Fills the VertexBuffer
 	HRESULT CreateQuad( ID3D11Device* device );
 
-	ID3D11Buffer* GetBuffer() { return QuadVB; }
+	Microsoft::WRL::ComPtr<ID3D11Buffer> GetBuffer() { return QuadVB.Get(); }
 
 private:
-	ID3D11Buffer* QuadVB; //Vertex buffer for the quad
+	Microsoft::WRL::ComPtr<ID3D11Buffer> QuadVB; //Vertex buffer for the quad
 };
 

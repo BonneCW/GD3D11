@@ -172,8 +172,6 @@ typedef float GFSDK_SSAO_FLOAT;
 typedef size_t GFSDK_SSAO_SIZE_T;
 typedef uint64_t GFSDK_SSAO_UINT64;
 
-struct ID3D11Device;
-struct ID3D11DeviceContext;
 struct ID3D11ShaderResourceView;
 struct ID3D11BlendState;
 struct ID3D11DepthStencilState;

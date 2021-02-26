@@ -240,8 +240,9 @@ XRESULT D3D11ShaderManager::Init() {
 	Shaders.back().cBufferSizes.push_back( sizeof( DS_ScreenQuadConstantBuffer ) );
 	Shaders.back().cBufferSizes.push_back( sizeof( AtmosphereConstantBuffer ) );
 
-	Shaders.push_back( ShaderInfo( "DefaultTess", "DefaultTess.hlsl", "hd" ) );
-	Shaders.back().cBufferSizes.push_back( sizeof( DefaultHullShaderConstantBuffer ) );
+    // UNUSED
+    //Shaders.push_back( ShaderInfo( "DefaultTess", "DefaultTess.hlsl", "hd" ) );
+    //Shaders.back().cBufferSizes.push_back( sizeof( DefaultHullShaderConstantBuffer ) );
 
 	Shaders.push_back( ShaderInfo( "OceanTess", "OceanTess.hlsl", "hd" ) );
 	Shaders.back().cBufferSizes.push_back( sizeof( DefaultHullShaderConstantBuffer ) );
@@ -560,7 +561,7 @@ XRESULT D3D11ShaderManager::LoadShaders() {
 	}
 	auto compilationTP = std::make_unique<ThreadPool>( numThreads );
 	LogInfo() << "Compiling/Reloading shaders with " << compilationTP->getNumThreads() << " threads";
-	for ( const ShaderInfo& si : Shaders) {
+	for ( const ShaderInfo& si : Shaders ) {
 		compilationTP->enqueue( [this, si]() { CompileShader( si ); } );
 	}
 

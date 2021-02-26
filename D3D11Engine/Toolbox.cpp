@@ -159,7 +159,7 @@ namespace Toolbox {
 	/** Computes the Normal of a triangle */
 	DirectX::XMFLOAT3 ComputeNormal( const DirectX::XMFLOAT3& v0, const DirectX::XMFLOAT3& v1, const DirectX::XMFLOAT3& v2 ) {
 		XMVECTOR Normal = XMVector3Cross( (XMLoadFloat3( &v1 ) - XMLoadFloat3( &v0 )), (XMLoadFloat3( &v2 ) - XMLoadFloat3( &v0 )) );
-		Normal = XMVector3Normalize( Normal );
+		Normal = XMVector3NormalizeEst( Normal );
 
 		XMFLOAT3 Normal_XMFLOAT3;
 		XMStoreFloat3( &Normal_XMFLOAT3, Normal );
@@ -329,7 +329,7 @@ namespace Toolbox {
 
 		std::string str = c;
 
-		delete [] c;
+		delete[] c;
 
 		return str;
 	}

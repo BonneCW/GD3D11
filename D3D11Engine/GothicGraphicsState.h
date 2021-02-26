@@ -198,6 +198,27 @@ struct GothicDepthBufferStateInfo : public GothicPipelineState {
 		}
 		GothicStateCache::s_DepthBufferMap.clear();
 	}
+
+	GothicDepthBufferStateInfo Clone() {
+		GothicDepthBufferStateInfo c;
+		c.DepthBufferEnabled = DepthBufferEnabled;
+		c.DepthWriteEnabled = DepthWriteEnabled;
+		c.DepthBufferCompareFunc = DepthBufferCompareFunc;
+
+		c.StateDirty = StateDirty;
+		c.Hash = Hash;
+		c.StructSize = StructSize;
+		return c;
+	}
+
+	void ApplyTo( GothicDepthBufferStateInfo& c ) {
+		c.DepthBufferEnabled = DepthBufferEnabled;
+		c.DepthWriteEnabled = DepthWriteEnabled;
+		c.DepthBufferCompareFunc = DepthBufferCompareFunc;
+
+		c.StructSize = StructSize;
+		c.SetDirty();
+	}
 };
 
 /** Blend state information */
@@ -305,6 +326,39 @@ struct GothicBlendStateInfo : public GothicPipelineState {
 		}
 
 		GothicStateCache::s_BlendStateMap.clear();
+	}
+
+	GothicBlendStateInfo Clone() {
+		GothicBlendStateInfo c;
+		c.SrcBlend = SrcBlend;
+		c.DestBlend = DestBlend;
+		c.BlendOp = BlendOp;
+		c.SrcBlendAlpha = SrcBlendAlpha;
+		c.DestBlendAlpha = DestBlendAlpha;
+		c.BlendOpAlpha = BlendOpAlpha;
+		c.BlendEnabled = BlendEnabled;
+		c.AlphaToCoverage = AlphaToCoverage;
+		c.ColorWritesEnabled = ColorWritesEnabled;
+
+		c.StateDirty = StateDirty;
+		c.Hash = Hash;
+		c.StructSize = StructSize;
+		return c;
+	}
+
+	void ApplyTo( GothicBlendStateInfo& c ) {
+		c.SrcBlend = SrcBlend;
+		c.DestBlend = DestBlend;
+		c.BlendOp = BlendOp;
+		c.SrcBlendAlpha = SrcBlendAlpha;
+		c.DestBlendAlpha = DestBlendAlpha;
+		c.BlendOpAlpha = BlendOpAlpha;
+		c.BlendEnabled = BlendEnabled;
+		c.AlphaToCoverage = AlphaToCoverage;
+		c.ColorWritesEnabled = ColorWritesEnabled;
+
+		c.StructSize = StructSize;
+		c.SetDirty();
 	}
 };
 
@@ -557,8 +611,6 @@ struct GothicRendererSettings {
 		AllowNumpadKeys = false;
 		EnableDebugLog = true;
 		EnableCustomFontRendering = false;
-		FontFileDefault = "Gothic_14.spritefont";
-		FontFileMenu = "Gothic_14.spritefont";
 
 #ifdef BUILD_GOTHIC_1_08k
 		ForceFOV = false;
@@ -567,6 +619,7 @@ struct GothicRendererSettings {
 #endif
 
 		StretchWindow = false;
+		SmoothShadowCameraUpdate = true;
 	}
 
 	void SetupOldWorldSpecificValues() {
@@ -698,11 +751,10 @@ struct GothicRendererSettings {
 	bool EnableDebugLog;
 
 	bool EnableCustomFontRendering;
-	std::string FontFileDefault;
-	std::string FontFileMenu;
 	bool ForceFOV;
 	bool DisplayFlip;
 	bool StretchWindow;
+	bool SmoothShadowCameraUpdate;
 };
 
 struct GothicRendererTiming {

@@ -30,7 +30,7 @@ public:
 	void SetDataToUpdate( bool* data );
 
 	/** Sets the callback */
-	void SetCheckedChangedCallback( SV_CheckboxCheckedChangedCallback cb, void* userdata);
+	void SetCheckedChangedCallback( SV_CheckboxCheckedChangedCallback cb, void* userdata );
 
 	/** Processes a window-message. Return false to stop the message from going to children */
 	virtual bool OnWindowMessage( HWND hWnd, unsigned int msg, WPARAM wParam, LPARAM lParam, const D2D1_RECT_F& clientRectAbs );

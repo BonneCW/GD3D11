@@ -122,8 +122,8 @@ XRESULT GMesh::LoadMesh( const std::string& file, float scale ) {
 
 		Textures.push_back( name );
 
-		delete [] vertices;
-		delete [] indices;
+		delete[] vertices;
+		delete[] indices;
 
 		//startIndex += s->mMeshes[i]->mNumFaces * 3;
 	}

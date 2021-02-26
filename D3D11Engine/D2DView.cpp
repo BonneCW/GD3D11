@@ -45,18 +45,18 @@ D2DView::D2DView() {
 D2DView::~D2DView() {
 	delete MainSubView;
 
-	if ( TextFormatBig )TextFormatBig->Release();
-	if ( LinearReflectBrush )LinearReflectBrush->Release();
-	if ( LinearReflectBrushHigh )LinearReflectBrushHigh->Release();
-	if ( Brush )Brush->Release();
-	if ( GUIStyleLinearBrush )GUIStyleLinearBrush->Release();
-	if ( LinearBrush )LinearBrush->Release();
-	if ( RadialBrush )RadialBrush->Release();
-	if ( BackgroundBrush )BackgroundBrush->Release();
-	if ( DefaultTextFormat )DefaultTextFormat->Release();
-	if ( WriteFactory )WriteFactory->Release();
-	if ( RenderTarget )RenderTarget->Release();
-	if ( Factory )Factory->Release();
+	SAFE_RELEASE( TextFormatBig );
+	SAFE_RELEASE( LinearReflectBrush );
+	SAFE_RELEASE( LinearReflectBrushHigh );
+	SAFE_RELEASE( Brush );
+	SAFE_RELEASE( GUIStyleLinearBrush );
+	SAFE_RELEASE( LinearBrush );
+	SAFE_RELEASE( RadialBrush );
+	SAFE_RELEASE( BackgroundBrush );
+	SAFE_RELEASE( DefaultTextFormat );
+	SAFE_RELEASE( WriteFactory );
+	SAFE_RELEASE( RenderTarget );
+	SAFE_RELEASE( Factory );
 }
 
 /** Inits this d2d-view */
@@ -116,7 +116,7 @@ XRESULT D2DView::Init( const INT2& initialResolution, ID3D11Texture2D* rendertar
 		LogError() << "Failed to create ID2D1Factory!";
 		return XR_FAILED;
 	}
-
+    // TODO: ComPtr<T> HERE
 	IDXGISurface* dxgiBackbuffer = nullptr;
 	rendertarget->QueryInterface( &dxgiBackbuffer );
 
@@ -132,7 +132,7 @@ XRESULT D2DView::Init( const INT2& initialResolution, ID3D11Texture2D* rendertar
 			"You can get it here: https://www.microsoft.com/en-us/download/details.aspx?id=36805 \n"
 			"This will not crash the Renderer, but you will have to continue without editor-features.\n"
 			"\nThe link has been copied to your clipboard.";
-		if ( dxgiBackbuffer )dxgiBackbuffer->Release();
+		SAFE_RELEASE( dxgiBackbuffer );
 		Factory->Release();
 		Factory = nullptr;
 		return XR_FAILED;
@@ -180,7 +180,7 @@ HRESULT D2DView::InitResources() {
 
 	RenderTarget->CreateRadialGradientBrush( D2D1::RadialGradientBrushProperties( D2D1::Point2F( 0, 0 ), D2D1::Point2F( 0, 0 ), 1, 1 ), pGradientStops, &RadialBrush );
 
-	pGradientStops->Release();
+	SAFE_RELEASE( pGradientStops );
 
 	D2D1_GRADIENT_STOP GUISstops[3];
 	GUISstops[0].color = D2D1::ColorF( GUI_Color1.r, GUI_Color1.g, GUI_Color1.b, GUI_Color1.a );
@@ -212,7 +212,7 @@ HRESULT D2DView::InitResources() {
 		&GUIStyleLinearBrush
 	);
 
-	pGUI_S_GradientStops->Release();
+	SAFE_RELEASE( pGUI_S_GradientStops );
 
 	D2D1_GRADIENT_STOP Reflectstops[4];
 	Reflectstops[0].color = D2D1::ColorF( ReflectColor1.r, ReflectColor1.g, ReflectColor1.b, ReflectColor1.a );
@@ -247,7 +247,7 @@ HRESULT D2DView::InitResources() {
 		&LinearReflectBrush
 	);
 
-	pReflectGradientStops->Release();
+	SAFE_RELEASE( pReflectGradientStops );
 
 	Reflectstops[0].color = D2D1::ColorF( ReflectColor2.r, ReflectColor2.g, ReflectColor2.b, ReflectColor2.a );
 	Reflectstops[0].position = 0.0f;
@@ -277,7 +277,7 @@ HRESULT D2DView::InitResources() {
 		&LinearReflectBrushHigh
 	);
 
-	pReflectGradientStops->Release();
+	SAFE_RELEASE( pReflectGradientStops );
 
 
 	D2D1_GRADIENT_STOP bgrstops[2];
@@ -304,7 +304,7 @@ HRESULT D2DView::InitResources() {
 		&BackgroundBrush
 	);
 
-	pGradientStops->Release();
+	SAFE_RELEASE( pGradientStops );
 
 	DWriteCreateFactory( DWRITE_FACTORY_TYPE_SHARED, __uuidof(WriteFactory), (IUnknown**)(&WriteFactory) );
 
@@ -342,8 +342,6 @@ HRESULT D2DView::InitResources() {
 	SettingsDialog = new D2DSettingsDialog( this, MainSubView );
 	SettingsDialog->SetHidden( true );
 
-
-
 	return XR_SUCCESS;
 }
 
@@ -368,8 +366,7 @@ void D2DView::Update( float deltaTime ) {
 
 /** Releases all resources needed to resize this view */
 XRESULT D2DView::PrepareResize() {
-	if ( RenderTarget )RenderTarget->Release();
-	RenderTarget = nullptr;
+	SAFE_RELEASE( RenderTarget );
 
 	return XR_SUCCESS;
 }
@@ -542,7 +539,7 @@ float D2DView::GetLabelTextWidth( IDWriteTextLayout* layout, const std::string& 
 	for ( size_t i = 0; i < text.length(); i++ ) {
 		width += m[i].width;
 	}
-	delete [] m;
+	delete[] m;
 
 	return width;
 }

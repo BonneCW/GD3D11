@@ -48,7 +48,7 @@ public:
 	}
 
 	virtual ~D3D11DepthBufferState() {
-		if ( State )State->Release();
+		SAFE_RELEASE( State );
 
 		Toolbox::EraseByElement<UINT8, D3D11DepthBufferState*>( D3D11ObjectIDs::DepthStateByID, this );
 	}
@@ -92,7 +92,7 @@ public:
 	}
 
 	virtual ~D3D11BlendStateInfo() {
-		if ( State )State->Release();
+		SAFE_RELEASE( State );
 
 		Toolbox::EraseByElement<UINT8, D3D11BlendStateInfo*>( D3D11ObjectIDs::BlendStateByID, this );
 	}
@@ -135,7 +135,7 @@ public:
 	}
 
 	virtual ~D3D11RasterizerStateInfo() {
-		if ( State )State->Release();
+		SAFE_RELEASE( State );
 
 		Toolbox::EraseByElement<UINT8, D3D11RasterizerStateInfo*>( D3D11ObjectIDs::RasterizerStateByID, this );
 	}

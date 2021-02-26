@@ -131,10 +131,14 @@ struct GothicMemoryLocations {
 		static const unsigned int SetTransform = 0x00536300;
 		static const unsigned int UpdateViewport = 0x00536850;
 		static const unsigned int Activate = 0x005364C0;
-		static const unsigned int BBox3DInFrustum = 0x00536EF0;
+        static const unsigned int SetFarPlane = 0x00536D30;
+        static const unsigned int BBox3DInFrustum = 0x00536EF0;
 		static const unsigned int SetFOV = 0x00536720;
-		static const unsigned int GetFOV_f2 = 0x005366B0;
-	};
+        static const unsigned int GetFOV_f2 = 0x005366B0;
+
+        static const unsigned int Offset_FarPlane = 2272;
+        static const unsigned int Offset_NearPlane = 2276;
+	}; 
 
 	struct zCVob {
 		static const unsigned int Offset_WorldMatrixPtr = 0x3C;
@@ -311,6 +315,7 @@ struct GothicMemoryLocations {
 		static const unsigned int Offset_SkyControllerOutdoor = 0x0D0;
 		static const unsigned int DisposeVobs = 0x005F55F0;
 		static const unsigned int Offset_BspTree = 0x198;
+		static const unsigned int RemoveVob = 0x005F66C0;
 	};
 
 	struct oCWorld {
@@ -354,6 +359,9 @@ struct GothicMemoryLocations {
 		static const unsigned int REPL_SetMode_ModechangeStart = 0x007021A9;
 		static const unsigned int REPL_SetMode_ModechangeEnd = 0x0007021B8;
 		static const unsigned int PrintTimed = 0x006FE1A0;
+
+        static const unsigned int PrintChars = 0x006fff80;
+        static const unsigned int CreateText = 0x007006e0;
 	};
 
 	struct zCVobLight {
@@ -380,7 +388,8 @@ struct GothicMemoryLocations {
 		static const unsigned int Offset_PrivateTotalTime = 0x84; // Offset_TimeScale - 8
 		static const unsigned int Offset_LastTimeRendered = 0x88;
 		static const unsigned int Offset_Emitters = 0x54;
-
+		static const unsigned int Offset_ConnectedVob = 0x70;
+		
 		static const unsigned int OBJ_s_pfxList = 0x0089B2A0;
 		static const unsigned int OBJ_s_partMeshQuad = 0x0089B2BC;
 		static const unsigned int CheckDependentEmitter = 0x005913C0;
@@ -392,6 +401,7 @@ struct GothicMemoryLocations {
 		static const unsigned int SetVisualUsedBy = 0x0058DD60;
 		static const unsigned int Destructor = 0x0058D340;
 		static const unsigned int UpdateParticleFX = 0x0058F130;
+		static const unsigned int GetVisualDied = 0x0058D2F0;
 	};
 
 	struct zCModel {

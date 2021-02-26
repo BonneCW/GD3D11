@@ -135,7 +135,7 @@ void SV_Slider::RenderSlider() {
 	MainView->GetLinearReflectBrushHigh()->SetEndPoint( D2D1::Point2F( ViewRect.right, ViewRect.bottom ) );
 	MainView->GetRenderTarget()->DrawRectangle( sc, MainView->GetLinearReflectBrushHigh() );
 
-	MainView->GetBrush()->SetColor(IsDisabled() ? SV_DEF_DISABLED_COLOR : SV_DEF_INNER_LINE_COLOR );
+	MainView->GetBrush()->SetColor( IsDisabled() ? SV_DEF_DISABLED_COLOR : SV_DEF_INNER_LINE_COLOR );
 	D2DView::ShrinkRect( &sc, 1 );
 
 	MainView->GetRenderTarget()->DrawRectangle( sc, MainView->GetBrush() );

@@ -68,8 +68,8 @@ XRESULT D3D11LineRenderer::Flush() {
 	// Draw the lines
 	UINT offset = 0;
 	UINT uStride = sizeof( LineVertex );
-	ID3D11Buffer* buffer = ((D3D11VertexBuffer*)LineBuffer)->GetVertexBuffer();
-	engine->GetContext()->IASetVertexBuffers( 0, 1, &buffer, &uStride, &offset );
+	Microsoft::WRL::ComPtr<ID3D11Buffer> buffer = ((D3D11VertexBuffer*)LineBuffer)->GetVertexBuffer().Get();
+	engine->GetContext()->IASetVertexBuffers( 0, 1, buffer.GetAddressOf(), &uStride, &offset );
 
 	//Draw the mesh
 	engine->GetContext()->Draw( LineCache.size(), 0 );

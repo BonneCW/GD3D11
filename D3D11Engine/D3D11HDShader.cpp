@@ -5,6 +5,7 @@
 #include "GothicAPI.h"
 #include "D3D11ConstantBuffer.h"
 #include <d3dcompiler.h>
+#include "D3D11_Helpers.h"
 
 using namespace DirectX;
 
@@ -27,8 +28,8 @@ D3D11HDShader::~D3D11HDShader() {
 	// Remove from state map
 	D3D11ObjectIdManager::EraseHDShader( this );
 
-	if ( HullShader )HullShader->Release();
-	if ( DomainShader )DomainShader->Release();
+	SAFE_RELEASE( HullShader );
+	SAFE_RELEASE( DomainShader );
 
 	for ( unsigned int i = 0; i < ConstantBuffers.size(); i++ ) {
 		delete ConstantBuffers[i];
@@ -78,19 +79,19 @@ XRESULT D3D11HDShader::LoadShader( const char* hullShader, const char* domainSha
 	HRESULT hr;
 	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
-	ID3DBlob* hsBlob;
-	ID3DBlob* dsBlob;
+	Microsoft::WRL::ComPtr<ID3DBlob> hsBlob;
+	Microsoft::WRL::ComPtr<ID3DBlob> dsBlob;
 
 	if ( Engine::GAPI->GetRendererState().RendererSettings.EnableDebugLog )
 		LogInfo() << "Compilling hull shader: " << hullShader;
 	File = hullShader;
 
 	// Compile shaders
-	if ( FAILED( CompileShaderFromFile( hullShader, "HSMain", "hs_5_0", &hsBlob ) ) ) {
+	if ( FAILED( CompileShaderFromFile( hullShader, "HSMain", "hs_5_0", hsBlob.GetAddressOf() ) ) ) {
 		return XR_FAILED;
 	}
 
-	if ( FAILED( CompileShaderFromFile( domainShader, "DSMain", "ds_5_0", &dsBlob ) ) ) {
+	if ( FAILED( CompileShaderFromFile( domainShader, "DSMain", "ds_5_0", dsBlob.GetAddressOf() ) ) ) {
 		return XR_FAILED;
 	}
 
@@ -98,13 +99,8 @@ XRESULT D3D11HDShader::LoadShader( const char* hullShader, const char* domainSha
 	LE( engine->GetDevice()->CreateHullShader( hsBlob->GetBufferPointer(), hsBlob->GetBufferSize(), nullptr, &HullShader ) );
 	LE( engine->GetDevice()->CreateDomainShader( dsBlob->GetBufferPointer(), dsBlob->GetBufferSize(), nullptr, &DomainShader ) );
 
-#ifndef PUBLIC_RELEASE
-	HullShader->SetPrivateData( WKPDID_D3DDebugObjectName, strlen( hullShader ), hullShader );
-	DomainShader->SetPrivateData( WKPDID_D3DDebugObjectName, strlen( domainShader ), domainShader );
-#endif
-
-	hsBlob->Release();
-	dsBlob->Release();
+	SetDebugName( HullShader, hullShader );
+	SetDebugName( DomainShader, domainShader );
 
 	return XR_SUCCESS;
 }

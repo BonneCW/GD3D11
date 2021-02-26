@@ -17,7 +17,7 @@ D3D11OcclusionQuerry::D3D11OcclusionQuerry() {
 
 D3D11OcclusionQuerry::~D3D11OcclusionQuerry() {
 	for ( size_t i = 0; i < Predicates.size(); i++ ) {
-		Predicates[i]->Release();
+		SAFE_RELEASE( Predicates[i] );
 	}
 }
 
@@ -26,16 +26,16 @@ unsigned int D3D11OcclusionQuerry::AddPredicationObject() {
 	D3D11GraphicsEngine* g = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
 
 	HRESULT hr;
-	ID3D11Predicate* p = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11Predicate> p;
 
 	// Create new predication-object
 	D3D11_QUERY_DESC qd;
 	qd.Query = D3D11_QUERY_OCCLUSION_PREDICATE;
 	qd.MiscFlags = 0;
-	LE( g->GetDevice()->CreatePredicate( &qd, &p ) );
+	LE( g->GetDevice()->CreatePredicate( &qd, p.GetAddressOf() ) );
 
 	// Add to the end of the list and return its ID
-	Predicates.push_back( p );
+	Predicates.push_back( p.Get() );
 	return Predicates.size() - 1;
 }
 
@@ -101,11 +101,11 @@ void D3D11OcclusionQuerry::DoOcclusionForBSP( BspInfo* root ) {
 			return;
 		}
 
-		ID3D11Predicate* p = Predicates[root->OcclusionInfo.QueryID];
+		Microsoft::WRL::ComPtr<ID3D11Predicate> p = Predicates[root->OcclusionInfo.QueryID];
 
 		// Check if there is data available from the last query
 		if ( root->OcclusionInfo.LastVisitedFrameID != 0 && // Always do the first query
-			S_OK != g->GetContext()->GetData( p, nullptr, 0, D3D11_ASYNC_GETDATA_DONOTFLUSH ) ) {
+			S_OK != g->GetContext()->GetData( p.Get(), nullptr, 0, D3D11_ASYNC_GETDATA_DONOTFLUSH ) ) {
 			c = DirectX::XMFLOAT4( 0, 0, 1, 1 );
 
 			// Query is in progress and still not done, wait for it...
@@ -118,7 +118,7 @@ void D3D11OcclusionQuerry::DoOcclusionForBSP( BspInfo* root ) {
 		} else {
 			// Query is done. Save the result!
 			UINT32 data;
-			g->GetContext()->GetData( p, &data, sizeof( UINT32 ), D3D11_ASYNC_GETDATA_DONOTFLUSH );
+			g->GetContext()->GetData( p.Get(), &data, sizeof( UINT32 ), D3D11_ASYNC_GETDATA_DONOTFLUSH );
 			root->OcclusionInfo.VisibleLastFrame = data > 0; // data contains visible pixels of the object
 
 			if ( data == 0 ) {
@@ -139,9 +139,9 @@ void D3D11OcclusionQuerry::DoOcclusionForBSP( BspInfo* root ) {
 			// Issue the new query
 			MeshInfo* mi = root->OcclusionInfo.NodeMesh;
 
-			g->GetContext()->Begin( p );
+			g->GetContext()->Begin( p.Get() );
 			g->DrawVertexBufferIndexed( mi->MeshVertexBuffer, mi->MeshIndexBuffer, mi->Indices.size() );
-			g->GetContext()->End( p );
+			g->GetContext()->End( p.Get() );
 		}
 
 		root->OcclusionInfo.LastVisitedFrameID = FrameID;
@@ -198,7 +198,7 @@ void D3D11OcclusionQuerry::CreateOcclusionNodeMeshFor( BspInfo* node ) {
 	{float3( bbmax.x, bbmax.y, bbmax.z ), n3, n2, n2, 0},	// back top right 6
 	{float3( bbmax.x, bbmax.y, bbmin.z ), n3, n2, n2, 0} };// front top right 7
 
-	VERTEX_INDEX idx [] = {
+	VERTEX_INDEX idx[] = {
 		// bottom
 		0, 1, 2,
 		0, 2, 3,

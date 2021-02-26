@@ -5,6 +5,7 @@
 #include "GothicAPI.h"
 #include "D3D11ConstantBuffer.h"
 #include <d3dcompiler.h>
+#include "D3D11_Helpers.h"
 
 using namespace DirectX;
 
@@ -13,15 +14,15 @@ D3D11VShader::D3D11VShader() {
 	InputLayout = nullptr;
 
 	// Insert into state-map
-	ID = D3D11ObjectIdManager::AddVShader(this);
+	ID = D3D11ObjectIdManager::AddVShader( this );
 }
 
 D3D11VShader::~D3D11VShader() {
 	// Remove from state map
 	D3D11ObjectIdManager::EraseVShader( this );
 
-	if ( VertexShader )VertexShader->Release();
-	if ( InputLayout )InputLayout->Release();
+	SAFE_RELEASE( VertexShader );
+	SAFE_RELEASE( InputLayout );
 
 	for ( unsigned int i = 0; i < ConstantBuffers.size(); i++ ) {
 		delete ConstantBuffers[i];
@@ -78,7 +79,7 @@ XRESULT D3D11VShader::LoadShader( const char* vertexShader, int layout, const st
 	HRESULT hr;
 	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
-	ID3DBlob* vsBlob;
+	Microsoft::WRL::ComPtr<ID3DBlob> vsBlob;
 
 	if ( Engine::GAPI->GetRendererState().RendererSettings.EnableDebugLog )
 		LogInfo() << "Compilling vertex shader: " << vertexShader;
@@ -86,7 +87,7 @@ XRESULT D3D11VShader::LoadShader( const char* vertexShader, int layout, const st
 
 
 	// Compile shader
-	if ( FAILED( CompileShaderFromFile( vertexShader, "VSMain", "vs_5_0", &vsBlob, makros ) ) ) {
+	if ( FAILED( CompileShaderFromFile( vertexShader, "VSMain", "vs_5_0", vsBlob.GetAddressOf(), makros ) ) ) {
 		return XR_FAILED;
 	}
 
@@ -94,12 +95,10 @@ XRESULT D3D11VShader::LoadShader( const char* vertexShader, int layout, const st
 	LE( engine->GetDevice()->CreateVertexShader( vsBlob->GetBufferPointer(),
 		vsBlob->GetBufferSize(), nullptr, &VertexShader ) );
 
-#ifndef PUBLIC_RELEASE
-	VertexShader->SetPrivateData( WKPDID_D3DDebugObjectName, strlen( vertexShader ), vertexShader );
-#endif
+	SetDebugName( VertexShader, vertexShader );
 
 
-	const D3D11_INPUT_ELEMENT_DESC layout1 [] =
+	const D3D11_INPUT_ELEMENT_DESC layout1[] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -108,14 +107,14 @@ XRESULT D3D11VShader::LoadShader( const char* vertexShader, int layout, const st
 		{ "DIFFUSE", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout2 [] =
+	const D3D11_INPUT_ELEMENT_DESC layout2[] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout3 [] =
+	const D3D11_INPUT_ELEMENT_DESC layout3[] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "POSITION", 1, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -128,7 +127,7 @@ XRESULT D3D11VShader::LoadShader( const char* vertexShader, int layout, const st
 		{ "WEIGHTS", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout4 [] =
+	const D3D11_INPUT_ELEMENT_DESC layout4[] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -143,19 +142,19 @@ XRESULT D3D11VShader::LoadShader( const char* vertexShader, int layout, const st
 		{ "INSTANCE_SCALE", 0, DXGI_FORMAT_R32G32_FLOAT, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout5 [] =
+	const D3D11_INPUT_ELEMENT_DESC layout5[] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout6 [] =
+	const D3D11_INPUT_ELEMENT_DESC layout6[] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "DIFFUSE", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout7 [] =
+	const D3D11_INPUT_ELEMENT_DESC layout7[] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "DIFFUSE", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -163,14 +162,14 @@ XRESULT D3D11VShader::LoadShader( const char* vertexShader, int layout, const st
 
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout8 [] =
+	const D3D11_INPUT_ELEMENT_DESC layout8[] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout9 [] =
+	const D3D11_INPUT_ELEMENT_DESC layout9[] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -181,7 +180,7 @@ XRESULT D3D11VShader::LoadShader( const char* vertexShader, int layout, const st
 		{ "INSTANCE_WORLD_MATRIX", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_INSTANCE_DATA, 1},
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout10 [] =
+	const D3D11_INPUT_ELEMENT_DESC layout10[] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -195,7 +194,7 @@ XRESULT D3D11VShader::LoadShader( const char* vertexShader, int layout, const st
 		{ "INSTANCE_COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout11 [] =
+	const D3D11_INPUT_ELEMENT_DESC layout11[] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "DIFFUSE", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -204,7 +203,7 @@ XRESULT D3D11VShader::LoadShader( const char* vertexShader, int layout, const st
 		{ "VELOCITY", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 
-	const D3D11_INPUT_ELEMENT_DESC layout12 [] =
+	const D3D11_INPUT_ELEMENT_DESC layout12[] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -275,8 +274,6 @@ XRESULT D3D11VShader::LoadShader( const char* vertexShader, int layout, const st
 			vsBlob->GetBufferSize(), &InputLayout ) );
 		break;
 	}
-
-	vsBlob->Release();
 
 	return XR_SUCCESS;
 }

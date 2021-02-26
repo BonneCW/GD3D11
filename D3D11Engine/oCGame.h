@@ -9,6 +9,7 @@
 #include "zCBspTree.h"
 
 class zCView;
+class _zCView;
 
 enum class GOTHIC_KEY : int {
 	F1 = 0x3B,
@@ -82,6 +83,16 @@ public:
 #endif
 	}
 
+	typedef enum oEGameDialogView {
+		GAME_VIEW_SCREEN,
+		GAME_VIEW_CONVERSATION,
+		GAME_VIEW_AMBIENT,
+		GAME_VIEW_CINEMA,
+		GAME_VIEW_CHOICE,
+		GAME_VIEW_NOISE,
+		GAME_VIEW_MAX
+	} oTGameDialogView;
+
 	int _vtbl;
 	int _zCSession_csMan;        //zCCSManager*
 	zCWorld* _zCSession_world;        //zCWorld*
@@ -89,6 +100,24 @@ public:
 	int _zCSession_aiCam;        //zCAICamera*
 	zCVob* _zCSession_camVob;       //zCVob *
 	zCView* _zCSession_viewport;     //zCView*
+
+	float cliprange;
+	float fogrange;
+	int inScriptStartup;
+	int inLoadSaveGame;
+	int inLevelChange;
+	zCView* array_view[GAME_VIEW_MAX];
+	int array_view_visible[GAME_VIEW_MAX];
+	int array_view_enabled[GAME_VIEW_MAX];
+	int savegameManager;
+	zCView* game_text;
+	zCView* load_screen;
+	zCView* save_screen;
+	zCView* pause_screen;
+	/*oCViewStatusBar*/ _zCView* hpBar;
+	/*oCViewStatusBar*/ _zCView* swimBar;
+	/*oCViewStatusBar*/ _zCView* manaBar;
+	/*oCViewStatusBar*/ _zCView* focusBar;
 
 	static oCGame* GetGame() { return *(oCGame**)GothicMemoryLocations::GlobalObjects::oCGame; };
 };

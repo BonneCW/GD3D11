@@ -12,6 +12,7 @@ class zCVob;
 struct SkeletalMeshVisualInfo;
 struct VobInfo;
 struct VobLightInfo;
+class zFont;
 
 struct DisplayModeInfo {
 	DWORD Height;
@@ -56,8 +57,8 @@ public:
 		UI_OpenEditor
 	};
 
-	BaseGraphicsEngine();
-	virtual ~BaseGraphicsEngine();
+	BaseGraphicsEngine() { };
+	virtual ~BaseGraphicsEngine() { };
 
 	/** Called after the fake-DDraw-Device got created */
 	virtual XRESULT Init() = 0;
@@ -199,9 +200,7 @@ public:
 	/** Draws particle effects */
 	virtual void DrawFrameParticles( std::map<zCTexture*, std::vector<ParticleInstanceInfo>>& particles, std::map<zCTexture*, ParticleRenderInfo>& info ) {}
 
-	virtual void DrawString( std::string str, float x, float y, float4 color, zTRnd_AlphaBlendFunc blendState );
+	virtual void DrawString( const std::string& str, float x, float y, const zFont* font, zColor& fontColor ) {};
 
-	virtual int MeasureString( const std::string& str, int font = 0 );
-
-	virtual void RenderStrings() PURE;
+	virtual XRESULT UpdateRenderStates() { return XR_SUCCESS; };
 };

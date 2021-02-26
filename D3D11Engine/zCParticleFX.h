@@ -16,6 +16,7 @@ enum EZParticleAlignment {
 class zSTRING;
 class zCPolyStrip;
 class zCMesh;
+
 struct zTParticle {
 	zTParticle* Next;
 
@@ -151,10 +152,10 @@ public:
 	}
 
 
-	/*zCVob * GetConntectedVob()
+	zCVob * GetConnectedVob()
 	{
 		return *(zCVob **)THISPTR_OFFSET(GothicMemoryLocations::zCParticleFX::Offset_ConnectedVob);
-	}*/
+	}
 
 	float GetTimeScale() {
 		return *(float*)THISPTR_OFFSET( GothicMemoryLocations::zCParticleFX::Offset_TimeScale );
@@ -206,27 +207,8 @@ public:
 		XCALL( GothicMemoryLocations::zCParticleFX::SetVisualUsedBy );
 	}
 
-
-#ifdef BUILD_GOTHIC_1_08k
-	/** Data for this class */
-	struct tData {
-		byte f0[52];
-		zTParticle* firstPart;
-		byte f38[28];
-		void* Emitters;
-		byte f58[24];
-		DWORD dword70;
-		byte f74[4];
-		byte byte78;
-		byte f79[3];
-		DWORD dword7C;
-		DWORD dword80;
-		byte f84[8];
-		float timeScale;
-		float localFrameTime;
-		DWORD dword94;
-	};
-	tData Data;
-#endif
+	int GetVisualDied() {
+		XCALL(GothicMemoryLocations::zCParticleFX::GetVisualDied);
+	}
 };
 

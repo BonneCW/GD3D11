@@ -24,8 +24,8 @@ public:
 	XRESULT Render( RenderToTextureBuffer* fxbuffer ) { return XR_SUCCESS; };
 
 private:
-	ID3D11ShaderResourceView* AreaTextureSRV;
-	ID3D11ShaderResourceView* SearchTextureSRV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> AreaTextureSRV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> SearchTextureSRV;
 
 	RenderToTextureBuffer* EdgesTex;
 	RenderToTextureBuffer* BlendTex;

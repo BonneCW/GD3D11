@@ -116,7 +116,7 @@ private:
 	UINT NumVertices;
 
 	/** Vertex buffer */
-	ID3D11Buffer* PrimVB;
+	Microsoft::WRL::ComPtr <ID3D11Buffer> PrimVB;
 
 	/** Primitives shaders */
 	std::shared_ptr<D3D11PShader> PrimShader;
@@ -126,7 +126,7 @@ private:
 	/** Solid vertices we have */
 	LineVertex* SolidVertices;
 	UINT NumSolidVertices;
-	ID3D11Buffer* SolidPrimVB;
+	Microsoft::WRL::ComPtr <ID3D11Buffer> SolidPrimVB;
 
 	/** Transforms */
 	DirectX::XMFLOAT3 Location;

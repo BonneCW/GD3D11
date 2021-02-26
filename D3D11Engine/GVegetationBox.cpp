@@ -142,7 +142,7 @@ XRESULT GVegetationBox::InitVegetationBox( const DirectX::XMFLOAT3& min,
 		for ( int v = 0; v < 4; v++ ) {
 			if ( v == 4 ) {
 				// Check center too
-				DirectX::XMFLOAT3 tri [] = { *p[i]->getVertices()[0]->Position.toXMFLOAT3(),
+				DirectX::XMFLOAT3 tri[] = { *p[i]->getVertices()[0]->Position.toXMFLOAT3(),
 										*p[i]->getVertices()[1]->Position.toXMFLOAT3(),
 										*p[i]->getVertices()[2]->Position.toXMFLOAT3() };
 
@@ -174,7 +174,7 @@ XRESULT GVegetationBox::InitVegetationBox( const DirectX::XMFLOAT3& min,
 			}
 
 			if ( PositionInsideBox( *p[i]->getVertices()[v]->Position.toXMFLOAT3() ) ) {
-				DirectX::XMFLOAT3 tri [] = { *p[i]->getVertices()[0]->Position.toXMFLOAT3(),
+				DirectX::XMFLOAT3 tri[] = { *p[i]->getVertices()[0]->Position.toXMFLOAT3(),
 										*p[i]->getVertices()[1]->Position.toXMFLOAT3(),
 										*p[i]->getVertices()[2]->Position.toXMFLOAT3() };
 
@@ -224,7 +224,7 @@ void GVegetationBox::InitSpotsRandom( const std::vector<DirectX::XMFLOAT3>& tris
 	std::vector<DirectX::XMFLOAT3> spots;
 	for ( unsigned int i = 0; i < trisInside.size(); i += 3 ) {
 		for ( unsigned int d = 0; d < std::max( 1.0f, 30 * density ); d++ ) {
-			DirectX::XMFLOAT3 tri [] = { trisInside[i], trisInside[i + 1], trisInside[i + 2] };
+			DirectX::XMFLOAT3 tri[] = { trisInside[i], trisInside[i + 1], trisInside[i + 2] };
 
 
 			float b0 = Toolbox::frand();
@@ -512,7 +512,7 @@ void GVegetationBox::SaveToFILE( FILE* f, int version ) {
 		//XMVECTOR m0 = XMVectorSet(VegetationSpots[i]._11, VegetationSpots[i]._21, VegetationSpots[i]._31, 0);
 		XMVECTOR m1 = XMVectorSet( VegetationSpots[i]._12, VegetationSpots[i]._22, VegetationSpots[i]._32, 0 );
 		//XMVECTOR m2 = XMVectorSet(VegetationSpots[i]._13, VegetationSpots[i]._23, VegetationSpots[i]._33, 0);
-		DirectX::XMFLOAT4 spot = DirectX::XMFLOAT4( VegetationSpots[i]._14, VegetationSpots[i]._24, VegetationSpots[i]._34, XMVectorGetX( DirectX::XMVector3LengthEst( m1 ) ) ); //check if it works
+		DirectX::XMFLOAT4 spot = DirectX::XMFLOAT4( VegetationSpots[i]._14, VegetationSpots[i]._24, VegetationSpots[i]._34, XMVectorGetX( DirectX::XMVector3LengthEst( m1 ) ) );
 
 		spots.push_back( spot );
 	}

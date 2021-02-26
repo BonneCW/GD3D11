@@ -21,9 +21,9 @@ XRESULT D3D11PFX_DistanceBlur::Render( RenderToTextureBuffer* fxbuffer ) {
 	D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
 
 	// Save old rendertargets
-	ID3D11RenderTargetView* oldRTV = nullptr;
-	ID3D11DepthStencilView* oldDSV = nullptr;
-	engine->GetContext()->OMGetRenderTargets( 1, &oldRTV, &oldDSV );
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> oldRTV;
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> oldDSV;
+	engine->GetContext()->OMGetRenderTargets( 1, oldRTV.GetAddressOf(), oldDSV.GetAddressOf() );
 
 	engine->GetShaderManager().GetVShader( "VS_PFX" )->Apply();
 	auto ps = engine->GetShaderManager().GetPShader( "PS_PFX_DistanceBlur" );
@@ -35,7 +35,7 @@ XRESULT D3D11PFX_DistanceBlur::Render( RenderToTextureBuffer* fxbuffer ) {
 	engine->GetContext()->ClearRenderTargetView( FxRenderer->GetTempBuffer().GetRenderTargetView().Get(), (float*)&float4( 0, 0, 0, 0 ) );
 	FxRenderer->CopyTextureToRTV( engine->GetGBuffer0().GetShaderResView().Get(), FxRenderer->GetTempBuffer().GetRenderTargetView().Get(), Engine::GraphicsEngine->GetResolution() );
 
-	engine->GetContext()->OMSetRenderTargets( 1, &oldRTV, nullptr );
+	engine->GetContext()->OMSetRenderTargets( 1, oldRTV.GetAddressOf(), nullptr );
 
 	// Bind textures
 	FxRenderer->GetTempBuffer().BindToPixelShader( engine->GetContext(), 0 );
@@ -47,9 +47,7 @@ XRESULT D3D11PFX_DistanceBlur::Render( RenderToTextureBuffer* fxbuffer ) {
 	FxRenderer->DrawFullScreenQuad();
 
 	// Restore rendertargets
-	engine->GetContext()->OMSetRenderTargets( 1, &oldRTV, oldDSV );
-	if ( oldRTV )oldRTV->Release();
-	if ( oldDSV )oldDSV->Release();
+	engine->GetContext()->OMSetRenderTargets( 1, oldRTV.GetAddressOf(), oldDSV.Get() );
 
 	return XR_SUCCESS;
 }

@@ -30,7 +30,7 @@ void radix008A(CSFFT512x512_Plan* fft_plan,
 {
     // Setup execution configuration
 	UINT grid = thread_count / COHERENCY_GRANULARITY;
-	ID3D11DeviceContext* pd3dImmediateContext = fft_plan->pd3dImmediateContext;
+	Microsoft::WRL::ComPtr<ID3D11DeviceContext> pd3dImmediateContext = fft_plan->pd3dImmediateContext.Get();
 
 	// Buffers
 	ID3D11ShaderResourceView * cs_srvs[1] = {pSRV_Src};
@@ -41,9 +41,9 @@ void radix008A(CSFFT512x512_Plan* fft_plan,
 
 	// Shader
 	if (istride > 1)
-		pd3dImmediateContext->CSSetShader(fft_plan->pRadix008A_CS, nullptr, 0);
+		pd3dImmediateContext->CSSetShader(fft_plan->pRadix008A_CS.Get(), nullptr, 0);
 	else
-		pd3dImmediateContext->CSSetShader(fft_plan->pRadix008A_CS2, nullptr, 0);
+		pd3dImmediateContext->CSSetShader(fft_plan->pRadix008A_CS2.Get(), nullptr, 0);
 
 	// Execute
 	pd3dImmediateContext->Dispatch(grid, 1, 1);
@@ -62,40 +62,40 @@ void fft_512x512_c2c(CSFFT512x512_Plan* fft_plan,
 					 ID3D11ShaderResourceView * pSRV_Src)
 {
 	const UINT thread_count = fft_plan->slices * (512 * 512) / 8;
-	ID3D11UnorderedAccessView* pUAV_Tmp = fft_plan->pUAV_Tmp;
-	ID3D11ShaderResourceView * pSRV_Tmp = fft_plan->pSRV_Tmp;
-	ID3D11DeviceContext* pd3dContext = fft_plan->pd3dImmediateContext;
-	ID3D11Buffer* cs_cbs[1];
+	Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> pUAV_Tmp = fft_plan->pUAV_Tmp.Get();
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> pSRV_Tmp = fft_plan->pSRV_Tmp.Get();
+	Microsoft::WRL::ComPtr<ID3D11DeviceContext> pd3dContext = fft_plan->pd3dImmediateContext.Get();
+	Microsoft::WRL::ComPtr<ID3D11Buffer> cs_cbs[1];
 
 	UINT istride = 512 * 512 / 8;
-	cs_cbs[0] = fft_plan->pRadix008A_CB[0];
-	pd3dContext->CSSetConstantBuffers(0, 1, &cs_cbs[0]);
-	radix008A(fft_plan, pUAV_Tmp, pSRV_Src, thread_count, istride);
+	cs_cbs[0] = fft_plan->pRadix008A_CB[0].Get();
+	pd3dContext->CSSetConstantBuffers(0, 1, cs_cbs[0].GetAddressOf());
+	radix008A(fft_plan, pUAV_Tmp.Get(), pSRV_Src, thread_count, istride);
 
 	istride /= 8;
-	cs_cbs[0] = fft_plan->pRadix008A_CB[1];
-	pd3dContext->CSSetConstantBuffers(0, 1, &cs_cbs[0]);
-	radix008A(fft_plan, pUAV_Dst, pSRV_Tmp, thread_count, istride);
+	cs_cbs[0] = fft_plan->pRadix008A_CB[1].Get();
+	pd3dContext->CSSetConstantBuffers(0, 1, cs_cbs[0].GetAddressOf());
+	radix008A(fft_plan, pUAV_Dst, pSRV_Tmp.Get(), thread_count, istride);
 
 	istride /= 8;
-	cs_cbs[0] = fft_plan->pRadix008A_CB[2];
-	pd3dContext->CSSetConstantBuffers(0, 1, &cs_cbs[0]);
-	radix008A(fft_plan, pUAV_Tmp, pSRV_Dst, thread_count, istride);
+	cs_cbs[0] = fft_plan->pRadix008A_CB[2].Get();
+	pd3dContext->CSSetConstantBuffers(0, 1, cs_cbs[0].GetAddressOf());
+	radix008A(fft_plan, pUAV_Tmp.Get(), pSRV_Dst, thread_count, istride);
 
 	istride /= 8;
-	cs_cbs[0] = fft_plan->pRadix008A_CB[3];
-	pd3dContext->CSSetConstantBuffers(0, 1, &cs_cbs[0]);
-	radix008A(fft_plan, pUAV_Dst, pSRV_Tmp, thread_count, istride);
+	cs_cbs[0] = fft_plan->pRadix008A_CB[3].Get();
+	pd3dContext->CSSetConstantBuffers(0, 1, cs_cbs[0].GetAddressOf());
+	radix008A(fft_plan, pUAV_Dst, pSRV_Tmp.Get(), thread_count, istride);
 
 	istride /= 8;
-	cs_cbs[0] = fft_plan->pRadix008A_CB[4];
-	pd3dContext->CSSetConstantBuffers(0, 1, &cs_cbs[0]);
-	radix008A(fft_plan, pUAV_Tmp, pSRV_Dst, thread_count, istride);
+	cs_cbs[0] = fft_plan->pRadix008A_CB[4].Get();
+	pd3dContext->CSSetConstantBuffers(0, 1, cs_cbs[0].GetAddressOf());
+	radix008A(fft_plan, pUAV_Tmp.Get(), pSRV_Dst, thread_count, istride);
 
 	istride /= 8;
-	cs_cbs[0] = fft_plan->pRadix008A_CB[5];
-	pd3dContext->CSSetConstantBuffers(0, 1, &cs_cbs[0]);
-	radix008A(fft_plan, pUAV_Dst, pSRV_Tmp, thread_count, istride);
+	cs_cbs[0] = fft_plan->pRadix008A_CB[5].Get();
+	pd3dContext->CSSetConstantBuffers(0, 1, cs_cbs[0].GetAddressOf());
+	radix008A(fft_plan, pUAV_Dst, pSRV_Tmp.Get(), thread_count, istride);
 }
 
 void create_cbuffers_512x512(CSFFT512x512_Plan* plan, ID3D11Device* pd3dDevice, UINT slices)
@@ -132,8 +132,8 @@ void create_cbuffers_512x512(CSFFT512x512_Plan* plan, ID3D11Device* pd3dDevice, 
 	CB_Structure cb_data_buf0 = {thread_count, ostride, istride, 512, (float)phase_base};
 	cb_data.pSysMem = &cb_data_buf0;
 
-	pd3dDevice->CreateBuffer(&cb_desc, &cb_data, &plan->pRadix008A_CB[0]);
-	assert(plan->pRadix008A_CB[0]);
+	pd3dDevice->CreateBuffer(&cb_desc, &cb_data, plan->pRadix008A_CB[0].GetAddressOf());
+	assert(plan->pRadix008A_CB[0].Get());
 
 	// Buffer 1
 	istride /= 8;
@@ -142,8 +142,8 @@ void create_cbuffers_512x512(CSFFT512x512_Plan* plan, ID3D11Device* pd3dDevice, 
 	CB_Structure cb_data_buf1 = {thread_count, ostride, istride, 512, (float)phase_base};
 	cb_data.pSysMem = &cb_data_buf1;
 
-	pd3dDevice->CreateBuffer(&cb_desc, &cb_data, &plan->pRadix008A_CB[1]);
-	assert(plan->pRadix008A_CB[1]);
+	pd3dDevice->CreateBuffer(&cb_desc, &cb_data, plan->pRadix008A_CB[1].GetAddressOf());
+	assert(plan->pRadix008A_CB[1].Get());
 
 	// Buffer 2
 	istride /= 8;
@@ -152,8 +152,8 @@ void create_cbuffers_512x512(CSFFT512x512_Plan* plan, ID3D11Device* pd3dDevice, 
 	CB_Structure cb_data_buf2 = {thread_count, ostride, istride, 512, (float)phase_base};
 	cb_data.pSysMem = &cb_data_buf2;
 
-	pd3dDevice->CreateBuffer(&cb_desc, &cb_data, &plan->pRadix008A_CB[2]);
-	assert(plan->pRadix008A_CB[2]);
+	pd3dDevice->CreateBuffer(&cb_desc, &cb_data, plan->pRadix008A_CB[2].GetAddressOf());
+	assert(plan->pRadix008A_CB[2].Get());
 
 	// Buffer 3
 	istride /= 8;
@@ -163,8 +163,8 @@ void create_cbuffers_512x512(CSFFT512x512_Plan* plan, ID3D11Device* pd3dDevice, 
 	CB_Structure cb_data_buf3 = {thread_count, ostride, istride, 1, (float)phase_base};
 	cb_data.pSysMem = &cb_data_buf3;
 
-	pd3dDevice->CreateBuffer(&cb_desc, &cb_data, &plan->pRadix008A_CB[3]);
-	assert(plan->pRadix008A_CB[3]);
+	pd3dDevice->CreateBuffer(&cb_desc, &cb_data, plan->pRadix008A_CB[3].GetAddressOf());
+	assert(plan->pRadix008A_CB[3].Get());
 
 	// Buffer 4
 	istride /= 8;
@@ -173,8 +173,8 @@ void create_cbuffers_512x512(CSFFT512x512_Plan* plan, ID3D11Device* pd3dDevice, 
 	CB_Structure cb_data_buf4 = {thread_count, ostride, istride, 1, (float)phase_base};
 	cb_data.pSysMem = &cb_data_buf4;
 
-	pd3dDevice->CreateBuffer(&cb_desc, &cb_data, &plan->pRadix008A_CB[4]);
-	assert(plan->pRadix008A_CB[4]);
+	pd3dDevice->CreateBuffer(&cb_desc, &cb_data, plan->pRadix008A_CB[4].GetAddressOf());
+	assert(plan->pRadix008A_CB[4].Get());
 
 	// Buffer 5
 	istride /= 8;
@@ -183,8 +183,8 @@ void create_cbuffers_512x512(CSFFT512x512_Plan* plan, ID3D11Device* pd3dDevice, 
 	CB_Structure cb_data_buf5 = {thread_count, ostride, istride, 1, (float)phase_base};
 	cb_data.pSysMem = &cb_data_buf5;
 
-	pd3dDevice->CreateBuffer(&cb_desc, &cb_data, &plan->pRadix008A_CB[5]);
-	assert(plan->pRadix008A_CB[5]);
+	pd3dDevice->CreateBuffer(&cb_desc, &cb_data, plan->pRadix008A_CB[5].GetAddressOf());
+	assert(plan->pRadix008A_CB[5].Get());
 }
 
 void fft512x512_create_plan(CSFFT512x512_Plan* plan, ID3D11Device* pd3dDevice, UINT slices)
@@ -192,26 +192,23 @@ void fft512x512_create_plan(CSFFT512x512_Plan* plan, ID3D11Device* pd3dDevice, U
 	plan->slices = slices;
 
 	// Context
-	pd3dDevice->GetImmediateContext(&plan->pd3dImmediateContext);
-	assert(plan->pd3dImmediateContext);
+	pd3dDevice->GetImmediateContext(plan->pd3dImmediateContext.GetAddressOf());
+	assert(plan->pd3dImmediateContext.Get());
 
 	// Compute shaders
-    ID3DBlob* pBlobCS = nullptr;
-    ID3DBlob* pBlobCS2 = nullptr;
+	Microsoft::WRL::ComPtr <ID3DBlob> pBlobCS;
+	Microsoft::WRL::ComPtr <ID3DBlob> pBlobCS2;
 
-    CompileShaderFromFile(L"CSFFT\\fft_512x512_c2c.hlsl", "Radix008A_CS", "cs_5_0", &pBlobCS);
-    CompileShaderFromFile(L"CSFFT\\fft_512x512_c2c.hlsl", "Radix008A_CS2", "cs_5_0", &pBlobCS2);
-	assert(pBlobCS);
-	assert(pBlobCS2);
+    CompileShaderFromFile(L"CSFFT\\fft_512x512_c2c.hlsl", "Radix008A_CS", "cs_5_0", pBlobCS.GetAddressOf());
+    CompileShaderFromFile(L"CSFFT\\fft_512x512_c2c.hlsl", "Radix008A_CS2", "cs_5_0", pBlobCS2.GetAddressOf());
+	assert(pBlobCS.Get());
+	assert(pBlobCS2.Get());
 
-    pd3dDevice->CreateComputeShader(pBlobCS->GetBufferPointer(), pBlobCS->GetBufferSize(), nullptr, &plan->pRadix008A_CS);
-    pd3dDevice->CreateComputeShader(pBlobCS2->GetBufferPointer(), pBlobCS2->GetBufferSize(), nullptr, &plan->pRadix008A_CS2);
-	assert(plan->pRadix008A_CS);
-	assert(plan->pRadix008A_CS2);
+    pd3dDevice->CreateComputeShader(pBlobCS->GetBufferPointer(), pBlobCS->GetBufferSize(), nullptr, plan->pRadix008A_CS.GetAddressOf());
+    pd3dDevice->CreateComputeShader(pBlobCS2->GetBufferPointer(), pBlobCS2->GetBufferSize(), nullptr, plan->pRadix008A_CS2.GetAddressOf());
+	assert(plan->pRadix008A_CS.Get());
+	assert(plan->pRadix008A_CS2.Get());
     
-    SAFE_RELEASE(pBlobCS);
-    SAFE_RELEASE(pBlobCS2);
-
 	// Constants
 	// Create 6 cbuffers for 512x512 transform
 	create_cbuffers_512x512(plan, pd3dDevice, slices);
@@ -225,8 +222,8 @@ void fft512x512_create_plan(CSFFT512x512_Plan* plan, ID3D11Device* pd3dDevice, U
     buf_desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
     buf_desc.StructureByteStride = sizeof(float) * 2;
 
-	pd3dDevice->CreateBuffer(&buf_desc, nullptr, &plan->pBuffer_Tmp);
-	assert(plan->pBuffer_Tmp);
+	pd3dDevice->CreateBuffer(&buf_desc, nullptr, plan->pBuffer_Tmp.GetAddressOf());
+	assert(plan->pBuffer_Tmp.Get());
 
 	// Temp undordered access view
 	D3D11_UNORDERED_ACCESS_VIEW_DESC uav_desc;
@@ -236,8 +233,8 @@ void fft512x512_create_plan(CSFFT512x512_Plan* plan, ID3D11Device* pd3dDevice, U
 	uav_desc.Buffer.NumElements = (512 * slices) * 512;
 	uav_desc.Buffer.Flags = 0;
 
-	pd3dDevice->CreateUnorderedAccessView(plan->pBuffer_Tmp, &uav_desc, &plan->pUAV_Tmp);
-	assert(plan->pUAV_Tmp);
+	pd3dDevice->CreateUnorderedAccessView(plan->pBuffer_Tmp.Get(), &uav_desc, plan->pUAV_Tmp.GetAddressOf());
+	assert(plan->pUAV_Tmp.Get());
 
 	// Temp shader resource view
 	D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc;
@@ -246,19 +243,10 @@ void fft512x512_create_plan(CSFFT512x512_Plan* plan, ID3D11Device* pd3dDevice, U
 	srv_desc.Buffer.FirstElement = 0;
 	srv_desc.Buffer.NumElements = (512 * slices) * 512;
 
-	pd3dDevice->CreateShaderResourceView(plan->pBuffer_Tmp, &srv_desc, &plan->pSRV_Tmp);
-	assert(plan->pSRV_Tmp);
+	pd3dDevice->CreateShaderResourceView(plan->pBuffer_Tmp.Get(), &srv_desc, plan->pSRV_Tmp.GetAddressOf());
+	assert(plan->pSRV_Tmp.Get());
 }
 
 void fft512x512_destroy_plan(CSFFT512x512_Plan* plan)
 {
-	SAFE_RELEASE(plan->pSRV_Tmp);
-	SAFE_RELEASE(plan->pUAV_Tmp);
-	SAFE_RELEASE(plan->pBuffer_Tmp);
-	SAFE_RELEASE(plan->pRadix008A_CS);
-	SAFE_RELEASE(plan->pRadix008A_CS2);
-	SAFE_RELEASE(plan->pd3dImmediateContext);
-
-	for (int i = 0; i < 6; i++)
-		SAFE_RELEASE(plan->pRadix008A_CB[i]);
 }

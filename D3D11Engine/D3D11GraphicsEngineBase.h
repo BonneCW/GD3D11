@@ -132,19 +132,19 @@ public:
 	~D3D11GraphicsEngineBase();
 
 	/** Called after the fake-DDraw-Device got created */
-	virtual XRESULT Init();
+	virtual XRESULT Init() PURE;
 
 	/** Called when the game created its window */
 	virtual XRESULT SetWindow( HWND hWnd );
 
 	/** Called on window resize/resolution change */
-	virtual XRESULT OnResize( INT2 newSize );
+	virtual XRESULT OnResize( INT2 newSize ) PURE;
 
 	/** Called when the game wants to render a new frame */
-	virtual XRESULT OnBeginFrame();
+	virtual XRESULT OnBeginFrame() PURE;
 
 	/** Called when the game ended it's frame */
-	virtual XRESULT OnEndFrame();
+	virtual XRESULT OnEndFrame() PURE;
 
 	/** Called to set the current viewport */
 	virtual XRESULT SetViewport( const ViewportInfo& viewportInfo );
@@ -165,7 +165,7 @@ public:
 	virtual XRESULT CreateShadowedPointLight( BaseShadowedPointLight** outPL, VobLightInfo* lightInfo, bool dynamic = false );
 
 	/** Returns a list of available display modes */
-	virtual XRESULT GetDisplayModeList( std::vector<DisplayModeInfo>* modeList, bool includeSuperSampling = false );
+	virtual XRESULT GetDisplayModeList( std::vector<DisplayModeInfo>* modeList, bool includeSuperSampling = false ) PURE;
 
 	/** Presents the current frame to the screen */
 	virtual XRESULT Present();
@@ -197,7 +197,7 @@ public:
 	/** Returns the Device/Context */
 	const Microsoft::WRL::ComPtr<ID3D11Device>& GetDevice() { return Device; }
 	const Microsoft::WRL::ComPtr<ID3D11DeviceContext>& GetContext() { return Context; }
-	const Microsoft::WRL::ComPtr<ID3D11DeviceContext>& GetDeferredMediaContext() { return DeferredContext; }
+	const Microsoft::WRL::ComPtr<ID3D11DeviceContext>& GetDeferredMediaContext1() { return DeferredContext; }
 
 	/** Returns the current resolution */
 	virtual INT2 GetResolution() { return Resolution; }
@@ -231,10 +231,12 @@ protected:
 	void UpdateTransformsCB();
 
 	/** Device-objects */
-	Microsoft::WRL::ComPtr<IDXGIFactory2> DXGIFactory2;
-	Microsoft::WRL::ComPtr<IDXGIAdapter1> DXGIAdapter1;
+	Microsoft::WRL::ComPtr<IDXGIFactory> DXGIFactory;
+	Microsoft::WRL::ComPtr<IDXGIAdapter> DXGIAdapter;
 	std::string DeviceDescription;
 
+	Microsoft::WRL::ComPtr<ID3D11Device> Device11;
+	Microsoft::WRL::ComPtr<ID3D11DeviceContext> Context11;
 	Microsoft::WRL::ComPtr<ID3D11Device> Device;
 	Microsoft::WRL::ComPtr<ID3D11DeviceContext> Context;
 	Microsoft::WRL::ComPtr<ID3D11DeviceContext> DeferredContext;
@@ -246,7 +248,7 @@ protected:
 	std::mutex DeferredContextsByThreadMutex;
 
 	/** Swapchain and resources */
-	Microsoft::WRL::ComPtr<IDXGISwapChain1> SwapChain;
+	Microsoft::WRL::ComPtr<IDXGISwapChain> SwapChain;
 	std::unique_ptr<RenderToTextureBuffer> Backbuffer;
 	std::unique_ptr<RenderToDepthStencilBuffer> DepthStencilBuffer;
 	std::unique_ptr<RenderToTextureBuffer> HDRBackBuffer;

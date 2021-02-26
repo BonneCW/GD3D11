@@ -2,9 +2,6 @@
 
 #include "D3D11GraphicsEngineBase.h"
 #include "fpslimiter.h"
-#include <SpriteFont.h>
-#include <SpriteBatch.h>
-#include <CommonStates.h>
 
 struct RenderToDepthStencilBuffer;
 
@@ -19,19 +16,9 @@ enum D3D11ENGINE_RENDER_STAGE {
 	DES_SHADOWMAP_CUBE
 };
 
-
-struct simpleTextBuffer {
-	std::string str;
-	float x;
-	float y;
-	float4 color;
-	uint8_t fontSize;
-	zTRnd_AlphaBlendFunc blendState;
-};
-
-const int DRAWVERTEXARRAY_BUFFER_SIZE = 2048 * sizeof( ExVertexStruct );
+const unsigned int DRAWVERTEXARRAY_BUFFER_SIZE = 4096 * sizeof( ExVertexStruct );
 const int NUM_MAX_BONES = 96;
-const int INSTANCING_BUFFER_SIZE = sizeof( VobInstanceInfo ) * 2048;
+const int unsigned INSTANCING_BUFFER_SIZE = sizeof( VobInstanceInfo ) * 2048;
 
 const int POINTLIGHT_SHADOWMAP_SIZE = 64;
 
@@ -96,7 +83,7 @@ public:
 	/** Saves a screenshot */
 	virtual void SaveScreenshot() override;
 
-	virtual void DrawString( std::string str, float x, float y, float4 color, zTRnd_AlphaBlendFunc blendState ) override;
+	virtual void DrawString( const std::string& str, float x, float y, const zFont* font, zColor& fontColor ) override;
 
 	//virtual int MeasureString(std::string str, zFont* zFont) override;
 
@@ -112,9 +99,6 @@ public:
 
 	/** Binds viewport information to the given constantbuffer slot */
 	virtual XRESULT BindViewportInformation( const std::string& shader, int slot ) override;
-
-	virtual int MeasureString( const std::string& str, int font = 0 ) override;
-
 
 	/** Sets up a draw call for a VS_Ex-Mesh */
 	void SetupVS_ExMeshDrawCall();
@@ -261,7 +245,7 @@ public:
 	void UpdateOcclusion();
 
 	/** Recreates the renderstates */
-	XRESULT UpdateRenderStates();
+	XRESULT UpdateRenderStates() override;
 
 	/** Returns the textures drawn this frame */
 	const std::set<zCTexture*>& GetFrameTextures() override { return FrameTextures; }
@@ -310,10 +294,11 @@ public:
 
 	/** Creates the main UI-View */
 	void CreateMainUIView();
-	void RenderStrings() override;
 
 	/** Returns a dummy cube-rendertarget used for pointlight shadowmaps */
 	RenderToTextureBuffer* GetDummyCubeRT() { return DummyShadowCubemapTexture.get(); }
+
+	void EnsureTempVertexBufferSize( UINT size );
 protected:
 	std::unique_ptr<FpsLimiter> m_FrameLimiter;
 	int m_LastFrameLimit;
@@ -402,12 +387,6 @@ protected:
 
 	/** If true, we will save a screenshot after the next frame */
 	bool SaveScreenshotNextFrame;
-
-	std::unique_ptr<DirectX::SpriteFont> m_font;
-	std::unique_ptr<DirectX::SpriteBatch> m_spriteBatch;
-	std::unique_ptr<DirectX::CommonStates> states;
-
-	std::vector<simpleTextBuffer> textToDraw;
 
 	bool m_flipWithTearing;
 	bool m_swapchainflip;

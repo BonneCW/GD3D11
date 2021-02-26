@@ -99,12 +99,15 @@ struct zColor {
 		} bgra;
 		DWORD dword;
 	};
-	zColor() {}
+	zColor() { dword = 0xFFFFFFFF; }
 	zColor( uint8_t b, uint8_t g, uint8_t r, uint8_t a = 255 ) {
 		bgra.b = b;
 		bgra.g = g;
 		bgra.r = r;
 		bgra.alpha = a;
+	}
+	zColor( DWORD dword ) {
+		this->dword = dword;
 	}
 	bool IsWhite() {
 		return dword == 4294967295;
@@ -124,7 +127,10 @@ struct zTRndSimpleVertex {
 
 struct zVEC2 {
 public:
-	float v[2];
+	union {
+		float2 pos;
+		float v[2];
+	};
 };
 
 template <class T>

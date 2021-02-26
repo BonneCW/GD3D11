@@ -152,7 +152,7 @@ OceanSimulator::OceanSimulator(OceanParameter& params, ID3D11Device* pd3dDevice)
 	// If the device becomes invalid at some point, delete current instance and generate a new one.
 	m_pd3dDevice = pd3dDevice;
 	assert(m_pd3dDevice);
-	m_pd3dDevice->GetImmediateContext(&m_pd3dImmediateContext);
+	m_pd3dDevice->CreateDeferredContext(0, &m_pd3dImmediateContext); //was previously GetImmediateContext1
 	assert(m_pd3dImmediateContext);
 
 	// Height map H(0)
@@ -175,29 +175,29 @@ OceanSimulator::OceanSimulator(OceanParameter& params, ID3D11Device* pd3dDevice)
 	// RW buffer allocations
 	// H0
 	UINT float2_stride = 2 * sizeof(float);
-	createBufferAndUAV(m_pd3dDevice, h0_data, input_full_size * float2_stride, float2_stride, &m_pBuffer_Float2_H0, &m_pUAV_H0, &m_pSRV_H0);
+	createBufferAndUAV(m_pd3dDevice, h0_data, input_full_size * float2_stride, float2_stride, m_pBuffer_Float2_H0.GetAddressOf(), m_pUAV_H0.GetAddressOf(), m_pSRV_H0.GetAddressOf());
 
 	// Notice: The following 3 buffers should be half sized buffer because of conjugate symmetric input. But
 	// we use full sized buffers due to the CS4.0 restriction.
 
 	// Put H(t), Dx(t) and Dy(t) into one buffer because CS4.0 allows only 1 UAV at a time
-	createBufferAndUAV(m_pd3dDevice, zero_data, 3 * input_half_size * float2_stride, float2_stride, &m_pBuffer_Float2_Ht, &m_pUAV_Ht, &m_pSRV_Ht);
+	createBufferAndUAV(m_pd3dDevice, zero_data, 3 * input_half_size * float2_stride, float2_stride, m_pBuffer_Float2_Ht.GetAddressOf(), m_pUAV_Ht.GetAddressOf(), m_pSRV_Ht.GetAddressOf());
 
 	// omega
-	createBufferAndUAV(m_pd3dDevice, omega_data, input_full_size * sizeof(float), sizeof(float), &m_pBuffer_Float_Omega, &m_pUAV_Omega, &m_pSRV_Omega);
+	createBufferAndUAV(m_pd3dDevice, omega_data, input_full_size * sizeof(float), sizeof(float), m_pBuffer_Float_Omega.GetAddressOf(), m_pUAV_Omega.GetAddressOf(), m_pSRV_Omega.GetAddressOf());
 
 	// Notice: The following 3 should be real number data. But here we use the complex numbers and C2C FFT
 	// due to the CS4.0 restriction.
 	// Put Dz, Dx and Dy into one buffer because CS4.0 allows only 1 UAV at a time
-	createBufferAndUAV(m_pd3dDevice, zero_data, 3 * output_size * float2_stride, float2_stride, &m_pBuffer_Float_Dxyz, &m_pUAV_Dxyz, &m_pSRV_Dxyz);
+	createBufferAndUAV(m_pd3dDevice, zero_data, 3 * output_size * float2_stride, float2_stride, m_pBuffer_Float_Dxyz.GetAddressOf(), m_pUAV_Dxyz.GetAddressOf(), m_pSRV_Dxyz.GetAddressOf());
 
 	SAFE_DELETE_ARRAY(zero_data);
 	SAFE_DELETE_ARRAY(h0_data);
 	SAFE_DELETE_ARRAY(omega_data);
 
 	// D3D11 Textures
-	createTextureAndViews(m_pd3dDevice, hmap_dim, hmap_dim, DXGI_FORMAT_R32G32B32A32_FLOAT, &m_pDisplacementMap, &m_pDisplacementSRV, &m_pDisplacementRTV);
-	createTextureAndViews(m_pd3dDevice, hmap_dim, hmap_dim, DXGI_FORMAT_R16G16B16A16_FLOAT, &m_pGradientMap, &m_pGradientSRV, &m_pGradientRTV);
+	createTextureAndViews(m_pd3dDevice, hmap_dim, hmap_dim, DXGI_FORMAT_R32G32B32A32_FLOAT, m_pDisplacementMap.GetAddressOf(), m_pDisplacementSRV.GetAddressOf(), m_pDisplacementRTV.GetAddressOf());
+	createTextureAndViews(m_pd3dDevice, hmap_dim, hmap_dim, DXGI_FORMAT_R16G16B16A16_FLOAT, m_pGradientMap.GetAddressOf(), m_pGradientSRV.GetAddressOf(), m_pGradientRTV.GetAddressOf());
 
 	// Samplers
 	D3D11_SAMPLER_DESC sam_desc = {};
@@ -214,28 +214,26 @@ OceanSimulator::OceanSimulator(OceanParameter& params, ID3D11Device* pd3dDevice)
 	sam_desc.BorderColor[3] = 1.0f;
 	sam_desc.MinLOD = -FLT_MAX;
 	sam_desc.MaxLOD = FLT_MAX;
-	m_pd3dDevice->CreateSamplerState(&sam_desc, &m_pPointSamplerState);
-	assert(m_pPointSamplerState);
+	m_pd3dDevice->CreateSamplerState(&sam_desc, m_pPointSamplerState.GetAddressOf());
+	assert(m_pPointSamplerState.Get());
 
 	// Compute shaders
-    ID3DBlob* pBlobUpdateSpectrumCS = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> pBlobUpdateSpectrumCS;
 
-    CompileShaderFromFile(L"ocean_simulator_cs.hlsl", "UpdateSpectrumCS", "cs_5_0", &pBlobUpdateSpectrumCS);
+    CompileShaderFromFile(L"ocean_simulator_cs.hlsl", "UpdateSpectrumCS", "cs_5_0", pBlobUpdateSpectrumCS.GetAddressOf());
 	assert(pBlobUpdateSpectrumCS);
 
     m_pd3dDevice->CreateComputeShader(pBlobUpdateSpectrumCS->GetBufferPointer(), pBlobUpdateSpectrumCS->GetBufferSize(), nullptr, &m_pUpdateSpectrumCS);
 	assert(m_pUpdateSpectrumCS);
-    
-    SAFE_RELEASE(pBlobUpdateSpectrumCS);
 
 	// Vertex & pixel shaders
-    ID3DBlob* pBlobQuadVS = nullptr;
-    ID3DBlob* pBlobUpdateDisplacementPS = nullptr;
-    ID3DBlob* pBlobGenGradientFoldingPS = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> pBlobQuadVS;
+	Microsoft::WRL::ComPtr<ID3DBlob> pBlobUpdateDisplacementPS;
+	Microsoft::WRL::ComPtr<ID3DBlob> pBlobGenGradientFoldingPS;
 
-    CompileShaderFromFile(L"ocean_simulator_vs_ps.hlsl", "QuadVS", "vs_5_0", &pBlobQuadVS);
-    CompileShaderFromFile(L"ocean_simulator_vs_ps.hlsl", "UpdateDisplacementPS", "ps_5_0", &pBlobUpdateDisplacementPS);
-    CompileShaderFromFile(L"ocean_simulator_vs_ps.hlsl", "GenGradientFoldingPS", "ps_5_0", &pBlobGenGradientFoldingPS);
+    CompileShaderFromFile(L"ocean_simulator_vs_ps.hlsl", "QuadVS", "vs_5_0", pBlobQuadVS.GetAddressOf());
+    CompileShaderFromFile(L"ocean_simulator_vs_ps.hlsl", "UpdateDisplacementPS", "ps_5_0", pBlobUpdateDisplacementPS.GetAddressOf());
+    CompileShaderFromFile(L"ocean_simulator_vs_ps.hlsl", "GenGradientFoldingPS", "ps_5_0", pBlobGenGradientFoldingPS.GetAddressOf());
 	assert(pBlobQuadVS);
 	assert(pBlobUpdateDisplacementPS);
 	assert(pBlobGenGradientFoldingPS);
@@ -246,8 +244,6 @@ OceanSimulator::OceanSimulator(OceanParameter& params, ID3D11Device* pd3dDevice)
 	assert(m_pQuadVS);
 	assert(m_pUpdateDisplacementPS);
 	assert(m_pGenGradientFoldingPS);
-	SAFE_RELEASE(pBlobUpdateDisplacementPS);
-	SAFE_RELEASE(pBlobGenGradientFoldingPS);
 
 	// Input layout
 	D3D11_INPUT_ELEMENT_DESC quad_layout_desc[] =
@@ -256,8 +252,6 @@ OceanSimulator::OceanSimulator(OceanParameter& params, ID3D11Device* pd3dDevice)
 	};
 	m_pd3dDevice->CreateInputLayout(quad_layout_desc, 1, pBlobQuadVS->GetBufferPointer(), pBlobQuadVS->GetBufferSize(), &m_pQuadLayout);
 	assert(m_pQuadLayout);
-
-	SAFE_RELEASE(pBlobQuadVS);
 
 	// Quad vertex buffer
 	D3D11_BUFFER_DESC vb_desc = {};
@@ -279,7 +273,7 @@ OceanSimulator::OceanSimulator(OceanParameter& params, ID3D11Device* pd3dDevice)
 	init_data.SysMemPitch = 0;
 	init_data.SysMemSlicePitch = 0;
 	
-	m_pd3dDevice->CreateBuffer(&vb_desc, &init_data, &m_pQuadVB);
+	m_pd3dDevice->CreateBuffer(&vb_desc, &init_data, m_pQuadVB.GetAddressOf());
 	assert(m_pQuadVB);
 
 	// Constant buffers
@@ -299,19 +293,19 @@ OceanSimulator::OceanSimulator(OceanParameter& params, ID3D11Device* pd3dDevice)
 	cb_desc.CPUAccessFlags = 0;
 	cb_desc.MiscFlags = 0;    
 	cb_desc.ByteWidth = PAD16(sizeof(immutable_consts));
-	m_pd3dDevice->CreateBuffer(&cb_desc, &init_cb0, &m_pImmutableCB);
+	m_pd3dDevice->CreateBuffer(&cb_desc, &init_cb0, m_pImmutableCB.GetAddressOf());
 	assert(m_pImmutableCB);
 
-	ID3D11Buffer* cbs[1] = {m_pImmutableCB};
-	m_pd3dImmediateContext->CSSetConstantBuffers(0, 1, cbs);
-	m_pd3dImmediateContext->PSSetConstantBuffers(0, 1, cbs);
+	Microsoft::WRL::ComPtr<ID3D11Buffer> cbs[1] = {m_pImmutableCB.Get()};
+	m_pd3dImmediateContext->CSSetConstantBuffers(0, 1, cbs->GetAddressOf());
+	m_pd3dImmediateContext->PSSetConstantBuffers(0, 1, cbs->GetAddressOf());
 
 	cb_desc.Usage = D3D11_USAGE_DYNAMIC;
 	cb_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 	cb_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	cb_desc.MiscFlags = 0;    
 	cb_desc.ByteWidth = PAD16(sizeof(float) * 3);
-	m_pd3dDevice->CreateBuffer(&cb_desc, nullptr, &m_pPerFrameCB);
+	m_pd3dDevice->CreateBuffer(&cb_desc, nullptr, m_pPerFrameCB.GetAddressOf());
 	assert(m_pPerFrameCB);
 
 	// FFT
@@ -335,42 +329,12 @@ OceanSimulator::~OceanSimulator()
 {
 	fft512x512_destroy_plan(&m_fft_plan);
 
-	SAFE_RELEASE(m_pBuffer_Float2_H0);
-	SAFE_RELEASE(m_pBuffer_Float_Omega);
-	SAFE_RELEASE(m_pBuffer_Float2_Ht);
-	SAFE_RELEASE(m_pBuffer_Float_Dxyz);
-
-	SAFE_RELEASE(m_pPointSamplerState);
-
-	SAFE_RELEASE(m_pQuadVB);
-
-	SAFE_RELEASE(m_pUAV_H0);
-	SAFE_RELEASE(m_pUAV_Omega);
-	SAFE_RELEASE(m_pUAV_Ht);
-	SAFE_RELEASE(m_pUAV_Dxyz);
-
-	SAFE_RELEASE(m_pSRV_H0);
-	SAFE_RELEASE(m_pSRV_Omega);
-	SAFE_RELEASE(m_pSRV_Ht);
-	SAFE_RELEASE(m_pSRV_Dxyz);
-
-	SAFE_RELEASE(m_pDisplacementMap);
-	SAFE_RELEASE(m_pDisplacementSRV);
-	SAFE_RELEASE(m_pDisplacementRTV);
-
-	SAFE_RELEASE(m_pGradientMap);
-	SAFE_RELEASE(m_pGradientSRV);
-	SAFE_RELEASE(m_pGradientRTV);
-
 	SAFE_RELEASE(m_pUpdateSpectrumCS);
 	SAFE_RELEASE(m_pQuadVS);
 	SAFE_RELEASE(m_pUpdateDisplacementPS);
 	SAFE_RELEASE(m_pGenGradientFoldingPS);
 
 	SAFE_RELEASE(m_pQuadLayout);
-
-	SAFE_RELEASE(m_pImmutableCB);
-	SAFE_RELEASE(m_pPerFrameCB);
 
 	SAFE_RELEASE(m_pd3dImmediateContext);
 
@@ -389,7 +353,7 @@ void OceanSimulator::initHeightMap(OceanParameter& params, DirectX::XMFLOAT2 * o
 	DirectX::XMFLOAT2 K;
 
 	DirectX::XMFLOAT2 wind_dir;
-	XMStoreFloat2(&wind_dir, DirectX::XMVector2Normalize(XMLoadFloat2(&params.wind_dir)));
+	XMStoreFloat2(&wind_dir, DirectX::XMVector2NormalizeEst(XMLoadFloat2(&params.wind_dir)));
 	float a = params.wave_amplitude * 1e-7f;	// It is too small. We must scale it for editing.
 	float v = params.wind_speed;
 	float dir_depend = params.wind_dependency;
@@ -434,15 +398,15 @@ void OceanSimulator::updateDisplacementMap(float time)
 	m_pd3dImmediateContext->CSSetShader(m_pUpdateSpectrumCS, nullptr, 0);
 
 	// Buffers
-	ID3D11ShaderResourceView * cs0_srvs[2] = {m_pSRV_H0, m_pSRV_Omega};
-	m_pd3dImmediateContext->CSSetShaderResources(0, 2, cs0_srvs);
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> cs0_srvs[2] = {m_pSRV_H0.Get(), m_pSRV_Omega.Get()};
+	m_pd3dImmediateContext->CSSetShaderResources(0, 2, cs0_srvs->GetAddressOf());
 
-	ID3D11UnorderedAccessView* cs0_uavs[1] = {m_pUAV_Ht};
+	ID3D11UnorderedAccessView* cs0_uavs[1] = {m_pUAV_Ht.Get()};
 	m_pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, cs0_uavs, (UINT*)(&cs0_uavs[0]));
 
 	// Consts
 	D3D11_MAPPED_SUBRESOURCE mapped_res;            
-	m_pd3dImmediateContext->Map(m_pPerFrameCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_res);
+	m_pd3dImmediateContext->Map(m_pPerFrameCB.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_res);
 	assert(mapped_res.pData);
 	float * per_frame_data = (float *)mapped_res.pData;
 	// g_Time
@@ -451,10 +415,10 @@ void OceanSimulator::updateDisplacementMap(float time)
 	per_frame_data[1] = m_param.choppy_scale;
 	// g_GridLen
 	per_frame_data[2] = m_param.dmap_dim / m_param.patch_length;
-	m_pd3dImmediateContext->Unmap(m_pPerFrameCB, 0);
+	m_pd3dImmediateContext->Unmap(m_pPerFrameCB.Get(), 0);
 
-	ID3D11Buffer* cs_cbs[2] = {m_pImmutableCB, m_pPerFrameCB};
-	m_pd3dImmediateContext->CSSetConstantBuffers(0, 2, cs_cbs);
+	Microsoft::WRL::ComPtr<ID3D11Buffer> cs_cbs[2] = {m_pImmutableCB.Get(), m_pPerFrameCB.Get()};
+	m_pd3dImmediateContext->CSSetConstantBuffers(0, 2, cs_cbs->GetAddressOf());
 
 	// Run the CS
 	UINT group_count_x = (m_param.dmap_dim + BLOCK_SIZE_X - 1) / BLOCK_SIZE_X;
@@ -466,17 +430,17 @@ void OceanSimulator::updateDisplacementMap(float time)
 	m_pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, cs0_uavs, (UINT*)(&cs0_uavs[0]));
 	cs0_srvs[0] = nullptr;
 	cs0_srvs[1] = nullptr;
-	m_pd3dImmediateContext->CSSetShaderResources(0, 2, cs0_srvs);
+	m_pd3dImmediateContext->CSSetShaderResources(0, 2, cs0_srvs->GetAddressOf());
 
 
 	// ------------------------------------ Perform FFT -------------------------------------------
-	fft_512x512_c2c(&m_fft_plan, m_pUAV_Dxyz, m_pSRV_Dxyz, m_pSRV_Ht);
+	fft_512x512_c2c(&m_fft_plan, m_pUAV_Dxyz.Get(), m_pSRV_Dxyz.Get(), m_pSRV_Ht.Get());
 
 	// --------------------------------- Wrap Dx, Dy and Dz ---------------------------------------
 	// Push RT
-	ID3D11RenderTargetView* old_target;
-	ID3D11DepthStencilView* old_depth;
-	m_pd3dImmediateContext->OMGetRenderTargets(1, &old_target, &old_depth); 
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> old_target;
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> old_depth;
+	m_pd3dImmediateContext->OMGetRenderTargets(1, old_target.GetAddressOf(), old_depth.GetAddressOf()); 
 	D3D11_VIEWPORT old_viewport;
 	UINT num_viewport = 1;
 	m_pd3dImmediateContext->RSGetViewports(&num_viewport, &old_viewport);
@@ -485,7 +449,7 @@ void OceanSimulator::updateDisplacementMap(float time)
 	m_pd3dImmediateContext->RSSetViewports(1, &new_vp);
 
 	// Set RT
-	ID3D11RenderTargetView* rt_views[1] = {m_pDisplacementRTV};
+	ID3D11RenderTargetView* rt_views[1] = {m_pDisplacementRTV.Get()};
 	m_pd3dImmediateContext->OMSetRenderTargets(1, rt_views, nullptr);
 
 	// VS & PS
@@ -493,18 +457,18 @@ void OceanSimulator::updateDisplacementMap(float time)
 	m_pd3dImmediateContext->PSSetShader(m_pUpdateDisplacementPS, nullptr, 0);
 
 	// Constants
-	ID3D11Buffer* ps_cbs[2] = {m_pImmutableCB, m_pPerFrameCB};
-	m_pd3dImmediateContext->PSSetConstantBuffers(0, 2, ps_cbs);
+	Microsoft::WRL::ComPtr<ID3D11Buffer> ps_cbs[2] = {m_pImmutableCB.Get(), m_pPerFrameCB.Get()};
+	m_pd3dImmediateContext->PSSetConstantBuffers(0, 2, ps_cbs->GetAddressOf());
 
 	// Buffer resources
-	ID3D11ShaderResourceView * ps_srvs[1] = {m_pSRV_Dxyz};
-    m_pd3dImmediateContext->PSSetShaderResources(0, 1, ps_srvs);
+	Microsoft::WRL::ComPtr <ID3D11ShaderResourceView> ps_srvs[1] = {m_pSRV_Dxyz.Get()};
+    m_pd3dImmediateContext->PSSetShaderResources(0, 1, ps_srvs->GetAddressOf());
 
 	// IA setup
-	ID3D11Buffer* vbs[1] = {m_pQuadVB};
+	Microsoft::WRL::ComPtr<ID3D11Buffer> vbs[1] = {m_pQuadVB.Get()};
 	UINT strides[1] = {sizeof(DirectX::XMFLOAT4)};
 	UINT offsets[1] = {0};
-	m_pd3dImmediateContext->IASetVertexBuffers(0, 1, &vbs[0], &strides[0], &offsets[0]);
+	m_pd3dImmediateContext->IASetVertexBuffers(0, 1, vbs[0].GetAddressOf(), &strides[0], &offsets[0]);
 
 	m_pd3dImmediateContext->IASetInputLayout(m_pQuadLayout);
 	m_pd3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
@@ -514,12 +478,12 @@ void OceanSimulator::updateDisplacementMap(float time)
 
 	// Unbind
 	ps_srvs[0] = nullptr;
-    m_pd3dImmediateContext->PSSetShaderResources(0, 1, ps_srvs);
+    m_pd3dImmediateContext->PSSetShaderResources(0, 1, ps_srvs->GetAddressOf());
 
 
 	// ----------------------------------- Generate Normal ----------------------------------------
 	// Set RT
-	rt_views[0] = m_pGradientRTV;
+	rt_views[0] = m_pGradientRTV.Get();
 	m_pd3dImmediateContext->OMSetRenderTargets(1, rt_views, nullptr);
 
 	// VS & PS
@@ -527,26 +491,24 @@ void OceanSimulator::updateDisplacementMap(float time)
 	m_pd3dImmediateContext->PSSetShader(m_pGenGradientFoldingPS, nullptr, 0);
 
 	// Texture resource and sampler
-	ps_srvs[0] = m_pDisplacementSRV;
-    m_pd3dImmediateContext->PSSetShaderResources(0, 1, ps_srvs);
+	ps_srvs[0] = m_pDisplacementSRV.Get();
+    m_pd3dImmediateContext->PSSetShaderResources(0, 1, ps_srvs->GetAddressOf());
 
-	ID3D11SamplerState* samplers[1] = {m_pPointSamplerState};
-	m_pd3dImmediateContext->PSSetSamplers(0, 1, &samplers[0]);
+	Microsoft::WRL::ComPtr <ID3D11SamplerState> samplers[1] = {m_pPointSamplerState.Get()};
+	m_pd3dImmediateContext->PSSetSamplers(0, 1, samplers[0].GetAddressOf());
 
 	// Perform draw call
 	m_pd3dImmediateContext->Draw(4, 0);
 
 	// Unbind
 	ps_srvs[0] = nullptr;
-    m_pd3dImmediateContext->PSSetShaderResources(0, 1, ps_srvs);
+    m_pd3dImmediateContext->PSSetShaderResources(0, 1, ps_srvs->GetAddressOf());
 
 	// Pop RT
 	m_pd3dImmediateContext->RSSetViewports(1, &old_viewport);
-	m_pd3dImmediateContext->OMSetRenderTargets(1, &old_target, old_depth);
-	SAFE_RELEASE(old_target);
-	SAFE_RELEASE(old_depth);
+	m_pd3dImmediateContext->OMSetRenderTargets(1, old_target.GetAddressOf(), old_depth.Get());
 
-	m_pd3dImmediateContext->GenerateMips(m_pGradientSRV);
+	m_pd3dImmediateContext->GenerateMips(m_pGradientSRV.Get());
 
 	// Define CS_DEBUG_BUFFER to enable writing a buffer into a file.
 #ifdef CS_DEBUG_BUFFER
@@ -572,12 +534,12 @@ void OceanSimulator::updateDisplacementMap(float time)
 
 ID3D11ShaderResourceView * OceanSimulator::getD3D11DisplacementMap()
 {
-	return m_pDisplacementSRV;
+	return m_pDisplacementSRV.Get();
 }
 
 ID3D11ShaderResourceView * OceanSimulator::getD3D11GradientMap()
 {
-	return m_pGradientSRV;
+	return m_pGradientSRV.Get();
 }
 
 

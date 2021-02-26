@@ -5,6 +5,7 @@
 #include "GothicAPI.h"
 #include "D3D11ConstantBuffer.h"
 #include <d3dcompiler.h>
+#include "D3D11_Helpers.h"
 
 using namespace DirectX;
 
@@ -19,7 +20,7 @@ D3D11GShader::~D3D11GShader() {
 	// Remove from state map
 	D3D11ObjectIdManager::EraseGShader( this );
 
-	if ( GeometryShader )GeometryShader->Release();
+	SAFE_RELEASE( GeometryShader );
 
 	for ( unsigned int i = 0; i < ConstantBuffers.size(); i++ ) {
 		delete ConstantBuffers[i];
@@ -75,14 +76,14 @@ XRESULT D3D11GShader::LoadShader( const char* geometryShader, const std::vector<
 	HRESULT hr;
 	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
-	ID3DBlob* gsBlob;
+	Microsoft::WRL::ComPtr<ID3DBlob> gsBlob;
 
 	LogInfo() << "Compiling geometry shader: " << geometryShader;
 	File = geometryShader;
 
 	if ( !createStreamOutFromVS ) {
 		// Compile shaders
-		if ( FAILED( CompileShaderFromFile( geometryShader, "GSMain", "gs_5_0", &gsBlob, makros ) ) ) {
+		if ( FAILED( CompileShaderFromFile( geometryShader, "GSMain", "gs_5_0", gsBlob.GetAddressOf(), makros ) ) ) {
 			return XR_FAILED;
 		}
 
@@ -90,7 +91,7 @@ XRESULT D3D11GShader::LoadShader( const char* geometryShader, const std::vector<
 		LE( engine->GetDevice()->CreateGeometryShader( gsBlob->GetBufferPointer(), gsBlob->GetBufferSize(), nullptr, &GeometryShader ) );
 	} else {
 		// Compile vertexshader
-		if ( FAILED( CompileShaderFromFile( geometryShader, "VSMain", "vs_5_0", &gsBlob, makros ) ) ) {
+		if ( FAILED( CompileShaderFromFile( geometryShader, "VSMain", "vs_5_0", gsBlob.GetAddressOf(), makros ) ) ) {
 			return XR_FAILED;
 		}
 
@@ -106,7 +107,7 @@ XRESULT D3D11GShader::LoadShader( const char* geometryShader, const std::vector<
 			int type;
 		};
 
-		D3D11_SO_DECLARATION_ENTRY layout11 [] =
+		D3D11_SO_DECLARATION_ENTRY layout11[] =
 		{
 			{ 0, "POSITION", 0, 0, 3, 0},
 			{ 0, "DIFFUSE", 0, 0, 4, 0},
@@ -128,11 +129,8 @@ XRESULT D3D11GShader::LoadShader( const char* geometryShader, const std::vector<
 		// Create the shader from a vertexshader
 		engine->GetDevice()->CreateGeometryShaderWithStreamOutput( gsBlob->GetBufferPointer(), gsBlob->GetBufferSize(), soDec, numSoDecElements, &stride, 1, D3D11_SO_NO_RASTERIZED_STREAM, nullptr, &GeometryShader );
 	}
-#ifndef PUBLIC_RELEASE
-	GeometryShader->SetPrivateData( WKPDID_D3DDebugObjectName, strlen( geometryShader ), geometryShader );
-#endif
 
-	gsBlob->Release();
+	SetDebugName( GeometryShader, geometryShader );
 
 	return XR_SUCCESS;
 }

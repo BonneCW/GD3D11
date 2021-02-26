@@ -101,6 +101,17 @@ void HookedFunctionInfo::InitHooks() {
 	PatchAddr( 0x0066E5BE, "\x81\x7C\xE4\x20\x00\x00\xC0\xFF\x0F\x84\x2A\x2B\xEC\xFF\x81\x7C\xE4\x20\x00\x00\xC0\x7F\x0F\x84\x1C\x2B\xEC\xFF\xE9\xC1\x2A\xEC\xFF" );
 	PatchAddr( 0x0061E412, "\xE8\xA7\x01\x05\x00");
 
+
+#endif
+	// HACK Workaround to fix debuglines in godmode
+#if (defined BUILD_GOTHIC_2_6_fix)
+	LogInfo() << "Patching: Godmode Debuglines";
+	// oCMagFrontier::GetDistanceNewWorld
+	PatchAddr(0x00473f37, "\xBD\x00\x00\x00\x00"); // replace MOV EBP, 0x1 with MOV EBP, 0x0
+	// oCMagFrontier::GetDistanceDragonIsland
+	PatchAddr(0x004744c1, "\xBF\x00\x00\x00\x00"); // replace MOV EDI, 0x1 with MOV EDI, 0x0
+	// oCMagFrontier::GetDistanceAddonWorld
+	PatchAddr(0x00474681, "\xBF\x00\x00\x00\x00"); // replace MOV EDI, 0x1 with MOV EDI, 0x0
 #endif
 }
 

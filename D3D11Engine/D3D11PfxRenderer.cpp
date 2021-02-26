@@ -81,11 +81,11 @@ XRESULT D3D11PfxRenderer::DrawFullScreenQuad() {
 
 	UINT offset = 0;
 	UINT uStride = sizeof( SimpleVertexStruct );
-	ID3D11Buffer* buffers = ScreenQuad->GetBuffer();
-	engine->GetContext()->IASetVertexBuffers( 0, 1, &buffers, &uStride, &offset );
+	Microsoft::WRL::ComPtr<ID3D11Buffer> buffers = ScreenQuad->GetBuffer().Get();
+	engine->GetContext()->IASetVertexBuffers( 0, 1, buffers.GetAddressOf(), &uStride, &offset );
 
-	//ID3D11Buffer* cb = nullptr;
-	//engine->GetContext()->VSSetConstantBuffers(0, 1, &cb);
+	//Microsoft::WRL::ComPtr<ID3D11Buffer> cb;
+	//engine->GetContext()->VSSetConstantBuffers(0, 1, cb.GetAddressOf());
 
 	//Draw the mesh
 	engine->GetContext()->Draw( 6, 0 );
@@ -101,7 +101,7 @@ XRESULT D3D11PfxRenderer::UnbindPSResources( int num ) {
 	D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
 	engine->GetContext()->PSSetShaderResources( 0, num, srv );
 
-	delete [] srv;
+	delete[] srv;
 
 	return XR_SUCCESS;
 }
@@ -127,9 +127,9 @@ XRESULT D3D11PfxRenderer::CopyTextureToRTV( ID3D11ShaderResourceView* texture, I
 	}
 
 	// Save old rendertargets
-	ID3D11RenderTargetView* oldRTV = nullptr;
-	ID3D11DepthStencilView* oldDSV = nullptr;
-	engine->GetContext()->OMGetRenderTargets( 1, &oldRTV, &oldDSV );
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> oldRTV;
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> oldDSV;
+	engine->GetContext()->OMGetRenderTargets( 1, oldRTV.GetAddressOf(), oldDSV.GetAddressOf() );
 
 	// Bind shaders
 	if ( !useCustomPS ) {
@@ -139,8 +139,8 @@ XRESULT D3D11PfxRenderer::CopyTextureToRTV( ID3D11ShaderResourceView* texture, I
 
 	engine->GetShaderManager().GetVShader( "VS_PFX" )->Apply();
 
-	ID3D11ShaderResourceView* srv = nullptr;
-	engine->GetContext()->PSSetShaderResources( 0, 1, &srv );
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv;
+	engine->GetContext()->PSSetShaderResources( 0, 1, srv.GetAddressOf() );
 
 	engine->GetContext()->OMSetRenderTargets( 1, &rtv, nullptr );
 
@@ -149,10 +149,8 @@ XRESULT D3D11PfxRenderer::CopyTextureToRTV( ID3D11ShaderResourceView* texture, I
 
 	DrawFullScreenQuad();
 
-	engine->GetContext()->PSSetShaderResources( 0, 1, &srv );
-	engine->GetContext()->OMSetRenderTargets( 1, &oldRTV, oldDSV );
-	if ( oldRTV )oldRTV->Release();
-	if ( oldDSV )oldDSV->Release();
+	engine->GetContext()->PSSetShaderResources( 0, 1, srv.GetAddressOf() );
+	engine->GetContext()->OMSetRenderTargets( 1, oldRTV.GetAddressOf(), oldDSV.Get() );
 
 	if ( targetResolution.x != 0 && targetResolution.y != 0 ) {
 		engine->GetContext()->RSSetViewports( 1, &oldVP );

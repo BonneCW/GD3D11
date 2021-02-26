@@ -28,8 +28,8 @@ XRESULT D3D11PFX_GodRays::Render( RenderToTextureBuffer* fxbuffer ) {
 	XMVECTOR xmSunPosition = XMLoadFloat3( Engine::GAPI->GetSky()->GetAtmosphereCB().AC_LightPos.toXMFLOAT3() );
 
 	float outerRadius = Engine::GAPI->GetSky()->GetAtmosphereCB().AC_OuterRadius;
-	xmSunPosition = xmSunPosition * outerRadius;
-	xmSunPosition = XMVectorAdd( xmSunPosition, Engine::GAPI->GetCameraPositionXM() ); // Maybe use cameraposition from sky?
+	xmSunPosition *= outerRadius;
+	xmSunPosition += Engine::GAPI->GetCameraPositionXM(); // Maybe use cameraposition from sky?
 
 	XMMATRIX view = XMLoadFloat4x4( &Engine::GAPI->GetRendererState().TransformState.TransformView );
 	XMMATRIX proj = XMLoadFloat4x4( &Engine::GAPI->GetProjectionMatrix() );
@@ -64,10 +64,10 @@ XRESULT D3D11PFX_GodRays::Render( RenderToTextureBuffer* fxbuffer ) {
 
 
 
-	ID3D11RenderTargetView* oldRTV = nullptr;
-	ID3D11DepthStencilView* oldDSV = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> oldRTV;
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> oldDSV;
 
-	engine->GetContext()->OMGetRenderTargets( 1, &oldRTV, &oldDSV );
+	engine->GetContext()->OMGetRenderTargets( 1, oldRTV.GetAddressOf(), oldDSV.GetAddressOf() );
 
 	auto vs = engine->GetShaderManager().GetVShader( "VS_PFX" );
 	auto maskPS = engine->GetShaderManager().GetPShader( "PS_PFX_GodRayMask" );
@@ -106,15 +106,14 @@ XRESULT D3D11PFX_GodRays::Render( RenderToTextureBuffer* fxbuffer ) {
 	Engine::GAPI->GetRendererState().BlendState.SetAdditiveBlending();
 	Engine::GAPI->GetRendererState().BlendState.SetDirty();
 
-	FxRenderer->CopyTextureToRTV( FxRenderer->GetTempBufferDS4_2().GetShaderResView().Get(), oldRTV, INT2( engine->GetResolution().x, engine->GetResolution().y ) );
+	FxRenderer->CopyTextureToRTV( FxRenderer->GetTempBufferDS4_2().GetShaderResView().Get(), oldRTV.Get(), INT2( engine->GetResolution().x, engine->GetResolution().y ) );
 
 	vp.Width = (float)engine->GetResolution().x;
 	vp.Height = (float)engine->GetResolution().y;
 
 	engine->GetContext()->RSSetViewports( 1, &vp );
 
-	engine->GetContext()->OMSetRenderTargets( 1, &oldRTV, oldDSV );
-	if ( oldRTV )oldRTV->Release();
-	if ( oldDSV )oldDSV->Release();
+	engine->GetContext()->OMSetRenderTargets( 1, oldRTV.GetAddressOf(), oldDSV.Get() );
+
 	return XR_SUCCESS;
 }

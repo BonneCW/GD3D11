@@ -164,10 +164,10 @@ private:
 
 		// TODO: Test if this is ok.
 		//for ( int i = 0; i < 6; i++ )
-		//	if ( CubeMapRTVs[i] )CubeMapRTVs[i]->Release();
+		//	SAFE_RELEASE(CubeMapRTVs[i]);
 
 		//for ( int i = 0; i < 6; i++ )
-		//	if ( CubeMapSRVs[i] )CubeMapSRVs[i]->Release();
+		//	SAFE_RELEASE(CubeMapSRVs[i]);
 	}
 };
 
@@ -223,7 +223,7 @@ struct RenderToDepthStencilBuffer {
 
 		if ( !Texture.Get() ) {
 			LogError() << "Could not create Texture!";
-			return; 
+			return;
 		}
 
 		//Create a render target view

@@ -24,9 +24,9 @@ XRESULT D3D11PFX_HeightFog::Render( RenderToTextureBuffer* fxbuffer ) {
 	D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
 
 	// Save old rendertargets
-	ID3D11RenderTargetView* oldRTV = nullptr;
-	ID3D11DepthStencilView* oldDSV = nullptr;
-	engine->GetContext()->OMGetRenderTargets( 1, &oldRTV, &oldDSV );
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> oldRTV;
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> oldDSV;
+	engine->GetContext()->OMGetRenderTargets( 1, oldRTV.GetAddressOf(), oldDSV.GetAddressOf() );
 
 	auto vs = engine->GetShaderManager().GetVShader( "VS_PFX" );
 	auto hfPS = engine->GetShaderManager().GetPShader( "PS_PFX_Heightfog" );
@@ -90,8 +90,7 @@ XRESULT D3D11PFX_HeightFog::Render( RenderToTextureBuffer* fxbuffer ) {
 	cb.HF_FogHeight = height;
 
 	//cb.HF_FogColorMod = Engine::GAPI->GetRendererState().GraphicsState.FF_FogColor;
-	cb.HF_ProjAB = float2( Engine::GAPI->GetProjectionMatrix()._33,
-		Engine::GAPI->GetProjectionMatrix()._34 );
+	cb.HF_ProjAB = float2( Engine::GAPI->GetProjectionMatrix()._33, Engine::GAPI->GetProjectionMatrix()._34 );
 
 
 	// Modify fog when raining
@@ -121,7 +120,7 @@ XRESULT D3D11PFX_HeightFog::Render( RenderToTextureBuffer* fxbuffer ) {
 	hfPS->GetConstantBuffer()[1]->UpdateBuffer( &sky->GetAtmosphereCB() );
 	hfPS->GetConstantBuffer()[1]->BindToPixelShader( 1 );
 
-	engine->GetContext()->OMSetRenderTargets( 1, &oldRTV, nullptr );
+	engine->GetContext()->OMSetRenderTargets( 1, oldRTV.GetAddressOf(), nullptr );
 
 	// Bind depthbuffer
 	engine->GetDepthBuffer()->BindToPixelShader( engine->GetContext(), 1 );
@@ -136,12 +135,10 @@ XRESULT D3D11PFX_HeightFog::Render( RenderToTextureBuffer* fxbuffer ) {
 
 
 	// Restore rendertargets
-	ID3D11ShaderResourceView* srv = nullptr;
-	engine->GetContext()->PSSetShaderResources( 1, 1, &srv );
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv;
+	engine->GetContext()->PSSetShaderResources( 1, 1, srv.GetAddressOf() );
 
-	engine->GetContext()->OMSetRenderTargets( 1, &oldRTV, oldDSV );
-	if ( oldRTV )oldRTV->Release();
-	if ( oldDSV )oldDSV->Release();
+	engine->GetContext()->OMSetRenderTargets( 1, oldRTV.GetAddressOf(), oldDSV.Get() );
 
 	return XR_SUCCESS;
 }

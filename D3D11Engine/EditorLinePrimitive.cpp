@@ -11,7 +11,6 @@ using namespace DirectX;
 
 EditorLinePrimitive::EditorLinePrimitive() {
 	Vertices = nullptr;
-	PrimVB = nullptr;
 	PrimShader = nullptr;
 	Location = XMFLOAT3( 0, 0, 0 );
 	Rotation = XMFLOAT3( 0, 0, 0 );
@@ -22,7 +21,6 @@ EditorLinePrimitive::EditorLinePrimitive() {
 	SolidPrimShader = nullptr;
 	SolidVertices = nullptr;
 	NumSolidVertices = 0;
-	SolidPrimVB = nullptr;
 
 	NumVertices = 0;
 
@@ -38,18 +36,14 @@ EditorLinePrimitive::EditorLinePrimitive() {
 
 
 EditorLinePrimitive::~EditorLinePrimitive() {
-	delete [] Vertices;
-	delete [] SolidVertices;
-	if ( PrimVB )PrimVB->Release();
-	if ( SolidPrimVB )SolidPrimVB->Release();
+	delete[] Vertices;
+	delete[] SolidVertices;
 }
 
 /** Deletes all content */
 void EditorLinePrimitive::DeleteContent() {
-	delete [] Vertices;
-	delete [] SolidVertices;
-	if ( PrimVB )PrimVB->Release();
-	if ( SolidPrimVB )SolidPrimVB->Release();
+	delete[] Vertices;
+	delete[] SolidVertices;
 }
 
 /** Creates a grid of lines */
@@ -89,7 +83,7 @@ HRESULT EditorLinePrimitive::CreateLineGrid( int LinesX, int LinesY, XMFLOAT2* M
 
 	LE( CreatePrimitive( vx, (LinesX + 1) * (LinesY + 1) * 4 ) );
 
-	delete [] vx;
+	delete[] vx;
 	return hr;
 }
 
@@ -298,8 +292,7 @@ HRESULT EditorLinePrimitive::CreateSolidPrimitive( LineVertex* PrimVerts, UINT N
 	HRESULT hr = S_OK;
 
 	// Clean up previous data
-	delete [] SolidVertices;
-	if ( SolidPrimVB )SolidPrimVB->Release();
+	delete[] SolidVertices;
 
 	// Copy over the new data
 	SolidVertices = new LineVertex[NumVertices];
@@ -321,7 +314,7 @@ HRESULT EditorLinePrimitive::CreateSolidPrimitive( LineVertex* PrimVerts, UINT N
 
 	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
-	LE( engine->GetDevice()->CreateBuffer( &bufferDesc, &InitData, &SolidPrimVB ) );
+	LE( engine->GetDevice()->CreateBuffer( &bufferDesc, &InitData, SolidPrimVB.GetAddressOf() ) );
 
 	SolidPrimitiveTopology = Topology;
 
@@ -388,7 +381,7 @@ HRESULT EditorLinePrimitive::CreateFilledCirclePrimitive( float Radius, UINT Det
 
 	HRESULT hr = CreatePrimitive( vx, NumVerts, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
 
-	delete [] vx;
+	delete[] vx;
 	return hr;
 }
 
@@ -424,7 +417,7 @@ HRESULT EditorLinePrimitive::CreateCirclePrimitive( float Radius, UINT Detail, c
 
 	HRESULT hr = CreatePrimitive( vx, Detail, D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP );
 
-	delete [] vx;
+	delete[] vx;
 	return hr;
 }
 
@@ -471,7 +464,7 @@ HRESULT EditorLinePrimitive::CreateLineBallPrimitive( UINT Detail, const float4&
 	//vx[(Detail*3)].Position = XMFLOAT3(sinf(s), cosf(s), 0);
 
 	HRESULT hr = CreatePrimitive( vx, (Detail * 3), D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP );
-	delete [] vx;
+	delete[] vx;
 
 	return hr;
 }
@@ -550,7 +543,7 @@ HRESULT EditorLinePrimitive::CreateSimpleConePrimitive( float Length, float Radi
 
 	HRESULT hr = CreatePrimitive( vx, NumVerts );
 
-	delete [] vx;
+	delete[] vx;
 
 	return hr;
 }
@@ -597,8 +590,7 @@ float XM_CALLCONV EditorLinePrimitive::IntersectPrimitive( FXMVECTOR RayOrigin, 
 			XMVECTOR v2 = XMLoadFloat3( SolidVertices[i + 2].Position.toXMFLOAT3() );
 
 			// Check if the pick ray passes through this point
-			if ( IntersectTriangle( Origin, Dir, v0, v1, v2,
-				&fDist, &fBary1, &fBary2 ) ) {
+			if ( IntersectTriangle( Origin, Dir, v0, v1, v2, &fDist, &fBary1, &fBary2 ) ) {
 				if ( fDist < Shortest || Shortest == -1 ) {
 					NumIntersections++;
 					Shortest = 0;
@@ -852,7 +844,7 @@ HRESULT EditorLinePrimitive::CreatePrimitive( LineVertex* PrimVerts, UINT NumVer
 
 	D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
-	LE( engine->GetDevice()->CreateBuffer( &bufferDesc, &InitData, &PrimVB ) );
+	LE( engine->GetDevice()->CreateBuffer( &bufferDesc, &InitData, PrimVB.GetAddressOf() ) );
 
 	PrimitiveTopology = Topology;
 
@@ -911,11 +903,11 @@ HRESULT EditorLinePrimitive::RenderPrimitive( int Pass ) {
 	}
 
 	if ( NumVertices > 0 && PrimShader ) {
-		RenderVertexBuffer( PrimVB, NumVertices, PrimShader.get(), PrimitiveTopology, Pass );
+		RenderVertexBuffer( PrimVB.Get(), NumVertices, PrimShader.get(), PrimitiveTopology, Pass );
 	}
 
 	if ( NumSolidVertices > 0 && SolidPrimShader ) {
-		RenderVertexBuffer( SolidPrimVB, NumSolidVertices, SolidPrimShader.get(), SolidPrimitiveTopology, Pass );
+		RenderVertexBuffer( SolidPrimVB.Get(), NumSolidVertices, SolidPrimShader.get(), SolidPrimitiveTopology, Pass );
 	}
 
 	return S_OK;

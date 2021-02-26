@@ -13,6 +13,7 @@
 #include <DDSTextureLoader.h>
 #include "RenderToTextureBuffer.h"
 #include <d3dcompiler.h>
+#include "D3D11_Helpers.h"
 
 using namespace DirectX;
 // TODO: Remove this!
@@ -125,9 +126,9 @@ XRESULT D3D11Effect::DrawRain() {
 		FillRandomRaindropData( particles );
 
 		// Create vertexbuffers
-		RainBufferInitial->Init( &particles[0], particles.size() * sizeof( ParticleInstanceInfo ), (D3D11VertexBuffer::EBindFlags)(D3D11VertexBuffer::B_VERTEXBUFFER) );
-		RainBufferDrawFrom->Init( &particles[0], particles.size() * sizeof( ParticleInstanceInfo ), (D3D11VertexBuffer::EBindFlags)(D3D11VertexBuffer::B_VERTEXBUFFER | D3D11VertexBuffer::B_STREAM_OUT) );
-		RainBufferStreamTo->Init( &particles[0], particles.size() * sizeof( ParticleInstanceInfo ), (D3D11VertexBuffer::EBindFlags)(D3D11VertexBuffer::B_VERTEXBUFFER | D3D11VertexBuffer::B_STREAM_OUT) );
+		RainBufferInitial->Init( &particles[0], particles.size() * sizeof( ParticleInstanceInfo ), (D3D11VertexBuffer::EBindFlags)(D3D11VertexBuffer::B_VERTEXBUFFER), D3D11VertexBuffer::U_DEFAULT, D3D11VertexBuffer::CA_NONE, "D3D11Effect::DrawRain::RainBufferInitial" );
+		RainBufferDrawFrom->Init( &particles[0], particles.size() * sizeof( ParticleInstanceInfo ), (D3D11VertexBuffer::EBindFlags)(D3D11VertexBuffer::B_VERTEXBUFFER | D3D11VertexBuffer::B_STREAM_OUT), D3D11VertexBuffer::U_DEFAULT, D3D11VertexBuffer::CA_NONE, "D3D11Effect::DrawRain::RainBufferDrawFrom" );
+		RainBufferStreamTo->Init( &particles[0], particles.size() * sizeof( ParticleInstanceInfo ), (D3D11VertexBuffer::EBindFlags)(D3D11VertexBuffer::B_VERTEXBUFFER | D3D11VertexBuffer::B_STREAM_OUT), D3D11VertexBuffer::U_DEFAULT, D3D11VertexBuffer::CA_NONE, "D3D11Effect::DrawRain::RainBufferStreamTo" );
 
 		firstFrame = true;
 
@@ -142,6 +143,9 @@ XRESULT D3D11Effect::DrawRain() {
 		if ( !RainShadowmap.get() ) {
 			const int s = 2048;
 			RainShadowmap = std::make_unique<RenderToDepthStencilBuffer>( e->GetDevice(), s, s, DXGI_FORMAT_R32_TYPELESS, nullptr, DXGI_FORMAT_D32_FLOAT, DXGI_FORMAT_R32_FLOAT );
+			SetDebugName( RainShadowmap->GetDepthStencilView().Get(), "RainShadowmap->DepthStencilView" );
+			SetDebugName( RainShadowmap->GetShaderResView().Get(), "RainShadowmap->ShaderResView" );
+			SetDebugName( RainShadowmap->GetTexture().Get(), "RainShadowmap->Texture" );
 		}
 	}
 
@@ -158,16 +162,16 @@ XRESULT D3D11Effect::DrawRain() {
 
 	firstFrame = false;
 
-	ID3D11Buffer* bobjDraw = b->GetVertexBuffer();
-	ID3D11Buffer* bobjStream = ((D3D11VertexBuffer*)RainBufferStreamTo)->GetVertexBuffer();
+	Microsoft::WRL::ComPtr<ID3D11Buffer> bobjDraw = b->GetVertexBuffer().Get();
+	Microsoft::WRL::ComPtr<ID3D11Buffer> bobjStream = ((D3D11VertexBuffer*)RainBufferStreamTo)->GetVertexBuffer().Get();
 	UINT stride = sizeof( ParticleInstanceInfo );
 	UINT offset = 0;
 
 	// Bind buffer to draw from last frame
-	e->GetContext()->IASetVertexBuffers( 0, 1, &bobjDraw, &stride, &offset );
+	e->GetContext()->IASetVertexBuffers( 0, 1, bobjDraw.GetAddressOf(), &stride, &offset );
 
 	// Set stream target
-	e->GetContext()->SOSetTargets( 1, &bobjStream, &offset );
+	e->GetContext()->SOSetTargets( 1, bobjStream.GetAddressOf(), &offset );
 
 	// Apply shaders
 	particleAdvanceVS->Apply();
@@ -274,7 +278,7 @@ XRESULT D3D11Effect::DrawRainShadowmap() {
 
 	// Get the section we are currently in
 	XMVECTOR p = Engine::GAPI->GetCameraPositionXM();
-	XMVECTOR dir = XMVector3Normalize( XMLoadFloat3( &Engine::GAPI->GetRendererState().RendererSettings.RainGlobalVelocity ) * -1 );
+	XMVECTOR dir = XMVector3NormalizeEst( XMLoadFloat3( &Engine::GAPI->GetRendererState().RendererSettings.RainGlobalVelocity ) * -1 );
 	// Set the camera height to the highest point in this section
 	//p.y = 0;
 	p += dir * 6000.0f;

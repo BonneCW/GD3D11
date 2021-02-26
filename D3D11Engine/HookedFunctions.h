@@ -117,6 +117,7 @@ struct HookedFunctionInfo {
 	zCOptionReadDWORD original_zCOptionReadDWORD;
 	zCViewSetMode original_zCViewSetMode;
 	zCViewFontSize original_zCViewFontSize;
+	zCViewBlitText original_zCViewBlit;
 	zCViewBlitText original_zCViewBlitText;
 	zCViewPrint original_zCViewPrint;
 	HandledWinMain original_HandledWinMain;

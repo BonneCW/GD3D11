@@ -225,4 +225,8 @@ public:
 	zCBspTree* GetBspTree() {
 		return (zCBspTree*)THISPTR_OFFSET( GothicMemoryLocations::zCWorld::Offset_BspTree );
 	}
+
+	void RemoveVob(zCVob* vob) {
+		XCALL(GothicMemoryLocations::zCWorld::RemoveVob);
+	}
 };

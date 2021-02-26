@@ -95,9 +95,10 @@ struct GothicMemoryLocations {
 		static const unsigned int REPL_SetMode_ModechangeEnd = 0x007ABDE8;
 		static const unsigned int PrintTimed = 0x007A7D20;
 		static const unsigned int PrintChars = 0x007A9B10;
-		static const unsigned int FontSize = 0x007A9A10;
+		static const unsigned int CreateText = 0x007AA2B0;
 		static const unsigned int BlitText = 0x007A62A0;
 		static const unsigned int Print = 0x007A9A40;
+		static const unsigned int Blit = 0x007a63c0;
 	};
 
 	struct zCObject {
@@ -178,6 +179,7 @@ struct GothicMemoryLocations {
 		static const unsigned int Offset_PrevPFX = 0x80; // PrivateTotalTime - 4
 		static const unsigned int Offset_NextPFX = 0x7C; // PrivateTotalTime - 8
 		static const unsigned int Destructor = 0x005AD0E0;
+		static const unsigned int GetVisualDied = 0x005AD090;
 	};
 
 	struct zCStaticPfxList {
@@ -202,6 +204,7 @@ struct GothicMemoryLocations {
 		static const unsigned int zCParser = 0xAB40C0;
 		static const unsigned int zRenderer = 0x00982F08;
 		static const unsigned int zSound = 0x0099B03C;
+		static const unsigned int screen = 0x00ab6468;
 
 		static const unsigned int NOP_FreelookWindowedCheckStart = 0x004816D7;
 		static const unsigned int NOP_FreelookWindowedCheckEnd = 0x004816DB;
@@ -471,6 +474,7 @@ struct GothicMemoryLocations {
 		static const unsigned int DisposeWorld = 0x00623D30;
 		static const unsigned int DisposeVobs = 0x00623960;
 		static const unsigned int Offset_BspTree = 0x1AC;
+		static const unsigned int RemoveVob = 0x00624B70;
 	};
 
 	class VobTypes // vftables

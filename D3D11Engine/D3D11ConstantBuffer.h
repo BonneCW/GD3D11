@@ -16,13 +16,13 @@ public:
 	void BindToGeometryShader( int slot );
 
 	/** Binds the constantbuffer */
-	ID3D11Buffer* Get() { return Buffer; }
+	ID3D11Buffer* Get() { return Buffer.Get(); }
 
 	/** Returns whether this buffer has been updated since the last bind */
 	bool IsDirty();
 
 private:
-	ID3D11Buffer* Buffer;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> Buffer;
 	int OriginalSize; // Buffersize must be a multiple of 16
 	bool BufferDirty;
 };

@@ -21,66 +21,64 @@ D3D11PFX_Blur::~D3D11PFX_Blur() {
 
 /** Draws this effect to the given buffer */
 XRESULT D3D11PFX_Blur::RenderBlur( RenderToTextureBuffer* fxbuffer, bool leaveResultInD4_2, float threshold, float scale, const DirectX::XMFLOAT4& colorMod, const std::string& finalCopyShader ) {
-	D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
+    D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
 
-	// Save old rendertargets
-	ID3D11RenderTargetView* oldRTV = nullptr;
-	ID3D11DepthStencilView* oldDSV = nullptr;
-	engine->GetContext()->OMGetRenderTargets( 1, &oldRTV, &oldDSV );
+    // Save old rendertargets
+    Microsoft::WRL::ComPtr<ID3D11RenderTargetView> oldRTV;
+    Microsoft::WRL::ComPtr<ID3D11DepthStencilView> oldDSV;
+    engine->GetContext()->OMGetRenderTargets( 1, oldRTV.GetAddressOf(), oldDSV.GetAddressOf() );
 
-	INT2 dsRes = INT2( fxbuffer->GetSizeX() / 4, fxbuffer->GetSizeY() / 4 );
+    INT2 dsRes = INT2( fxbuffer->GetSizeX() / 4, fxbuffer->GetSizeY() / 4 );
 
-	/** Pass 1: Downscale/Blur-H */
-	// Apply PFX-VS
-	engine->GetShaderManager().GetVShader( "VS_PFX" )->Apply();
-	auto gaussPS = engine->GetShaderManager().GetPShader( "PS_PFX_GaussBlur" );
-	auto simplePS = engine->GetShaderManager().GetPShader( finalCopyShader );
+    /** Pass 1: Downscale/Blur-H */
+    // Apply PFX-VS
+    engine->GetShaderManager().GetVShader( "VS_PFX" )->Apply();
+    auto gaussPS = engine->GetShaderManager().GetPShader( "PS_PFX_GaussBlur" );
+    auto simplePS = engine->GetShaderManager().GetPShader( finalCopyShader );
 
-	// Apply blur-H shader
-	gaussPS->Apply();
+    // Apply blur-H shader
+    gaussPS->Apply();
 
-	// Update settings
-	BlurConstantBuffer bcb;
-	bcb.B_BlurSize = scale;
-	bcb.B_PixelSize = float2( 1.0f / FxRenderer->GetTempBufferDS4_1().GetSizeX(), 0.0f );
-	bcb.B_Threshold = threshold;
-	bcb.B_ColorMod = colorMod;
-	gaussPS->GetConstantBuffer()[0]->UpdateBuffer( &bcb );
-	gaussPS->GetConstantBuffer()[0]->BindToPixelShader( 0 );
+    // Update settings
+    BlurConstantBuffer bcb;
+    bcb.B_BlurSize = scale;
+    bcb.B_PixelSize = float2( 1.0f / FxRenderer->GetTempBufferDS4_1().GetSizeX(), 0.0f );
+    bcb.B_Threshold = threshold;
+    bcb.B_ColorMod = colorMod;
+    gaussPS->GetConstantBuffer()[0]->UpdateBuffer( &bcb );
+    gaussPS->GetConstantBuffer()[0]->BindToPixelShader( 0 );
 
-	// Bind depthbuffer
-	//engine->GetDepthBuffer()->BindToPixelShader(engine->GetContext(), 1);
+    // Bind depthbuffer
+    //engine->GetDepthBuffer()->BindToPixelShader(engine->GetContext(), 1);
 
-	// Copy
-	FxRenderer->CopyTextureToRTV( fxbuffer->GetShaderResView().Get(), FxRenderer->GetTempBufferDS4_1().GetRenderTargetView().Get(), dsRes, true );
+    // Copy
+    FxRenderer->CopyTextureToRTV( fxbuffer->GetShaderResView().Get(), FxRenderer->GetTempBufferDS4_1().GetRenderTargetView().Get(), dsRes, true );
 
-	/** Pass 2: Blur V */
+    /** Pass 2: Blur V */
 
-	// Update settings
-	bcb.B_BlurSize = scale;
-	bcb.B_PixelSize = float2( 0.0f, 1.0f / FxRenderer->GetTempBufferDS4_1().GetSizeY() );
-	bcb.B_Threshold = 0.0f;
-	gaussPS->GetConstantBuffer()[0]->UpdateBuffer( &bcb );
-	gaussPS->GetConstantBuffer()[0]->BindToPixelShader( 0 );
+    // Update settings
+    bcb.B_BlurSize = scale;
+    bcb.B_PixelSize = float2( 0.0f, 1.0f / FxRenderer->GetTempBufferDS4_1().GetSizeY() );
+    bcb.B_Threshold = 0.0f;
+    gaussPS->GetConstantBuffer()[0]->UpdateBuffer( &bcb );
+    gaussPS->GetConstantBuffer()[0]->BindToPixelShader( 0 );
 
-	// Copy
-	FxRenderer->CopyTextureToRTV( FxRenderer->GetTempBufferDS4_1().GetShaderResView().Get(), FxRenderer->GetTempBufferDS4_2().GetRenderTargetView().Get(), dsRes, true );
+    // Copy
+    FxRenderer->CopyTextureToRTV( FxRenderer->GetTempBufferDS4_1().GetShaderResView().Get(), FxRenderer->GetTempBufferDS4_2().GetRenderTargetView().Get(), dsRes, true );
 
-	/** Pass 3: Copy back to FX-Buffer */
+    /** Pass 3: Copy back to FX-Buffer */
 
-	if ( !leaveResultInD4_2 ) {
-		simplePS->Apply();
-		FxRenderer->CopyTextureToRTV( FxRenderer->GetTempBufferDS4_2().GetShaderResView().Get(), fxbuffer->GetRenderTargetView().Get(), INT2( 0, 0 ), true );
-	}
+    if ( !leaveResultInD4_2 ) {
+        simplePS->Apply();
+        FxRenderer->CopyTextureToRTV( FxRenderer->GetTempBufferDS4_2().GetShaderResView().Get(), fxbuffer->GetRenderTargetView().Get(), INT2( 0, 0 ), true );
+    }
 
-	engine->GetContext()->OMSetRenderTargets( 1, &oldRTV, oldDSV );
-	if ( oldRTV )oldRTV->Release();
-	if ( oldDSV )oldDSV->Release();
+    engine->GetContext()->OMSetRenderTargets( 1, oldRTV.GetAddressOf(), oldDSV.Get() );
 
-	return XR_SUCCESS;
+    return XR_SUCCESS;
 }
 
 /** Draws this effect to the given buffer */
 XRESULT D3D11PFX_Blur::Render( RenderToTextureBuffer* fxbuffer ) {
-	return RenderBlur( fxbuffer );
+    return RenderBlur( fxbuffer );
 }

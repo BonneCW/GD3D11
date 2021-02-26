@@ -693,11 +693,10 @@ public:
 			return S_OK;
 		}
 
-
 		Engine::GraphicsEngine->SetActivePixelShader( "PS_FixedFunctionPipe" );
-
 		if ( dptPrimitiveType == D3DPT_TRIANGLEFAN ) {
-			std::vector<ExVertexStruct> vertexList;
+			static std::vector<ExVertexStruct> vertexList;
+			vertexList.clear();
 			WorldConverter::TriangleFanToList( &exv[0], dwVertexCount, &vertexList );
 
 			Engine::GraphicsEngine->DrawVertexArray( &vertexList[0], vertexList.size() );

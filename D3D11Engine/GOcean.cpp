@@ -14,17 +14,10 @@ const int FRESNEL_TEX_SIZE = 256;
 GOcean::GOcean() {
 	PlaneMesh = nullptr;
 	FFTOceanSimulator = nullptr;
-	FresnelMapSRV = nullptr;
-	FresnelMap = nullptr;
-
 }
 
 
 GOcean::~GOcean() {
-	if ( FresnelMapSRV )FresnelMapSRV->Release();
-	if ( FresnelMap )FresnelMap->Release();
-
-
 	delete PlaneMesh;
 	delete FFTOceanSimulator;
 }
@@ -92,7 +85,7 @@ void GOcean::Draw() {
 void GOcean::GetFFTResources( ID3D11ShaderResourceView** tex_displacement, ID3D11ShaderResourceView** tex_gradient, ID3D11ShaderResourceView** fresnelMap, OceanSettingsConstantBuffer* settingsCB ) {
 	*tex_displacement = FFTOceanSimulator->getD3D11DisplacementMap();
 	*tex_gradient = FFTOceanSimulator->getD3D11GradientMap();
-	*fresnelMap = FresnelMapSRV;
+	*fresnelMap = FresnelMapSRV.Get();
 
 	float patchLength = 2048.0f;
 	float displaceMapDim = 512.0f;
@@ -129,12 +122,11 @@ void GOcean::CreateFresnelMap( ID3D11Device* pd3dDevice ) {
 
 	DWORD* buffer = new DWORD[FRESNEL_TEX_SIZE];
 	const float waterrefract = 1.33f;
-	XMVECTOR one_andthird = DirectX::XMLoadFloat( &waterrefract );
 	for ( int i = 0; i < FRESNEL_TEX_SIZE; i++ ) {
 		float cos_a = i / (FLOAT)FRESNEL_TEX_SIZE;
 		// Using water's refraction index 1.33
 		float fresnelPreComp;
-		DirectX::XMStoreFloat( &fresnelPreComp, DirectX::XMFresnelTerm( DirectX::XMLoadFloat( &cos_a ), one_andthird ) );
+		DirectX::XMStoreFloat( &fresnelPreComp, DirectX::XMFresnelTerm( DirectX::XMLoadFloat( &cos_a ), DirectX::XMLoadFloat( &waterrefract ) ) );
 		DWORD fresnel = (DWORD)(fresnelPreComp * 255);
 
 		DWORD sky_blend = (DWORD)(powf( 1 / (1 + cos_a), SkyBlending ) * 255);
@@ -157,10 +149,10 @@ void GOcean::CreateFresnelMap( ID3D11Device* pd3dDevice ) {
 	init_data.SysMemPitch = 0;
 	init_data.SysMemSlicePitch = 0;
 
-	pd3dDevice->CreateTexture1D( &tex_desc, &init_data, &FresnelMap );
+	pd3dDevice->CreateTexture1D( &tex_desc, &init_data, FresnelMap.GetAddressOf() );
 	assert( g_pFresnelMap );
 
-	delete [] buffer; buffer = nullptr;
+	delete[] buffer; buffer = nullptr;
 
 	// Create shader resource
 	D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
@@ -169,7 +161,7 @@ void GOcean::CreateFresnelMap( ID3D11Device* pd3dDevice ) {
 	srv_desc.Texture1D.MipLevels = 1;
 	srv_desc.Texture1D.MostDetailedMip = 0;
 
-	pd3dDevice->CreateShaderResourceView( FresnelMap, &srv_desc, &FresnelMapSRV );
+	pd3dDevice->CreateShaderResourceView( FresnelMap.Get(), &srv_desc, FresnelMapSRV.GetAddressOf() );
 	assert( g_pSRV_Fresnel );
 }
 

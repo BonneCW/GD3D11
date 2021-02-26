@@ -466,7 +466,7 @@ void D2DEditorView::DoVegetationRemove() {
 	float removeRange = 250.0f * (1.0f + MMWDelta * 0.01f);
 
 	if ( Selection.SelectedVegetationBox ) {
-		if ( Engine::GAPI->TraceWorldMesh( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*) & wDir, hit, nullptr, hitTri ) ) {
+		if ( Engine::GAPI->TraceWorldMesh( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*)&wDir, hit, nullptr, hitTri ) ) {
 			DirectX::XMFLOAT4 c;
 
 			// Do this when only Mouse1 and CTRL are pressed
@@ -503,7 +503,7 @@ void D2DEditorView::DoVegetationPlacement() {
 		rtp = &TracedTexture;
 
 	// Trace the worldmesh from the cursor
-	if ( Engine::GAPI->TraceWorldMesh( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*) & wDir, hit, rtp, hitTri ) ) {
+	if ( Engine::GAPI->TraceWorldMesh( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*)&wDir, hit, rtp, hitTri ) ) {
 		// Update the position if successful
 		DraggedBoxCenter = hit;
 
@@ -555,18 +555,18 @@ void D2DEditorView::DoSelection() {
 	TracedMaterial = nullptr;
 
 	// Trace mesh-less vegetationboxes
-	TracedVegetationBox = TraceVegetationBoxes( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*) & wDir );
+	TracedVegetationBox = TraceVegetationBoxes( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*)&wDir );
 	if ( TracedVegetationBox ) {
 		TracedVegetationBox->VisualizeGrass( DirectX::XMFLOAT4( 1, 1, 1, 1 ) );
 		return;
 	}
 
 	// Trace vobs
-	tVob = Engine::GAPI->TraceStaticMeshVobsBB( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*) & wDir, hitVob, &hitMaterialVob );
-	tSkelVob = Engine::GAPI->TraceSkeletalMeshVobsBB( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*) & wDir, hitSkel );
+	tVob = Engine::GAPI->TraceStaticMeshVobsBB( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*)&wDir, hitVob, &hitMaterialVob );
+	tSkelVob = Engine::GAPI->TraceSkeletalMeshVobsBB( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*)&wDir, hitSkel );
 
 	// Trace the worldmesh from the cursor
-	Engine::GAPI->TraceWorldMesh( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*) & wDir, hitWorld, &TracedTexture, hitTri, &hitMesh, &hitMaterial );
+	Engine::GAPI->TraceWorldMesh( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*)&wDir, hitWorld, &TracedTexture, hitTri, &hitMesh, &hitMaterial );
 
 	float lenVob;
 	XMStoreFloat( &lenVob, DirectX::XMVector3LengthEst( Engine::GAPI->GetCameraPositionXM() - XMLoadFloat3( &hitVob ) ) );
@@ -895,7 +895,7 @@ void D2DEditorView::ResetEditorCamera() {
 	CStartWorld = *oCGame::GetGame()->_zCSession_camVob->GetWorldMatrixPtr();
 	constexpr XMVECTORF32 c_XM_1000 = { { { 1, 0, 0, 0 } } };
 	XMVECTOR dir = DirectX::XMVector3Transform( c_XM_1000, XMLoadFloat4x4( &CStartWorld ) );
-	CYaw = asinf( -XMVectorGetZ(dir) / XMVectorGetX( DirectX::XMVector3LengthEst( dir ) ) ) + XM_PIDIV2;
+	CYaw = asinf( -XMVectorGetZ( dir ) / XMVectorGetX( DirectX::XMVector3LengthEst( dir ) ) ) + XM_PIDIV2;
 	CPitch = 0;//atan(- CStartWorld._31 / sqrt(CStartWorld._32 * CStartWorld._32 + CStartWorld._33 * CStartWorld._33));
 }
 
@@ -1427,9 +1427,9 @@ void D2DEditorView::SmoothMesh( WorldMeshInfo* mesh, bool tesselate ) {
 
 
 	// Cleanup
-	SAFE_DELETE(mesh->MeshVertexBuffer);
-	SAFE_DELETE(mesh->MeshIndexBuffer);
-	SAFE_DELETE(mesh->MeshIndexBufferPNAEN);
+	SAFE_DELETE( mesh->MeshVertexBuffer );
+	SAFE_DELETE( mesh->MeshIndexBuffer );
+	SAFE_DELETE( mesh->MeshIndexBufferPNAEN );
 
 	// Recreate the buffers
 	Engine::GraphicsEngine->CreateVertexBuffer( &mesh->MeshVertexBuffer );

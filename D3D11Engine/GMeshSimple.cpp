@@ -96,8 +96,8 @@ XRESULT GMeshSimple::LoadMesh( const std::string& file ) {
 		NumVertices = s->mMeshes[i]->mNumVertices;
 		NumIndices = s->mMeshes[i]->mNumFaces * 3;
 
-		delete [] vertices;
-		delete [] indices;
+		delete[] vertices;
+		delete[] indices;
 
 		if ( s->mNumMeshes > 1 ) {
 			LogWarn() << "SimpleMesh '" << file << "' has more than 1 submesh! SimpleMeshes should only have one!";

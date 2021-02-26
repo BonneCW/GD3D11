@@ -118,16 +118,16 @@ XRESULT D2DSettingsDialog::InitControls() {
 	tesselationCheckbox->SetPosition(D2D1::Point2F(5, tesselationCheckbox->GetPosition().y));
 	tesselationCheckbox->SetChecked(Engine::GAPI->GetRendererState().RendererSettings.EnableTesselation);*/
 
-	SV_Checkbox* hdrCheckbox = new SV_Checkbox(MainView, MainPanel);
-	hdrCheckbox->SetSize(D2D1::SizeF(160, 20));
-	hdrCheckbox->SetCaption("Enable HDR");
-	hdrCheckbox->SetDataToUpdate(&Engine::GAPI->GetRendererState().RendererSettings.EnableHDR);
+	SV_Checkbox* hdrCheckbox = new SV_Checkbox( MainView, MainPanel );
+	hdrCheckbox->SetSize( D2D1::SizeF( 160, 20 ) );
+	hdrCheckbox->SetCaption( "Enable HDR" );
+	hdrCheckbox->SetDataToUpdate( &Engine::GAPI->GetRendererState().RendererSettings.EnableHDR );
 	hdrCheckbox->AlignUnder( smaaCheckbox, 5 );
-	hdrCheckbox->SetPosition(D2D1::Point2F(5, hdrCheckbox->GetPosition().y));
-	hdrCheckbox->SetChecked(Engine::GAPI->GetRendererState().RendererSettings.EnableHDR);
-	if (GMPModeActive) {
-		hdrCheckbox->SetHidden(true);
-	}
+	hdrCheckbox->SetPosition( D2D1::Point2F( 5, hdrCheckbox->GetPosition().y ) );
+	hdrCheckbox->SetChecked( Engine::GAPI->GetRendererState().RendererSettings.EnableHDR );
+    if ( GMPModeActive ) {
+        hdrCheckbox->SetHidden( true );
+    }
 
 	SV_Checkbox* shadowsCheckbox = new SV_Checkbox( MainView, MainPanel );
 	shadowsCheckbox->SetSize( D2D1::SizeF( 160, 20 ) );
@@ -271,7 +271,7 @@ XRESULT D2DSettingsDialog::InitControls() {
 	dynShadowSlider->SetIsIntegralSlider( true );
 	dynShadowSlider->SetMinMax( 0.0f, GothicRendererSettings::_PLS_NUM_SETTINGS - 1 );
 
-	static char* dsValues [] = { "Disabled", "Static only", "Update dynamic", "Update all" };
+	static char* dsValues[] = { "Disabled", "Static", "Update dynamic", "Full" };
 	std::vector<std::string> dsStrings = std::vector<std::string>( dsValues, dsValues + sizeof( dsValues ) / sizeof( dsValues[0] ) );
 	dynShadowSlider->SetDisplayValues( dsStrings );
 
@@ -403,7 +403,6 @@ void D2DSettingsDialog::CloseButtonPressed( SV_Button* sender, void* userdata ) 
 
 	d->SetHidden( true );
 
-	Engine::GAPI->SaveMenuSettings( MENU_SETTINGS_FILE );
 	Engine::GAPI->SetEnableGothicInput( true );
 }
 
@@ -420,8 +419,14 @@ void D2DSettingsDialog::ApplyButtonPressed( SV_Button* sender, void* userdata ) 
 	// Check for resolution change
 	if ( d->Resolutions[d->ResolutionSetting].Width != Engine::GraphicsEngine->GetResolution().x || d->Resolutions[d->ResolutionSetting].Height != Engine::GraphicsEngine->GetResolution().y ) {
 		Engine::GraphicsEngine->OnResize( INT2( d->Resolutions[d->ResolutionSetting].Width, d->Resolutions[d->ResolutionSetting].Height ) );
+		/*TODO change position of SettingsDialog proportional on screen with the changed resolution
+		Pseudo code int SettingsDialog.x *= (Engine::GraphicsEngine->GetResolution().x / d->Resolutions[d->ResolutionSetting].Width);
+		SettingsDialog.y *= (Engine::GraphicsEngine->GetResolution().y / d->Resolutions[d->ResolutionSetting].Height);
+
+		SetPosition(D2D1::Point2F(Engine::GraphicsEngine->GetResolution().x / d->Resolutions[d->ResolutionSetting].Width, Engine::GraphicsEngine->GetResolution().y / d->Resolutions[d->ResolutionSetting].Height));*/
 	}
 	Engine::GAPI->SaveRendererWorldSettings( settings );
+	Engine::GAPI->SaveMenuSettings( MENU_SETTINGS_FILE );
 }
 
 /** Checks if a change needs to reload the shaders */

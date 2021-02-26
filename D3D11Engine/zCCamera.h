@@ -69,25 +69,15 @@ public:
 	}
 
 	float GetFarPlane() {
-#ifdef BUILD_GOTHIC_2_6_fix
-		return *(float*)((char*)this + GothicMemoryLocations::zCCamera::Offset_FarPlane);
-#else
-		return 20000.0f;
-#endif
+        return *(float*)((char*)this + GothicMemoryLocations::zCCamera::Offset_FarPlane);
 	}
 
 	float GetNearPlane() {
-#ifdef BUILD_GOTHIC_2_6_fix
-		return *(float*)((char*)this + GothicMemoryLocations::zCCamera::Offset_NearPlane);
-#else
-		return 0.5f;
-#endif
+        return *(float*)((char*)this + GothicMemoryLocations::zCCamera::Offset_NearPlane);
 	}
 
 	void SetFarPlane( float value ) {
-#ifdef BUILD_GOTHIC_2_6_fix
 		XCALL( GothicMemoryLocations::zCCamera::SetFarPlane );
-#endif
 	}
 
 	/*void GetCameraPosition(DirectX::XMFLOAT3 & v)

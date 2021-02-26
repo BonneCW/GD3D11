@@ -1,6 +1,5 @@
 #pragma once
 #include <unordered_map>
-#include <d3d11.h>
 #include "D3D11VShader.h"
 #include "D3D11PShader.h"
 #include "D3D11HDShader.h"
@@ -66,7 +65,7 @@ public:
 private:
 	XRESULT CompileShader( const ShaderInfo& si );
 
-	void UpdateVShader( const std::string& name, D3D11VShader* shader ) { std::unique_lock<std::mutex> lock( _VShaderMutex ); VShaders[name].reset(shader); }
+	void UpdateVShader( const std::string& name, D3D11VShader* shader ) { std::unique_lock<std::mutex> lock( _VShaderMutex ); VShaders[name].reset( shader ); }
 	void UpdatePShader( const std::string& name, D3D11PShader* shader ) { std::unique_lock<std::mutex> lock( _PShaderMutex );  PShaders[name].reset( shader ); }
 	void UpdateHDShader( const std::string& name, D3D11HDShader* shader ) { std::unique_lock<std::mutex> lock( _HDShaderMutex );  HDShaders[name].reset( shader ); }
 	void UpdateGShader( const std::string& name, D3D11GShader* shader ) { std::unique_lock<std::mutex> lock( _GShaderMutex );  GShaders[name].reset( shader ); }

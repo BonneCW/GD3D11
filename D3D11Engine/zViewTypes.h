@@ -1,13 +1,14 @@
 #pragma once
 // Definitions copied from g2ext, Union (c) 2018 Union team, and World of Gothic
+
 #include "zTypes.h"
 #include "oCGame.h"
 #include "zFont.h"
 enum zTRnd_AlphaBlendFunc;
 class zFont;
 struct zColor;
+class _zCView;
 
-#ifdef BUILD_GOTHIC_2_6_fix
 
 class zCViewFont {
 public:
@@ -105,20 +106,23 @@ public:
 		return DefaultColor;
 	}
 
-	int _zCView::rnd2( float x ) {
+	int _zCView::rnd2( float x ) const {
 		if ( x > 0 ) return (int)(x + 0.5);
 		else return (int)(x - 0.5);
 	}
-	int _zCView::nax( int x ) {
+	int _zCView::nax( int x ) const {
 		return rnd2( (float)(x * psizex) / 8192 );
 	}
 
-	int _zCView::nay( int y ) {
+	int _zCView::nay( int y ) const {
 		return rnd2( (float)(y * psizey) / 8192 );
 	}
 
-	int _zCView::anx( int x ) {
+	int _zCView::anx( int x ) const {
 		return rnd2( (float)(x * 8192) / psizex );
+	}
+	int _zCView::any( int x ) const {
+		return rnd2( (float)(x * 8192) / psizey );
 	}
 
 	void _zCView::CheckAutoScroll() {
@@ -130,6 +134,9 @@ public:
 
 	void _zCView::PrintChars( int x, int y, const zSTRING& str ) {
 		XCALL( GothicMemoryLocations::zCView::PrintChars );
+	}
+	zCViewText* _zCView::CreateText( int x, int y, const zSTRING& str ) {
+		XCALL( GothicMemoryLocations::zCView::CreateText );
 	}
 };
 
@@ -219,6 +226,3 @@ public:
 	int m_numLines;
 	int m_unformated;
 };
-
-
-#endif

@@ -175,7 +175,6 @@ public:
 
 	/** Returns the sun position in world coords */
 	DirectX::XMFLOAT3 GetSunWorldPosition( float timeScale = 1.0f ) {
-		using namespace DirectX;
 		/*if (!GetSun())
 		{
 			return XMFLOAT3(0, 0, 0);

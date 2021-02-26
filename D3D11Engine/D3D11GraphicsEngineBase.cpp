@@ -12,9 +12,9 @@
 
 using namespace DirectX;
 
-const int DRAWVERTEXARRAY_BUFFER_SIZE = 2048 * sizeof( ExVertexStruct );
+const unsigned int DRAWVERTEXARRAY_BUFFER_SIZE = 4096 * sizeof( ExVertexStruct );
 const int NUM_MAX_BONES = 96;
-const int INSTANCING_BUFFER_SIZE = sizeof( VobInstanceInfo ) * 2048;
+const unsigned int INSTANCING_BUFFER_SIZE = sizeof( VobInstanceInfo ) * 2048;
 
 // If defined, creates a debug-version of the d3d11-device
 //#define DEBUG_D3D11
@@ -37,244 +37,12 @@ D3D11GraphicsEngineBase::~D3D11GraphicsEngineBase() {
 	}
 }
 
-/** Called after the fake-DDraw-Device got created */
-XRESULT D3D11GraphicsEngineBase::Init() {
-	HRESULT hr;
-
-	LogInfo() << "Initializing Device...";
-
-	// Create DXGI factory
-	LE( CreateDXGIFactory1( __uuidof(IDXGIFactory2), &DXGIFactory2 ) );
-	LE( DXGIFactory2->EnumAdapters1( 0, &DXGIAdapter1 ) ); // Get first adapter
-
-	// Find out what we are rendering on to write it into the logfile
-	DXGI_ADAPTER_DESC1 adpDesc;
-	DXGIAdapter1->GetDesc1( &adpDesc );
-
-	std::wstring wDeviceDescription( adpDesc.Description );
-	std::string deviceDescription( wDeviceDescription.begin(), wDeviceDescription.end() );
-	DeviceDescription = deviceDescription;
-	LogInfo() << "Rendering on: " << deviceDescription.c_str();
-
-	int flags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
-
-	D3D_FEATURE_LEVEL featurelevel = D3D_FEATURE_LEVEL_11_0;
-
-	// Create D3D11-Device
-#ifndef DEBUG_D3D11
-	LE( D3D11CreateDevice( DXGIAdapter1.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags, &featurelevel, 1, D3D11_SDK_VERSION, &Device, nullptr, &Context ) );
-#else
-	LE( D3D11CreateDevice( DXGIAdapter1.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags | D3D11_CREATE_DEVICE_DEBUG, &featurelevel, 1, D3D11_SDK_VERSION, &Device, nullptr, &Context ) );
-#endif
-
-	if ( hr == DXGI_ERROR_UNSUPPORTED ) {
-		LogErrorBox() << "Your GPU (" << deviceDescription.c_str() << ") does not support Direct3D 11, so it can't run GD3D11!\n"
-			"It has to be at least Featurelevel 11_0 compatible, which requires at least:"
-			" *	Nvidia GeForce GTX4xx or newer"
-			" *	AMD Radeon 5xxx or newer\n\n"
-			"The game will now close.";
-		exit( 0 );
-	}
-
-	LE( Device->CreateDeferredContext( 0, &DeferredContext ) ); // Used for multithreaded texture loading
-
-	LogInfo() << "Creating ShaderManager";
-
-	ShaderManager = std::make_unique<D3D11ShaderManager>();
-	ShaderManager->Init();
-	ShaderManager->LoadShaders();
-
-	PS_DiffuseNormalmapped = ShaderManager->GetPShader( "PS_DiffuseNormalmapped" );
-	PS_Diffuse = ShaderManager->GetPShader( "PS_Diffuse" );
-	PS_DiffuseNormalmappedAlphatest = ShaderManager->GetPShader( "PS_DiffuseNormalmappedAlphaTest" );
-	PS_DiffuseAlphatest = ShaderManager->GetPShader( "PS_DiffuseAlphaTest" );
-	PS_Simple = ShaderManager->GetPShader( "PS_Simple" );
-	PS_SimpleAlphaTest = ShaderManager->GetPShader( "PS_SimpleAlphaTest" );
-	VS_Ex = ShaderManager->GetVShader( "VS_Ex" );
-	VS_ExInstancedObj = ShaderManager->GetVShader( "VS_ExInstancedObj" );
-	VS_ExRemapInstancedObj = ShaderManager->GetVShader( "VS_ExRemapInstancedObj" );
-	VS_ExSkeletal = ShaderManager->GetVShader( "VS_ExSkeletal" );
-
-	// Create default sampler state
-	D3D11_SAMPLER_DESC samplerDesc;
-	samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;
-	samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-	samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-	samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-	samplerDesc.MipLODBias = 0;
-	samplerDesc.MaxAnisotropy = 16;
-	samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-	samplerDesc.BorderColor[0] = 1.0f;
-	samplerDesc.BorderColor[1] = 1.0f;
-	samplerDesc.BorderColor[2] = 1.0f;
-	samplerDesc.BorderColor[3] = 1.0f;
-	samplerDesc.MinLOD = -3.402823466e+38F; // -FLT_MAX
-	samplerDesc.MaxLOD = 3.402823466e+38F; // FLT_MAX
-
-	LE( GetDevice()->CreateSamplerState( &samplerDesc, &DefaultSamplerState ) );
-	GetContext()->PSSetSamplers( 0, 1, DefaultSamplerState.GetAddressOf() );
-	GetContext()->VSSetSamplers( 0, 1, DefaultSamplerState.GetAddressOf() );
-	GetContext()->DSSetSamplers( 0, 1, DefaultSamplerState.GetAddressOf() );
-	GetContext()->HSSetSamplers( 0, 1, DefaultSamplerState.GetAddressOf() );
-
-	TempVertexBuffer = std::make_unique<D3D11VertexBuffer>();
-	TempVertexBuffer->Init( nullptr, DRAWVERTEXARRAY_BUFFER_SIZE, D3D11VertexBuffer::B_VERTEXBUFFER, D3D11VertexBuffer::U_DYNAMIC, D3D11VertexBuffer::CA_WRITE );
-
-	TransformsCB = std::make_unique<D3D11ConstantBuffer>( sizeof( VS_ExConstantBuffer_PerFrame ), nullptr );
-
-	LineRenderer = std::make_unique<D3D11LineRenderer>();
-
-	SetDefaultStates();
-	UpdateRenderStates();
-
-	return XR_SUCCESS;
-}
-
 /** Called when the game created its window */
 XRESULT D3D11GraphicsEngineBase::SetWindow( HWND hWnd ) {
 	LogInfo() << "Creating swapchain";
 	OutputWindow = hWnd;
 
 	OnResize( Resolution );
-
-	return XR_SUCCESS;
-}
-
-/** Called on window resize/resolution change */
-XRESULT D3D11GraphicsEngineBase::OnResize( INT2 newSize ) {
-	HRESULT hr;
-
-	if ( memcmp( &Resolution, &newSize, sizeof( newSize ) ) == 0 && SwapChain )
-		return XR_SUCCESS; // Don't resize if we don't have to
-
-	Resolution = newSize;
-	INT2 bbres = GetBackbufferResolution();
-
-	RECT desktopRect;
-	GetClientRect( GetDesktopWindow(), &desktopRect );
-	SetWindowPos( OutputWindow, nullptr, 0, 0, desktopRect.right, desktopRect.bottom, 0 );
-
-	Backbuffer.reset();
-
-	if ( !SwapChain ) {
-		LogInfo() << "Creating new swapchain! (Format: DXGI_FORMAT_R8G8B8A8_UNORM)";
-
-		DXGI_SWAP_CHAIN_DESC1 scd = {};
-
-		scd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-		scd.BufferCount = 1;
-		scd.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT | DXGI_USAGE_SHADER_INPUT;
-		scd.SampleDesc.Count = 1;
-		scd.SampleDesc.Quality = 0;
-		scd.Height = bbres.y;
-		scd.Width = bbres.x;
-		scd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-
-		DXGI_SWAP_CHAIN_FULLSCREEN_DESC swapChainFSDesc = {};
-
-		// Check for windowed mode
-		bool windowed = Engine::GAPI->HasCommandlineParameter( "ZWINDOW" ) ||
-			Engine::GAPI->GetIntParamFromConfig( "zStartupWindowed" );
-		swapChainFSDesc.Windowed = windowed;
-
-		LE( DXGIFactory2->CreateSwapChainForHwnd( GetDevice().Get(), OutputWindow, &scd, &swapChainFSDesc, nullptr, &SwapChain ) );
-
-		if ( !SwapChain ) {
-			LogError() << "Failed to create Swapchain! Program will now exit!";
-			exit( 0 );
-		}
-
-		// Need to init AntTweakBar now that we have a working swapchain
-		XLE( Engine::AntTweakBar->Init() );
-	} else {
-		LogInfo() << "Resizing swapchain  (Format: DXGI_FORMAT_R8G8B8A8_UNORM)";
-
-		if ( FAILED( SwapChain->ResizeBuffers( 0, bbres.x, bbres.y, DXGI_FORMAT_R8G8B8A8_UNORM, 0 ) ) ) {
-			LogError() << "Failed to resize swapchain!";
-			return XR_FAILED;
-		}
-	}
-
-	// Successfully resized swapchain, re-get buffers
-	Microsoft::WRL::ComPtr<ID3D11Texture2D> backbuffer;
-	SwapChain->GetBuffer( 0, __uuidof(ID3D11Texture2D), (void**)backbuffer.ReleaseAndGetAddressOf() );
-
-	if ( !backbuffer ) {
-		LogError() << "Failed to get backbuffer!";
-		return XR_FAILED;
-	}
-
-	// Recreate RenderTargetView
-	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> backbufferRTV;
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> backbufferSRV;
-	LE( GetDevice()->CreateRenderTargetView( backbuffer.Get(), nullptr, &backbufferRTV ) );
-	LE( GetDevice()->CreateShaderResourceView( backbuffer.Get(), nullptr, &backbufferSRV ) );
-
-	Backbuffer = std::make_unique<RenderToTextureBuffer>( backbuffer, backbufferSRV, backbufferRTV, (UINT)Resolution.x, (UINT)Resolution.y );
-
-	// Recreate DepthStencilBuffer
-	DepthStencilBuffer = std::make_unique<RenderToDepthStencilBuffer>( GetDevice(), Resolution.x, Resolution.y, DXGI_FORMAT_R32_TYPELESS, nullptr, DXGI_FORMAT_D32_FLOAT, DXGI_FORMAT_R32_FLOAT );
-
-	// Bind our newly created resources
-	GetContext()->OMSetRenderTargets( 1, Backbuffer->GetRenderTargetView().GetAddressOf(), DepthStencilBuffer->GetDepthStencilView().Get() );
-
-	// Set the viewport
-	D3D11_VIEWPORT viewport = {};
-
-	viewport.TopLeftX = 0;
-	viewport.TopLeftY = 0;
-	viewport.Width = (float)bbres.x;
-	viewport.Height = (float)bbres.y;
-	viewport.MinDepth = 0.0f;
-	viewport.MaxDepth = 1.0f;
-
-	GetContext()->RSSetViewports( 1, &viewport );
-
-	// Create other buffers
-	HDRBackBuffer = std::make_unique<RenderToTextureBuffer>( GetDevice(), Resolution.x, Resolution.y, DXGI_FORMAT_R16G16B16A16_FLOAT );
-
-	Engine::AntTweakBar->OnResize( newSize );
-
-	GetContext()->OMSetRenderTargets( 1, Backbuffer->GetRenderTargetView().GetAddressOf(), DepthStencilBuffer->GetDepthStencilView().Get() );
-
-	return XR_SUCCESS;
-}
-
-/** Called when the game wants to render a new frame */
-XRESULT D3D11GraphicsEngineBase::OnBeginFrame() {
-	// Enter the critical section for safety while executing the deferred command list
-	Engine::GAPI->EnterResourceCriticalSection();
-	ID3D11CommandList* dc_cl = nullptr;
-	GetDeferredMediaContext()->FinishCommandList( true, &dc_cl );
-
-	// Copy list of textures we are operating on
-	Engine::GAPI->MoveLoadedTexturesToProcessedList();
-	Engine::GAPI->ClearFrameLoadedTextures();
-
-	Engine::GAPI->LeaveResourceCriticalSection();
-	if ( dc_cl ) {
-		//LogInfo() << "Executing command list";
-		GetContext()->ExecuteCommandList( dc_cl, true );
-		dc_cl->Release();
-	}
-
-	// Force the mode upon Gothic
-	zCView::SetMode( static_cast<int>(Resolution.x / Engine::GAPI->GetRendererState().RendererSettings.GothicUIScale), static_cast<int>(Resolution.y / Engine::GAPI->GetRendererState().RendererSettings.GothicUIScale), 32 );
-
-	// Notify the shader manager
-	ShaderManager->OnFrameStart();
-
-	return XR_SUCCESS;
-
-}
-
-/** Called when the game ended it's frame */
-XRESULT D3D11GraphicsEngineBase::OnEndFrame() {
-	Present();
-
-	// At least Present should have flushed the pipeline, so these textures should be ready by now
-	Engine::GAPI->SetFrameProcessedTexturesReady();
 
 	return XR_SUCCESS;
 }
@@ -327,70 +95,6 @@ XRESULT D3D11GraphicsEngineBase::CreateTexture( D3D11Texture** outTexture ) {
 XRESULT D3D11GraphicsEngineBase::CreateConstantBuffer( D3D11ConstantBuffer** outCB, void* data, int size ) {
 	*outCB = new D3D11ConstantBuffer( size, data );
 
-	return XR_SUCCESS;
-}
-
-/** Returns a list of available display modes */
-XRESULT D3D11GraphicsEngineBase::GetDisplayModeList( std::vector<DisplayModeInfo>* modeList, bool includeSuperSampling ) {
-	HRESULT hr;
-	UINT numModes = 0;
-	std::unique_ptr<DXGI_MODE_DESC []> displayModes = nullptr;
-	DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	IDXGIOutput* output = nullptr;
-
-	// Get desktop rect
-	RECT desktop;
-	GetClientRect( GetDesktopWindow(), &desktop );
-
-	if ( !DXGIAdapter1 )
-		return XR_FAILED;
-
-	DXGIAdapter1->EnumOutputs( 0, &output );
-
-	if ( !output )
-		return XR_FAILED;
-
-	hr = output->GetDisplayModeList( format, 0, &numModes, nullptr );
-
-	displayModes = std::make_unique<DXGI_MODE_DESC []>( numModes );
-
-	// Get the list
-	hr = output->GetDisplayModeList( format, 0, &numModes, displayModes.get() );
-
-	for ( unsigned int i = 0; i < numModes; i++ ) {
-		if ( displayModes[i].Format != format )
-			continue;
-
-		DisplayModeInfo info;
-		info.Height = displayModes[i].Height;
-		info.Width = displayModes[i].Width;
-		info.Bpp = 32;
-
-		if ( info.Width > ( unsigned long )desktop.right || info.Height > (unsigned long)desktop.bottom )
-			continue; // Skip bigger sizes than the desktop rect, because DXGI doesn't like them apparently TODO: Fix this if possible!
-
-		if ( !modeList->empty() && memcmp( &modeList->back(), &info, sizeof( info ) ) == 0 )
-			continue; // Already have that in list
-
-		modeList->push_back( info );
-	}
-
-	if ( includeSuperSampling ) {
-		// Put supersampling resolutions in, up to just below 8k
-		int i = 2;
-		DisplayModeInfo ssBase = modeList->back();
-		while ( ssBase.Width * i < 8192 && ssBase.Height * i < 8192 ) {
-			DisplayModeInfo info;
-			info.Height = ssBase.Height * i;
-			info.Width = ssBase.Width * i;
-			info.Bpp = 32;
-
-			modeList->push_back( info );
-			i++;
-		}
-	}
-	displayModes.reset();
-	output->Release();
 	return XR_SUCCESS;
 }
 
@@ -522,7 +226,7 @@ XRESULT D3D11GraphicsEngineBase::DrawVertexArray( ExVertexStruct* vertices, unsi
 	vShader->GetConstantBuffer()[0]->BindToVertexShader( 0 );
 
 	D3D11_BUFFER_DESC desc;
-	TempVertexBuffer->GetVertexBuffer()->GetDesc( &desc );
+	TempVertexBuffer->GetVertexBuffer().Get()->GetDesc( &desc );
 
 	// Check if we need a bigger vertexbuffer
 	if ( desc.ByteWidth < stride * numVertices ) {
@@ -540,8 +244,8 @@ XRESULT D3D11GraphicsEngineBase::DrawVertexArray( ExVertexStruct* vertices, unsi
 
 	UINT offset = 0;
 	UINT uStride = stride;
-	ID3D11Buffer* buffer = TempVertexBuffer->GetVertexBuffer();
-	GetContext()->IASetVertexBuffers( 0, 1, &buffer, &uStride, &offset );
+	Microsoft::WRL::ComPtr<ID3D11Buffer> buffer = TempVertexBuffer->GetVertexBuffer().Get();
+	GetContext()->IASetVertexBuffers( 0, 1, buffer.GetAddressOf(), &uStride, &offset );
 
 	//Draw the mesh
 	GetContext()->Draw( numVertices, startVertex );
@@ -731,8 +435,8 @@ XRESULT D3D11GraphicsEngineBase::DrawVertexBufferFF( D3D11VertexBuffer* vb, unsi
 
 	UINT offset = 0;
 	UINT uStride = stride;
-	ID3D11Buffer* buffer = vb->GetVertexBuffer();
-	GetContext()->IASetVertexBuffers( 0, 1, &buffer, &uStride, &offset );
+	Microsoft::WRL::ComPtr<ID3D11Buffer> buffer = vb->GetVertexBuffer().Get();
+	GetContext()->IASetVertexBuffers( 0, 1, buffer.GetAddressOf(), &uStride, &offset );
 
 	//Draw the mesh
 	GetContext()->Draw( numVertices, startVertex );

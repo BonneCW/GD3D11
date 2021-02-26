@@ -298,8 +298,8 @@ public:
 		for ( int i = 0; i < num; i++ ) {
 			zCBspLeaf* leaf = GetLeaf( i );
 
-			for ( int i = 0; i < leaf->NumPolys; i++ ) {
-				target.push_back( leaf->PolyList[i] );
+			for ( int j = 0; j < leaf->NumPolys; j++ ) {
+				target.push_back( leaf->PolyList[j] );
 			}
 		}
 

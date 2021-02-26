@@ -42,9 +42,9 @@ XRESULT D3D11PFX_HDR::Render( RenderToTextureBuffer* fxbuffer ) {
 	Engine::GAPI->GetRendererState().BlendState.SetDirty();
 
 	// Save old rendertargets
-	ID3D11RenderTargetView* oldRTV = nullptr;
-	ID3D11DepthStencilView* oldDSV = nullptr;
-	engine->GetContext()->OMGetRenderTargets( 1, &oldRTV, &oldDSV );
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> oldRTV;
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> oldDSV;
+	engine->GetContext()->OMGetRenderTargets( 1, oldRTV.GetAddressOf(), oldDSV.GetAddressOf() );
 
 
 	RenderToTextureBuffer* lum = CalcLuminance();
@@ -72,17 +72,15 @@ XRESULT D3D11PFX_HDR::Render( RenderToTextureBuffer* fxbuffer ) {
 	hps->GetConstantBuffer()[0]->UpdateBuffer( &hcb );
 	hps->GetConstantBuffer()[0]->BindToPixelShader( 0 );
 
-	FxRenderer->CopyTextureToRTV( FxRenderer->GetTempBuffer().GetShaderResView().Get(), oldRTV, engine->GetResolution(), true );
+	FxRenderer->CopyTextureToRTV( FxRenderer->GetTempBuffer().GetShaderResView().Get(), oldRTV.Get(), engine->GetResolution(), true );
 
 	// Show lumBuffer
 	//FxRenderer->CopyTextureToRTV(currentLum->GetShaderResView(), oldRTV, INT2(LUM_SIZE,LUM_SIZE), false);
 
 	// Restore rendertargets
-	ID3D11ShaderResourceView* srv = nullptr;
-	engine->GetContext()->PSSetShaderResources( 1, 1, &srv );
-	engine->GetContext()->OMSetRenderTargets( 1, &oldRTV, oldDSV );
-	if ( oldRTV )oldRTV->Release();
-	if ( oldDSV )oldDSV->Release();
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv;
+	engine->GetContext()->PSSetShaderResources( 1, 1, srv.GetAddressOf() );
+	engine->GetContext()->OMSetRenderTargets( 1, oldRTV.GetAddressOf(), oldDSV.Get() );
 
 	return XR_SUCCESS;
 }

@@ -6,6 +6,8 @@
 
 #include "VertexTypes.h"
 
+#include <wrl/client.h>
+
 enum XRESULT;
 
 class D3D11VertexBuffer {
@@ -65,20 +67,20 @@ public:
 	XRESULT OptimizeFaces( VERTEX_INDEX* indices, byte* vertices, unsigned int numIndices, unsigned int numVertices, unsigned int stride );
 
 	/** Returns the D3D11-Buffer object */
-	ID3D11Buffer* GetVertexBuffer() const;
+	Microsoft::WRL::ComPtr <ID3D11Buffer> GetVertexBuffer() const;
 
 	/** Returns the size in bytes of this buffer */
 	unsigned int GetSizeInBytes() const;
 
 	/** Returns the SRV of this buffer, if it represents a structured buffer */
-	ID3D11ShaderResourceView* GetShaderResourceView() const;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> GetShaderResourceView() const;
 
 private:
 	/** Vertex buffer object */
-	ID3D11Buffer* VertexBuffer;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> VertexBuffer;
 
 	/** SRV for structured access */
-	ID3D11ShaderResourceView* ShaderResourceView;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> ShaderResourceView;
 
 	/** Size of the buffer in bytes */
 	unsigned int SizeInBytes;

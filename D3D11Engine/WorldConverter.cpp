@@ -45,8 +45,8 @@ void WorldConverter::WorldMeshCollectPolyRange( const float3& position, float ra
 	// Generate the meshes
 	for ( auto const& itx : Engine::GAPI->GetWorldSections() ) {
 		for ( auto const& ity : itx.second ) {
-			const XMVECTOR a = XMVectorSet( static_cast<float>(itx.first - s.x), static_cast<float>(ity.first - s.y), 0, 0 );
-			if ( Toolbox::XMVector2LengthFloat( a ) < 2 ) {
+            const XMVECTOR a = XMVectorSet( static_cast<float>(itx.first - s.x), static_cast<float>(ity.first - s.y), 0, 0 );
+            if ( Toolbox::XMVector2LengthFloat( a ) < 2 ) {
 				// Check all polys from all meshes
 				for ( auto const& it : ity.second.WorldMeshes ) {
 					WorldMeshInfo* m;
@@ -68,7 +68,7 @@ void WorldConverter::WorldMeshCollectPolyRange( const float3& position, float ra
 							|| Toolbox::XMVector3LengthSqFloat( xmPosition - XMLoadFloat3( it.second->Vertices[it.second->Indices[i + 1]].Position.toXMFLOAT3() ) ) < range2
 							|| Toolbox::XMVector3LengthSqFloat( xmPosition - XMLoadFloat3( it.second->Vertices[it.second->Indices[i + 2]].Position.toXMFLOAT3() ) ) < range2 ) {
 							for ( int v = 0; v < 3; v++ )
-								m->Vertices.push_back( it.second->Vertices[it.second->Indices[i + v]] );
+								m->Vertices.emplace_back( it.second->Vertices[it.second->Indices[i + v]] );
 						}
 					}
 				}
@@ -123,7 +123,7 @@ XRESULT WorldConverter::LoadWorldMeshFromFile( const std::string& file, std::map
 		for ( unsigned int m = 0; m < meshes.size(); m++ ) {
 			auto& meshData = gm[textures[m]];
 
-			meshData.push_back( std::make_pair( meshes[m]->Vertices, meshes[m]->Indices ) );
+			meshData.emplace_back( std::make_pair( meshes[m]->Vertices, meshes[m]->Indices ) );
 		}
 
 		CacheMesh( gm, file + ".mcache" );
@@ -209,7 +209,7 @@ XRESULT WorldConverter::LoadWorldMeshFromFile( const std::string& file, std::map
 			}
 
 			for ( int i = 0; i < 3; i++ ) {
-				section.WorldMeshes[key]->Vertices.push_back( *v[i] );
+				section.WorldMeshes[key]->Vertices.emplace_back( *v[i] );
 			}
 		}
 	}
@@ -271,8 +271,8 @@ XRESULT WorldConverter::LoadWorldMeshFromFile( const std::string& file, std::map
 				it.second->MeshIndexBuffer->Init( &it.second->Indices[0], it.second->Indices.size() * sizeof( VERTEX_INDEX ), D3D11VertexBuffer::B_INDEXBUFFER, D3D11VertexBuffer::U_IMMUTABLE );
 
 				// Remember them, to wrap then up later
-				vertexBuffers.push_back( &it.second->Vertices );
-				indexBuffers.push_back( &it.second->Indices );
+				vertexBuffers.emplace_back( &it.second->Vertices );
+				indexBuffers.emplace_back( &it.second->Indices );
 			}
 		}
 	}
@@ -385,7 +385,7 @@ HRESULT WorldConverter::ConvertWorldMeshPNAEN( zCPolygon** polys, unsigned int n
 				}
 			}
 
-			polyVertices.push_back( t );
+			polyVertices.emplace_back( t );
 		}
 
 		// Use the map to put the polygon to those using the same material
@@ -419,7 +419,7 @@ HRESULT WorldConverter::ConvertWorldMeshPNAEN( zCPolygon** polys, unsigned int n
 		}
 
 		for ( unsigned int v = 0; v < finalVertices.size(); v++ )
-			(*outSections)[section.x][section.y].WorldMeshes[key]->Vertices.push_back( finalVertices[v] );
+			(*outSections)[section.x][section.y].WorldMeshes[key]->Vertices.emplace_back( finalVertices[v] );
 	}
 
 	XMVECTOR avgSections = XMVectorZero();
@@ -457,8 +457,8 @@ HRESULT WorldConverter::ConvertWorldMeshPNAEN( zCPolygon** polys, unsigned int n
 				it.second->MeshIndexBuffer->Init( &it.second->Indices[0], it.second->Indices.size() * sizeof( VERTEX_INDEX ), D3D11VertexBuffer::B_INDEXBUFFER, D3D11VertexBuffer::U_IMMUTABLE );
 
 				// Remember them, to wrap then up later
-				vertexBuffers.push_back( &it.second->Vertices );
-				indexBuffers.push_back( &it.second->Indices );
+				vertexBuffers.emplace_back( &it.second->Vertices );
+				indexBuffers.emplace_back( &it.second->Indices );
 			}
 		}
 	}
@@ -583,7 +583,7 @@ HRESULT WorldConverter::ConvertWorldMesh( zCPolygon** polys, unsigned int numPol
 				}
 			}
 
-			polyVertices.push_back( t );
+			polyVertices.emplace_back( t );
 		}
 
 		// Use the map to put the polygon to those using the same material
@@ -633,7 +633,7 @@ HRESULT WorldConverter::ConvertWorldMesh( zCPolygon** polys, unsigned int numPol
 		}
 
 		for ( unsigned int v = 0; v < finalVertices.size(); v++ ) {
-			(*outSections)[section.x][section.y].WorldMeshes[key]->Vertices.push_back( finalVertices[v] );
+			(*outSections)[section.x][section.y].WorldMeshes[key]->Vertices.emplace_back( finalVertices[v] );
 		}
 	}
 
@@ -684,8 +684,8 @@ HRESULT WorldConverter::ConvertWorldMesh( zCPolygon** polys, unsigned int numPol
 
 
 				// Remember them, to wrap then up later
-				vertexBuffers.push_back( &it.second->Vertices );
-				indexBuffers.push_back( &it.second->Indices );
+				vertexBuffers.emplace_back( &it.second->Vertices );
+				indexBuffers.emplace_back( &it.second->Indices );
 			}
 		}
 	}
@@ -758,9 +758,9 @@ void WorldConverter::GenerateFullSectionMesh( WorldMeshSectionInfo& section ) {
 
 		for ( unsigned int i = 0; i < it.second->Indices.size(); i += 3 ) {
 			// Push all triangles
-			vx.push_back( it.second->Vertices[it.second->Indices[i]] );
-			vx.push_back( it.second->Vertices[it.second->Indices[i + 1]] );
-			vx.push_back( it.second->Vertices[it.second->Indices[i + 2]] );
+			vx.emplace_back( it.second->Vertices[it.second->Indices[i]] );
+			vx.emplace_back( it.second->Vertices[it.second->Indices[i + 1]] );
+			vx.emplace_back( it.second->Vertices[it.second->Indices[i + 2]] );
 		}
 	}
 
@@ -790,7 +790,7 @@ void WorldConverter::GenerateFullSectionMesh( WorldMeshSectionInfo& section ) {
 					Position.z = v.Position.z;
 					XMStoreFloat3( &Position, DirectX::XMVector3TransformCoord( XMLoadFloat3( &Position ), XMM_world ) );
 					v.Position = Position;
-					vx.push_back( v );
+					vx.emplace_back( v );
 				}
 			}
 		}
@@ -834,9 +834,9 @@ INT2 WorldConverter::GetSectionOfPos( const float3& pos ) {
 /** Converts a triangle fan to a list */
 void WorldConverter::TriangleFanToList( ExVertexStruct* input, unsigned int numInputVertices, std::vector<ExVertexStruct>* outVertices ) {
 	for ( UINT i = 1; i < numInputVertices - 1; i++ ) {
-		outVertices->push_back( input[0] );
-		outVertices->push_back( input[i + 1] );
-		outVertices->push_back( input[i] );
+		outVertices->emplace_back( input[0] );
+		outVertices->emplace_back( input[i + 1] );
+		outVertices->emplace_back( input[i] );
 	}
 }
 
@@ -890,9 +890,9 @@ void WorldConverter::Extract3DSMeshFromVisual( zCProgMeshProto* visual, MeshVisu
 		// Get indices
 		std::vector<VERTEX_INDEX> indices;
 		for ( int n = 0; n < visual->GetSubmesh( i )->TriList.NumInArray; n++ ) {
-			indices.push_back( visual->GetSubmesh( i )->WedgeList.Get( visual->GetSubmesh( i )->TriList.Get( n ).wedge[0] ).position );
-			indices.push_back( visual->GetSubmesh( i )->WedgeList.Get( visual->GetSubmesh( i )->TriList.Get( n ).wedge[1] ).position );
-			indices.push_back( visual->GetSubmesh( i )->WedgeList.Get( visual->GetSubmesh( i )->TriList.Get( n ).wedge[2] ).position );
+			indices.emplace_back( visual->GetSubmesh( i )->WedgeList.Get( visual->GetSubmesh( i )->TriList.Get( n ).wedge[0] ).position );
+			indices.emplace_back( visual->GetSubmesh( i )->WedgeList.Get( visual->GetSubmesh( i )->TriList.Get( n ).wedge[1] ).position );
+			indices.emplace_back( visual->GetSubmesh( i )->WedgeList.Get( visual->GetSubmesh( i )->TriList.Get( n ).wedge[2] ).position );
 		}
 
 		zCMaterial* mat = visual->GetSubmesh( i )->Material;
@@ -910,7 +910,7 @@ void WorldConverter::Extract3DSMeshFromVisual( zCProgMeshProto* visual, MeshVisu
 		mi->MeshVertexBuffer->Init( &vertices[0], vertices.size() * sizeof( ExVertexStruct ) );
 		mi->MeshIndexBuffer->Init( &indices[0], indices.size() * sizeof( VERTEX_INDEX ), D3D11VertexBuffer::B_INDEXBUFFER );
 
-		meshInfo->Meshes[mat].push_back( mi );
+		meshInfo->Meshes[mat].emplace_back( mi );
 	}
 
 	meshInfo->Visual = visual;
@@ -958,7 +958,7 @@ void WorldConverter::ExtractSkeletalMeshFromVob( zCModel* model, SkeletalMeshVis
 				}
 			}
 
-			posList.push_back( vx );
+			posList.emplace_back( vx );
 		}
 
 		// The rest is the same as a zCProgMeshProto, but with a different vertex type
@@ -972,7 +972,7 @@ void WorldConverter::ExtractSkeletalMeshFromVob( zCModel* model, SkeletalMeshVis
 			// Get indices
 			for ( int t = 0; t < m->TriList.NumInArray; t++ ) {
 				for ( int v = 0; v < 3; v++ ) {
-					indices.push_back( m->TriList.Array[t].wedge[v] );
+					indices.emplace_back( m->TriList.Array[t].wedge[v] );
 				}
 			}
 
@@ -984,7 +984,7 @@ void WorldConverter::ExtractSkeletalMeshFromVob( zCModel* model, SkeletalMeshVis
 				vx.Color = 0xFFFFFFFF;
 				vx.Normal = m->WedgeList.Array[v].normal;
 
-				vertices.push_back( vx );
+				vertices.emplace_back( vx );
 
 				// Save vertexpos in bind pose, to run PNAEN on it
 				ExVertexStruct pvx;
@@ -993,7 +993,7 @@ void WorldConverter::ExtractSkeletalMeshFromVob( zCModel* model, SkeletalMeshVis
 				pvx.Normal = vx.Normal;
 				pvx.Color = vx.Color;
 
-				bindPoseVertices.push_back( pvx );
+				bindPoseVertices.emplace_back( pvx );
 			}
 
 			zCMaterial* mat = s->GetSubmesh( i )->Material;
@@ -1024,8 +1024,8 @@ void WorldConverter::ExtractSkeletalMeshFromVob( zCModel* model, SkeletalMeshVis
 			Engine::GAPI->GetRendererState().RendererInfo.SkeletalVerticesDataSize += mi->Vertices.size() * sizeof( ExVertexStruct );
 			Engine::GAPI->GetRendererState().RendererInfo.SkeletalVerticesDataSize += mi->Indices.size() * sizeof( VERTEX_INDEX );
 
-			skeletalMeshInfo->SkeletalMeshes[mat].push_back( mi );
-			skeletalMeshInfo->Meshes[mat].push_back( bmi );
+			skeletalMeshInfo->SkeletalMeshes[mat].emplace_back( mi );
+			skeletalMeshInfo->Meshes[mat].emplace_back( bmi );
 		}
 	}
 
@@ -1081,7 +1081,7 @@ void WorldConverter::ExtractSkeletalMeshFromProto( zCModelMeshLib* model, Skelet
 				}
 			}
 
-			posList.push_back( vx );
+			posList.emplace_back( vx );
 		}
 
 
@@ -1097,7 +1097,7 @@ void WorldConverter::ExtractSkeletalMeshFromProto( zCModelMeshLib* model, Skelet
 			// Get indices
 			for ( int t = 0; t < m->TriList.NumInArray; t++ ) {
 				for ( int v = 2; v >= 0; v-- ) {
-					indices.push_back( m->TriList.Array[t].wedge[v] );
+					indices.emplace_back( m->TriList.Array[t].wedge[v] );
 				}
 			}
 
@@ -1109,7 +1109,7 @@ void WorldConverter::ExtractSkeletalMeshFromProto( zCModelMeshLib* model, Skelet
 				vx.Color = 0xFFFFFFFF;
 				vx.Normal = m->WedgeList.Array[v].normal;
 
-				vertices.push_back( vx );
+				vertices.emplace_back( vx );
 
 				// Save vertexpos in bind pose, to run PNAEN on it
 				ExVertexStruct pvx;
@@ -1118,7 +1118,7 @@ void WorldConverter::ExtractSkeletalMeshFromProto( zCModelMeshLib* model, Skelet
 				pvx.Normal = vx.Normal;
 				pvx.Color = vx.Color;
 
-				bindPoseVertices.push_back( pvx );
+				bindPoseVertices.emplace_back( pvx );
 			}
 
 			zCMaterial* mat = s->GetSubmesh( i )->Material;
@@ -1152,8 +1152,8 @@ void WorldConverter::ExtractSkeletalMeshFromProto( zCModelMeshLib* model, Skelet
 			Engine::GAPI->GetRendererState().RendererInfo.SkeletalVerticesDataSize += mi->Vertices.size() * sizeof( ExVertexStruct );
 			Engine::GAPI->GetRendererState().RendererInfo.SkeletalVerticesDataSize += mi->Indices.size() * sizeof( VERTEX_INDEX );
 
-			skeletalMeshInfo->SkeletalMeshes[mat].push_back( mi );
-			skeletalMeshInfo->Meshes[mat].push_back( bmi );
+			skeletalMeshInfo->SkeletalMeshes[mat].emplace_back( mi );
+			skeletalMeshInfo->Meshes[mat].emplace_back( bmi );
 		}
 	}
 
@@ -1194,7 +1194,7 @@ void WorldConverter::ExtractNodeVisual( int index, zCModelNodeInst* node, std::m
 
 
 
-			attachments[index].push_back( mi );
+			attachments[index].emplace_back( mi );
 
 		} else if ( strcmp( ext, ".MMS" ) == 0 ) {
 			// These are zCMorphMeshes
@@ -1209,7 +1209,7 @@ void WorldConverter::ExtractNodeVisual( int index, zCModelNodeInst* node, std::m
 			Extract3DSMeshFromVisual2( pm, mi );
 			mi->Visual = node->NodeVisual;
 
-			attachments[index].push_back( mi );
+			attachments[index].emplace_back( mi );
 		}
 	}
 }
@@ -1233,7 +1233,7 @@ void WorldConverter::Extract3DSMeshFromVisual2PNAEN( zCProgMeshProto* visual, Me
 		// Get vertices
 		for ( int t = 0; t < visual->GetSubmeshes()[i].TriList.NumInArray; t++ ) {
 			for ( int v = 0; v < 3; v++ ) {
-				indices.push_back( visual->GetSubmeshes()[i].TriList.Array[t].wedge[v] );
+				indices.emplace_back( visual->GetSubmeshes()[i].TriList.Array[t].wedge[v] );
 			}
 		}
 
@@ -1244,7 +1244,7 @@ void WorldConverter::Extract3DSMeshFromVisual2PNAEN( zCProgMeshProto* visual, Me
 			vx.Color = 0xFFFFFFFF;
 			vx.Normal = visual->GetSubmeshes()[i].WedgeList.Array[v].normal;
 
-			vertices.push_back( vx );
+			vertices.emplace_back( vx );
 
 			// Check bounding box
 			bbmin.x = bbmin.x > vx.Position.x ? vx.Position.x : bbmin.x;
@@ -1283,7 +1283,7 @@ void WorldConverter::Extract3DSMeshFromVisual2PNAEN( zCProgMeshProto* visual, Me
 		Engine::GAPI->GetRendererState().RendererInfo.VOBVerticesDataSize += mi->Indices.size() * sizeof( VERTEX_INDEX );
 
 		zCMaterial* mat = visual->GetSubmesh( i )->Material;
-		meshInfo->Meshes[mat].push_back( mi );
+		meshInfo->Meshes[mat].emplace_back( mi );
 
 		MeshKey key;
 		key.Material = mat;
@@ -1293,11 +1293,11 @@ void WorldConverter::Extract3DSMeshFromVisual2PNAEN( zCProgMeshProto* visual, Me
 		// ** PNAEN **
 		key.Info->TesselationShaderPair = "PNAEN_Tesselation";
 
-		meshInfo->MeshesByTexture[key].push_back( mi );
+		meshInfo->MeshesByTexture[key].emplace_back( mi );
 
-		vertexBuffers.push_back( &mi->Vertices );
-		indexBuffers.push_back( &mi->Indices );
-		meshInfos.push_back( mi );
+		vertexBuffers.emplace_back( &mi->Vertices );
+		indexBuffers.emplace_back( &mi->Indices );
+		meshInfos.emplace_back( mi );
 	}
 
 	std::vector<ExVertexStruct> wrappedVertices;
@@ -1361,7 +1361,7 @@ void WorldConverter::Extract3DSMeshFromVisual2( zCProgMeshProto* visual, MeshVis
 		// Get vertices
 		for ( int t = 0; t < visual->GetSubmeshes()[i].TriList.NumInArray; t++ ) {
 			for ( int v = 2; v >= 0; v-- ) {
-				indices.push_back( visual->GetSubmeshes()[i].TriList.Array[t].wedge[v] );
+				indices.emplace_back( visual->GetSubmeshes()[i].TriList.Array[t].wedge[v] );
 			}
 		}
 
@@ -1377,7 +1377,7 @@ void WorldConverter::Extract3DSMeshFromVisual2( zCProgMeshProto* visual, MeshVis
 
 			vx.Normal = visual->GetSubmeshes()[i].WedgeList.Array[v].normal;
 
-			vertices.push_back( vx );
+			vertices.emplace_back( vx );
 
 			// Check bounding box
 			bbmin.x = bbmin.x > vx.Position.x ? vx.Position.x : bbmin.x;
@@ -1428,18 +1428,18 @@ void WorldConverter::Extract3DSMeshFromVisual2( zCProgMeshProto* visual, MeshVis
 		Engine::GAPI->GetRendererState().RendererInfo.VOBVerticesDataSize += mi->Indices.size() * sizeof( VERTEX_INDEX );
 
 		zCMaterial* mat = visual->GetSubmesh( i )->Material;
-		meshInfo->Meshes[mat].push_back( mi );
+		meshInfo->Meshes[mat].emplace_back( mi );
 
 		MeshKey key;
 		key.Material = mat;
 		key.Texture = mat->GetTexture();
 		key.Info = Engine::GAPI->GetMaterialInfoFrom( key.Texture );
 
-		meshInfo->MeshesByTexture[key].push_back( mi );
+		meshInfo->MeshesByTexture[key].emplace_back( mi );
 
-		vertexBuffers.push_back( &mi->Vertices );
-		indexBuffers.push_back( &mi->Indices );
-		meshInfos.push_back( mi );
+		vertexBuffers.emplace_back( &mi->Vertices );
+		indexBuffers.emplace_back( &mi->Indices );
+		meshInfos.emplace_back( mi );
 	}
 
 	std::vector<ExVertexStruct> wrappedVertices;
@@ -1514,10 +1514,10 @@ void WorldConverter::IndexVertices( ExVertexStruct* input, unsigned int numInput
 
 	for ( unsigned int i = 0; i < numInputVertices; i++ ) {
 		std::set<std::pair<ExVertexStruct, int>>::iterator it = vertices.find( std::make_pair( input[i], 0/*this value doesn't matter*/ ) );
-		if ( it != vertices.end() ) outIndices.push_back( it->second );
+		if ( it != vertices.end() ) outIndices.emplace_back( it->second );
 		else {
 			vertices.insert( std::make_pair( input[i], index ) );
-			outIndices.push_back( index++ );
+			outIndices.emplace_back( index++ );
 		}
 	}
 
@@ -1553,9 +1553,9 @@ void WorldConverter::IndexVertices( ExVertexStruct* input, unsigned int numInput
 	// Extract the cleaned triangles to the indices vector
 	outIndices.clear();
 	for ( auto const& it : triangles ) {
-		outIndices.push_back( std::get<0>( it ) );
-		outIndices.push_back( std::get<1>( it ) );
-		outIndices.push_back( std::get<2>( it ) );
+		outIndices.emplace_back( std::get<0>( it ) );
+		outIndices.emplace_back( std::get<1>( it ) );
+		outIndices.emplace_back( std::get<2>( it ) );
 	}
 
 	// Notice that the vertices in the set are not sorted by the index
@@ -1577,10 +1577,10 @@ void WorldConverter::IndexVertices( ExVertexStruct* input, unsigned int numInput
 
 	for ( unsigned int i = 0; i < numInputVertices; i++ ) {
 		std::set<std::pair<ExVertexStruct, int>>::iterator it = vertices.find( std::make_pair( input[i], 0/*this value doesn't matter*/ ) );
-		if ( it != vertices.end() ) outIndices.push_back( it->second );
+		if ( it != vertices.end() ) outIndices.emplace_back( it->second );
 		else {
 			vertices.insert( std::make_pair( input[i], index ) );
-			outIndices.push_back( index++ );
+			outIndices.emplace_back( index++ );
 		}
 	}
 
@@ -1614,10 +1614,10 @@ void WorldConverter::IndexVertices( ExSkelVertexStruct* input, unsigned int numI
 
 	for ( unsigned int i = 0; i < numInputVertices; i++ ) {
 		std::set<std::pair<ExSkelVertexStruct, int>>::iterator it = vertices.find( std::make_pair( input[i], 0/*this value doesn't matter*/ ) );
-		if ( it != vertices.end() ) outIndices.push_back( it->second );
+		if ( it != vertices.end() ) outIndices.emplace_back( it->second );
 		else {
 			vertices.insert( std::make_pair( input[i], index ) );
-			outIndices.push_back( index++ );
+			outIndices.emplace_back( index++ );
 		}
 	}
 
@@ -1639,7 +1639,7 @@ void WorldConverter::GenerateVertexNormals( std::vector<ExVertexStruct>& vertice
 		for ( int j = 0; j < 3; ++j ) {
 			XMVECTOR a = XMLoadFloat3( &v[(j + 1) % 3] ) - XMLoadFloat3( &v[j] );
 			XMVECTOR b = XMLoadFloat3( &v[(j + 2) % 3] ) - XMLoadFloat3( &v[j] );
-			XMVECTOR weight = XMVectorACos( XMVector3Dot( a, b ) / (XMVector3LengthEst( a ) * XMVector3LengthEst( b )) );
+			XMVECTOR weight = XMVectorACosEst( XMVector3Dot( a, b ) / (XMVector3LengthEst( a ) * XMVector3LengthEst( b )) );
 			XMVECTOR XMV_normals_indices = XMLoadFloat3( &normals[indices[(i + j)]] );
 			XMV_normals_indices += weight * normal;
 			XMStoreFloat3( &normals[indices[(i + j)]], XMV_normals_indices );
@@ -1647,8 +1647,8 @@ void WorldConverter::GenerateVertexNormals( std::vector<ExVertexStruct>& vertice
 	}
 
 	// Normalize everything and store it into the vertices
+	XMFLOAT3 Normal;
 	for ( unsigned int i = 0; i < normals.size(); i++ ) {
-		XMFLOAT3 Normal;
 		XMStoreFloat3( &Normal, XMVector3NormalizeEst( XMLoadFloat3( &normals[i] ) ) );
 		vertices[i].Normal = Normal;
 	}
@@ -1672,29 +1672,29 @@ static void TessSingleTri( ExVertexStruct* tri, std::vector<ExVertexStruct>& tes
 	half[1] = TessTriLerpVertex( tri[1], tri[2], 0.5f );
 	half[2] = TessTriLerpVertex( tri[0], tri[2], 0.5f );
 
-	tesselated.push_back( tri[0] );
-	tesselated.push_back( half[0] );
-	tesselated.push_back( half[2] );
+	tesselated.emplace_back( tri[0] );
+	tesselated.emplace_back( half[0] );
+	tesselated.emplace_back( half[2] );
 
-	tesselated.push_back( half[0] );
-	tesselated.push_back( tri[1] );
-	tesselated.push_back( half[1] );
+	tesselated.emplace_back( half[0] );
+	tesselated.emplace_back( tri[1] );
+	tesselated.emplace_back( half[1] );
 
-	tesselated.push_back( half[2] );
-	tesselated.push_back( half[0] );
-	tesselated.push_back( half[1] );
+	tesselated.emplace_back( half[2] );
+	tesselated.emplace_back( half[0] );
+	tesselated.emplace_back( half[1] );
 
-	tesselated.push_back( half[2] );
-	tesselated.push_back( half[1] );
-	tesselated.push_back( tri[2] );
+	tesselated.emplace_back( half[2] );
+	tesselated.emplace_back( half[1] );
+	tesselated.emplace_back( tri[2] );
 }
 
 /** Tesselates the given triangle and adds the values to the list */
 void WorldConverter::TesselateTriangle( ExVertexStruct* tri, std::vector<ExVertexStruct>& tesselated, int amount ) {
 	if ( amount == 0 ) {
-		tesselated.push_back( tri[0] );
-		tesselated.push_back( tri[1] );
-		tesselated.push_back( tri[2] );
+		tesselated.emplace_back( tri[0] );
+		tesselated.emplace_back( tri[1] );
+		tesselated.emplace_back( tri[2] );
 		return;
 	}
 
@@ -1718,26 +1718,26 @@ void WorldConverter::WrapVertexBuffers( const std::list<std::vector<ExVertexStru
 	std::vector<unsigned int>& outIndices,
 	std::vector<unsigned int>& outOffsets ) {
 	std::vector<unsigned int> vxOffsets;
-	vxOffsets.push_back( 0 );
+	vxOffsets.emplace_back( 0 );
 
 	// Pack vertices
 	for ( auto const& itv : vertexBuffers ) {
 		outVertices.insert( outVertices.end(), itv->begin(), itv->end() );
 
-		vxOffsets.push_back( vxOffsets.back() + itv->size() );
+		vxOffsets.emplace_back( vxOffsets.back() + itv->size() );
 	}
 
 	// Pack indices
-	outOffsets.push_back( 0 );
+	outOffsets.emplace_back( 0 );
 	int off = 0;
 	for ( auto const& iti : indexBuffers ) {
 		auto const& end = iti->end();
 		for ( auto& vi = iti->begin(); vi != end; ++vi ) {
-			outIndices.push_back( *vi + vxOffsets[off] );
+			outIndices.emplace_back( *vi + vxOffsets[off] );
 		}
 		off++;
 
-		outOffsets.push_back( outOffsets.back() + iti->size() );
+		outOffsets.emplace_back( outOffsets.back() + iti->size() );
 	}
 }
 
@@ -1801,7 +1801,7 @@ void WorldConverter::UpdateQuadMarkInfo( QuadMarkInfo* info, zCQuadMark* mark, c
 			t.TexCoord.x = std::min( 1.0f, std::max( 0.0f, t.TexCoord.x ) );
 			t.TexCoord.y = std::min( 1.0f, std::max( 0.0f, t.TexCoord.y ) );
 
-			polyVertices.push_back( t );
+			polyVertices.emplace_back( t );
 		}
 
 		// Make triangles
@@ -1922,7 +1922,7 @@ void WorldConverter::ConvertExVerticesTozCPolygons( const std::vector<ExVertexSt
 		poly->CalcNormal();
 
 		// Add to array
-		polyArray.push_back( poly );
+		polyArray.emplace_back( poly );
 	}
 }
 
@@ -1947,7 +1947,7 @@ void WorldConverter::TesselateMesh( WorldMeshInfo* mesh, int amount ) {
 
 			// Append
 			for ( unsigned int v = 0; v < triTess.size(); v++ ) {
-				meshTess.push_back( triTess[v] );
+				meshTess.emplace_back( triTess[v] );
 			}
 		}
 
