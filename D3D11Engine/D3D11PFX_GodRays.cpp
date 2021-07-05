@@ -34,9 +34,7 @@ XRESULT D3D11PFX_GodRays::Render( RenderToTextureBuffer* fxbuffer ) {
 	XMMATRIX view = XMLoadFloat4x4( &Engine::GAPI->GetRendererState().TransformState.TransformView );
 	XMMATRIX proj = XMLoadFloat4x4( &Engine::GAPI->GetProjectionMatrix() );
 
-	XMMATRIX viewProj = XMMatrixMultiply( proj, view );
-
-	viewProj = XMMatrixTranspose( viewProj );
+	XMMATRIX viewProj = XMMatrixTranspose( XMMatrixMultiply(proj, view) );
 	view = XMMatrixTranspose( view );
 
 	XMFLOAT3 sunViewPosition; XMStoreFloat3( &sunViewPosition, XMVector3TransformCoord( xmSunPosition, view ) ); // This is for checking if the light is behind the camera
@@ -62,8 +60,6 @@ XRESULT D3D11PFX_GodRays::Render( RenderToTextureBuffer* fxbuffer ) {
 	if ( abs( gcb.GR_Center.y - 0.5f ) > 0.5f )
 		gcb.GR_Weight *= std::max( 0.0f, 1.0f - (abs( gcb.GR_Center.y - 0.5f ) - 0.5f) / 0.5f );
 
-
-
 	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> oldRTV;
 	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> oldDSV;
 
@@ -79,8 +75,8 @@ XRESULT D3D11PFX_GodRays::Render( RenderToTextureBuffer* fxbuffer ) {
 	// Draw downscaled mask
 	engine->GetContext()->OMSetRenderTargets( 1, FxRenderer->GetTempBufferDS4_1().GetRenderTargetView().GetAddressOf(), nullptr );
 
-	engine->GetHDRBackBuffer().BindToPixelShader( engine->GetContext(), 0 );
-	engine->GetGBuffer1().BindToPixelShader( engine->GetContext(), 1 );
+	engine->GetHDRBackBuffer().BindToPixelShader( engine->GetContext().Get(), 0 );
+	engine->GetGBuffer1().BindToPixelShader( engine->GetContext().Get(), 1 );
 
 	D3D11_VIEWPORT vp = {};
 	vp.TopLeftX = 0.0f;
@@ -100,13 +96,13 @@ XRESULT D3D11PFX_GodRays::Render( RenderToTextureBuffer* fxbuffer ) {
 	zoomPS->GetConstantBuffer()[0]->UpdateBuffer( &gcb );
 	zoomPS->GetConstantBuffer()[0]->BindToPixelShader( 0 );
 
-	FxRenderer->CopyTextureToRTV( FxRenderer->GetTempBufferDS4_1().GetShaderResView().Get(), FxRenderer->GetTempBufferDS4_2().GetRenderTargetView().Get(), INT2( 0, 0 ), true );
+    FxRenderer->CopyTextureToRTV( FxRenderer->GetTempBufferDS4_1().GetShaderResView(), FxRenderer->GetTempBufferDS4_2().GetRenderTargetView(), INT2( 0, 0 ), true );
 
 	// Upscale and blend
 	Engine::GAPI->GetRendererState().BlendState.SetAdditiveBlending();
 	Engine::GAPI->GetRendererState().BlendState.SetDirty();
 
-	FxRenderer->CopyTextureToRTV( FxRenderer->GetTempBufferDS4_2().GetShaderResView().Get(), oldRTV.Get(), INT2( engine->GetResolution().x, engine->GetResolution().y ) );
+    FxRenderer->CopyTextureToRTV( FxRenderer->GetTempBufferDS4_2().GetShaderResView(), oldRTV, INT2( engine->GetResolution().x, engine->GetResolution().y ) );
 
 	vp.Width = (float)engine->GetResolution().x;
 	vp.Height = (float)engine->GetResolution().y;

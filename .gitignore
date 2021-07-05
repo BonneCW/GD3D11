@@ -253,5 +253,5 @@ ModelManifest.xml
 /PreviewBuilds/
 redist*/
 !/blobs/**/*.obj
-/Gothic1-GD3D11-17.7-devX
-/Gothic2-GD3D11-17.7-devX
+/Gothic1-GD3D11-*
+/Gothic2-GD3D11-*

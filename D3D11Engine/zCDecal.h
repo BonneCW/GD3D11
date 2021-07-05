@@ -5,25 +5,25 @@
 #include "zCVisual.h"
 
 struct DecalSettings {
-	zCMaterial* DecalMaterial;
-	DirectX::XMFLOAT2 DecalSize;
-	DirectX::XMFLOAT2 DecalOffset;
-	BOOL DecalTwoSided;
-	BOOL IgnoreDayLight;
-	BOOL DecalOnTop;
+    zCMaterial* DecalMaterial;
+    DirectX::XMFLOAT2 DecalSize;
+    DirectX::XMFLOAT2 DecalOffset;
+    BOOL DecalTwoSided;
+    BOOL IgnoreDayLight;
+    BOOL DecalOnTop;
 };
 
 class zCDecal : public zCVisual {
 public:
-	DecalSettings* GetDecalSettings() {
-		return (DecalSettings*)THISPTR_OFFSET( GothicMemoryLocations::zCDecal::Offset_DecalSettings );
-	}
+    DecalSettings* GetDecalSettings() {
+        return (DecalSettings*)THISPTR_OFFSET( GothicMemoryLocations::zCDecal::Offset_DecalSettings );
+    }
 
-	bool GetAlphaTestEnabled() {
+    bool GetAlphaTestEnabled() {
 #ifdef BUILD_GOTHIC_1_08k
-		return GetDecalSettings()->DecalMaterial->GetAlphaFunc() == zMAT_ALPHA_FUNC_TEST;
+        return GetDecalSettings()->DecalMaterial->GetAlphaFunc() == zMAT_ALPHA_FUNC_TEST;
 #else
-		XCALL( GothicMemoryLocations::zCDecal::GetAlphaTestEnabled );
+        XCALL( GothicMemoryLocations::zCDecal::GetAlphaTestEnabled );
 #endif
-	}
+    }
 };

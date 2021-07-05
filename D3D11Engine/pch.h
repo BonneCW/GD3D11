@@ -5,7 +5,7 @@
 #include <Windows.h>
 #include <wrl/client.h>
 #include <chrono>
-#include <d3d11.h>
+#include <d3d11_1.h>
 #include <DirectXMath.h>
 #include <future>
 #include <list>
@@ -26,7 +26,7 @@
 #define stdext std
 #endif
 
-#define VERSION_NUMBER "17.7-dev16"
+#define VERSION_NUMBER "17.7-dev19-fix3"
 __declspec(selectany) const char* VERSION_NUMBER_STR = VERSION_NUMBER;
 
 extern bool GMPModeActive;

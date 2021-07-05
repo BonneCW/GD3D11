@@ -26,125 +26,125 @@ struct LineVertex;
 class D3D11PShader;
 class EditorLinePrimitive {
 public:
-	EditorLinePrimitive();
-	virtual ~EditorLinePrimitive();
+    EditorLinePrimitive();
+    virtual ~EditorLinePrimitive();
 
-	/** Creates the buffers (Polygon-version) and sets up the rest of the object */
-	HRESULT CreateSolidPrimitive( LineVertex* PrimVerts, UINT NumVertices, D3D11_PRIMITIVE_TOPOLOGY Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
+    /** Creates the buffers (Polygon-version) and sets up the rest of the object */
+    HRESULT CreateSolidPrimitive( LineVertex* PrimVerts, UINT NumVertices, D3D11_PRIMITIVE_TOPOLOGY Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
 
-	/** Creates the buffers (line-version) and sets up the rest of the object */
-	HRESULT CreatePrimitive( LineVertex* PrimVerts, UINT NumVertices, D3D11_PRIMITIVE_TOPOLOGY Topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST );
+    /** Creates the buffers (line-version) and sets up the rest of the object */
+    HRESULT CreatePrimitive( LineVertex* PrimVerts, UINT NumVertices, D3D11_PRIMITIVE_TOPOLOGY Topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST );
 
-	/** Creates a circle of lines. Axis: 0=xz 1=yx 2=yz*/
-	HRESULT CreateCirclePrimitive( float Radius, UINT Detail, const float4& Color, int Axis = 0 );
+    /** Creates a circle of lines. Axis: 0=xz 1=yx 2=yz*/
+    HRESULT CreateCirclePrimitive( float Radius, UINT Detail, const float4& Color, int Axis = 0 );
 
-	/** Creates a plate, not of lines. Can't use intersection on this*/
-	HRESULT CreateFilledCirclePrimitive( float Radius, UINT Detail, const float4& Color, int Axis = 0 );
+    /** Creates a plate, not of lines. Can't use intersection on this*/
+    HRESULT CreateFilledCirclePrimitive( float Radius, UINT Detail, const float4& Color, int Axis = 0 );
 
-	/** Creates a ball of lines.*/
-	HRESULT CreateLineBallPrimitive( UINT Detail, const float4& Color );
+    /** Creates a ball of lines.*/
+    HRESULT CreateLineBallPrimitive( UINT Detail, const float4& Color );
 
-	/** Creates an arrow of lines */
-	HRESULT CreateArrowPrimitive( const float4& Color, float ArrowRadius = 0.25, float ArrowOffset = 0.75 );
+    /** Creates an arrow of lines */
+    HRESULT CreateArrowPrimitive( const float4& Color, float ArrowRadius = 0.25, float ArrowOffset = 0.75 );
 
-	/** Creates a cone of lines */
-	HRESULT CreateSimpleConePrimitive( float Length, float Radius, UINT Detail, const float4& Color );
+    /** Creates a cone of lines */
+    HRESULT CreateSimpleConePrimitive( float Length, float Radius, UINT Detail, const float4& Color );
 
-	/** Creates a box of lines */
-	HRESULT CreateLineBoxPrimitive( float4& Color );
+    /** Creates a box of lines */
+    HRESULT CreateLineBoxPrimitive( float4& Color );
 
-	/** Creates a solid box */
-	HRESULT CreateSolidBoxPrimitive( float4& Color, float Extends );
+    /** Creates a solid box */
+    HRESULT CreateSolidBoxPrimitive( float4& Color, float Extends );
 
-	/** Creates a grid of lines (1x1)*/
-	HRESULT CreateLineGrid( int LinesX, int LinesY, DirectX::XMFLOAT2* Middle, const float4& Color );
+    /** Creates a grid of lines (1x1)*/
+    HRESULT CreateLineGrid( int LinesX, int LinesY, DirectX::XMFLOAT2* Middle, const float4& Color );
 
-	/** Sets the shader to render with */
-	void SetShader( std::shared_ptr<D3D11PShader> Shader );
-	void SetSolidShader( std::shared_ptr<D3D11PShader> SolidShader );
+    /** Sets the shader to render with */
+    void SetShader( std::shared_ptr<D3D11PShader> Shader );
+    void SetSolidShader( std::shared_ptr<D3D11PShader> SolidShader );
 
-	/** Sets the transforms */
-	void XM_CALLCONV SetLocation( DirectX::FXMVECTOR NewLoc );
-	void XM_CALLCONV SetRotation( DirectX::FXMVECTOR NewRotation );
-	void XM_CALLCONV SetScale( DirectX::FXMVECTOR NewScale );
-	void XM_CALLCONV SetWorldMatrix( DirectX::XMMATRIX World, DirectX::FXMVECTOR Loc, DirectX::FXMVECTOR Rot, DirectX::GXMVECTOR Scale );
+    /** Sets the transforms */
+    void XM_CALLCONV SetLocation( DirectX::FXMVECTOR NewLoc );
+    void XM_CALLCONV SetRotation( DirectX::FXMVECTOR NewRotation );
+    void XM_CALLCONV SetScale( DirectX::FXMVECTOR NewScale );
+    void XM_CALLCONV SetWorldMatrix( DirectX::XMMATRIX World, DirectX::FXMVECTOR Loc, DirectX::FXMVECTOR Rot, DirectX::GXMVECTOR Scale );
 
-	/** Renders the primitive */
-	HRESULT RenderPrimitive( int Pass = -1 );
+    /** Renders the primitive */
+    HRESULT RenderPrimitive( int Pass = -1 );
 
-	/** If set to true, the primitive will ignore all drawcalls automatically */
-	void SetHidden( bool bIsHidden ) {
-		bHidden = bIsHidden;
-	}
+    /** If set to true, the primitive will ignore all drawcalls automatically */
+    void SetHidden( bool bIsHidden ) {
+        bHidden = bIsHidden;
+    }
 
-	/** Intersects the whole primitive. If hit, it returns a distance other than -1 */
-	float XM_CALLCONV IntersectPrimitive( DirectX::FXMVECTOR RayOrigin, DirectX::FXMVECTOR RayDirection, float Epsilon = 0.01 );
+    /** Intersects the whole primitive. If hit, it returns a distance other than -1 */
+    float XM_CALLCONV IntersectPrimitive( DirectX::FXMVECTOR RayOrigin, DirectX::FXMVECTOR RayDirection, float Epsilon = 0.01 );
 
-	bool XM_CALLCONV IntersectTriangle( DirectX::FXMVECTOR orig, DirectX::FXMVECTOR dir,
-		DirectX::FXMVECTOR v0, DirectX::GXMVECTOR v1, DirectX::HXMVECTOR v2,
-		FLOAT* t, FLOAT* u, FLOAT* v );
+    bool XM_CALLCONV IntersectTriangle( DirectX::FXMVECTOR orig, DirectX::FXMVECTOR dir,
+        DirectX::FXMVECTOR v0, DirectX::GXMVECTOR v1, DirectX::HXMVECTOR v2,
+        FLOAT* t, FLOAT* u, FLOAT* v );
 
-	/** Puts the color into the Normal and TexCoord channels */
-	static void EncodeColor( LineVertex* vx, const float4& Color );
+    /** Puts the color into the Normal and TexCoord channels */
+    static void EncodeColor( LineVertex* vx, const float4& Color );
 
-	GETSET( DirectX::XMFLOAT4X4, RotationMatrix );
-	GETSET( DirectX::XMFLOAT3, RotationMatrixAngles );
+    GETSET( DirectX::XMFLOAT4X4, RotationMatrix );
+    GETSET( DirectX::XMFLOAT3, RotationMatrixAngles );
 
 
-	GET( std::shared_ptr<D3D11PShader>, PrimShader );
-	GET( std::shared_ptr<D3D11PShader>, SolidPrimShader );
-	GETSET_MEMBER( bool, bLocalRotation );
-	GETSET_MEMBER( bool, bJustUseRotationMatrix ); // If true we will just multiply the existing rotation matrix when creating a new world matrix
+    GET( std::shared_ptr<D3D11PShader>, PrimShader );
+    GET( std::shared_ptr<D3D11PShader>, SolidPrimShader );
+    GETSET_MEMBER( bool, bLocalRotation );
+    GETSET_MEMBER( bool, bJustUseRotationMatrix ); // If true we will just multiply the existing rotation matrix when creating a new world matrix
 private:
 
-	/** Deletes all content */
-	void DeleteContent();
+    /** Deletes all content */
+    void DeleteContent();
 
-	/** Recalculates the world matrix */
-	void RecalcTransforms();
+    /** Recalculates the world matrix */
+    void RecalcTransforms();
 
-	/** Intersects only one line segment */
-	float IntersectLineSegment( DirectX::FXMVECTOR rayOrigin, DirectX::FXMVECTOR rayVec, DirectX::FXMVECTOR lineStart, DirectX::GXMVECTOR lineEnd, float Epsilon );
-
-
-
-	/** Renders a vertexbuffer with the given shader */
-	void RenderVertexBuffer( ID3D11Buffer* VB, UINT NumVertices, D3D11PShader* Shader, D3D11_PRIMITIVE_TOPOLOGY Topology, int Pass = -1 );
-
-	/** The bunch of vertices we have */
-	LineVertex* Vertices;
-	UINT NumVertices;
-
-	/** Vertex buffer */
-	Microsoft::WRL::ComPtr <ID3D11Buffer> PrimVB;
-
-	/** Primitives shaders */
-	std::shared_ptr<D3D11PShader> PrimShader;
-	std::shared_ptr<D3D11PShader> SolidPrimShader;
+    /** Intersects only one line segment */
+    float IntersectLineSegment( DirectX::FXMVECTOR rayOrigin, DirectX::FXMVECTOR rayVec, DirectX::FXMVECTOR lineStart, DirectX::GXMVECTOR lineEnd, float Epsilon );
 
 
-	/** Solid vertices we have */
-	LineVertex* SolidVertices;
-	UINT NumSolidVertices;
-	Microsoft::WRL::ComPtr <ID3D11Buffer> SolidPrimVB;
 
-	/** Transforms */
-	DirectX::XMFLOAT3 Location;
-	DirectX::XMFLOAT3 Rotation;
-	DirectX::XMFLOAT3 Scale;
+    /** Renders a vertexbuffer with the given shader */
+    void RenderVertexBuffer( const Microsoft::WRL::ComPtr<ID3D11Buffer>& VB, UINT NumVertices, D3D11PShader* Shader, D3D11_PRIMITIVE_TOPOLOGY Topology, int Pass = -1 );
 
-	/** Transform matrix */
-	DirectX::XMFLOAT4X4 WorldMatrix;
+    /** The bunch of vertices we have */
+    LineVertex* Vertices;
+    UINT NumVertices;
 
-	/* Matrix for rotation and it's angles */
-	DirectX::XMFLOAT4X4 RotationMatrix;
-	DirectX::XMFLOAT3 RotationMatrixAngles;
+    /** Vertex buffer */
+    Microsoft::WRL::ComPtr <ID3D11Buffer> PrimVB;
 
-	/** If true, ignore drawcalls */
-	bool bHidden;
+    /** Primitives shaders */
+    std::shared_ptr<D3D11PShader> PrimShader;
+    std::shared_ptr<D3D11PShader> SolidPrimShader;
 
-	/** Line list or line strip? */
-	D3D11_PRIMITIVE_TOPOLOGY PrimitiveTopology;
-	D3D11_PRIMITIVE_TOPOLOGY SolidPrimitiveTopology;
+
+    /** Solid vertices we have */
+    LineVertex* SolidVertices;
+    UINT NumSolidVertices;
+    Microsoft::WRL::ComPtr <ID3D11Buffer> SolidPrimVB;
+
+    /** Transforms */
+    DirectX::XMFLOAT3 Location;
+    DirectX::XMFLOAT3 Rotation;
+    DirectX::XMFLOAT3 Scale;
+
+    /** Transform matrix */
+    DirectX::XMFLOAT4X4 WorldMatrix;
+
+    /* Matrix for rotation and it's angles */
+    DirectX::XMFLOAT4X4 RotationMatrix;
+    DirectX::XMFLOAT3 RotationMatrixAngles;
+
+    /** If true, ignore drawcalls */
+    bool bHidden;
+
+    /** Line list or line strip? */
+    D3D11_PRIMITIVE_TOPOLOGY PrimitiveTopology;
+    D3D11_PRIMITIVE_TOPOLOGY SolidPrimitiveTopology;
 };
 

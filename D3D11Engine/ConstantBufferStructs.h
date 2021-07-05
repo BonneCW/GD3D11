@@ -235,6 +235,10 @@ struct VS_ExConstantBuffer_PerInstanceSkeletal {
     float3 PI_Pad1;
 };
 
+struct GhostAlphaConstantBuffer {
+    float GA_Alpha;
+    float3 GA_Pad;
+};
 
 struct GrassConstantBuffer {
     float3 G_NormalVS;

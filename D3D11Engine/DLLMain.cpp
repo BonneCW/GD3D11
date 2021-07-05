@@ -9,6 +9,7 @@
 #include "HookedFunctions.h"
 #include <signal.h>
 #include "VersionCheck.h"
+#include "InstructionSet.h"
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -18,8 +19,8 @@
 
 // Signal NVIDIA/AMD drivers that we want the high-performance card on laptops
 extern "C" {
-	_declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
-	_declspec(dllexport) DWORD AmdPowerXpressRequestHighPerformance = 0x00000001;
+    _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
+    _declspec(dllexport) DWORD AmdPowerXpressRequestHighPerformance = 0x00000001;
 }
 
 static HINSTANCE hLThis = 0;
@@ -32,84 +33,84 @@ typedef HRESULT( WINAPI* DirectDrawCreateEx_type )(GUID FAR*, LPVOID*, REFIID, I
 bool GMPModeActive = false;
 
 void SignalHandler( int signal ) {
-	LogInfo() << "Signal:" << signal;
-	throw "!Access Violation!";
+    LogInfo() << "Signal:" << signal;
+    throw "!Access Violation!";
 }
 
 struct ddraw_dll {
-	HMODULE dll;
-	FARPROC	AcquireDDThreadLock;
-	FARPROC	CheckFullscreen;
-	FARPROC	CompleteCreateSysmemSurface;
-	FARPROC	D3DParseUnknownCommand;
-	FARPROC	DDGetAttachedSurfaceLcl;
-	FARPROC	DDInternalLock;
-	FARPROC	DDInternalUnlock;
-	FARPROC	DSoundHelp;
-	FARPROC	DirectDrawCreate;
-	FARPROC	DirectDrawCreateClipper;
-	FARPROC	DirectDrawCreateEx;
-	FARPROC	DirectDrawEnumerateA;
-	FARPROC	DirectDrawEnumerateExA;
-	FARPROC	DirectDrawEnumerateExW;
-	FARPROC	DirectDrawEnumerateW;
-	FARPROC	DllCanUnloadNow;
-	FARPROC	DllGetClassObject;
-	FARPROC	GetDDSurfaceLocal;
-	FARPROC	GetOLEThunkData;
-	FARPROC	GetSurfaceFromDC;
-	FARPROC	RegisterSpecialCase;
-	FARPROC	ReleaseDDThreadLock;
+    HMODULE dll;
+    FARPROC	AcquireDDThreadLock;
+    FARPROC	CheckFullscreen;
+    FARPROC	CompleteCreateSysmemSurface;
+    FARPROC	D3DParseUnknownCommand;
+    FARPROC	DDGetAttachedSurfaceLcl;
+    FARPROC	DDInternalLock;
+    FARPROC	DDInternalUnlock;
+    FARPROC	DSoundHelp;
+    FARPROC	DirectDrawCreate;
+    FARPROC	DirectDrawCreateClipper;
+    FARPROC	DirectDrawCreateEx;
+    FARPROC	DirectDrawEnumerateA;
+    FARPROC	DirectDrawEnumerateExA;
+    FARPROC	DirectDrawEnumerateExW;
+    FARPROC	DirectDrawEnumerateW;
+    FARPROC	DllCanUnloadNow;
+    FARPROC	DllGetClassObject;
+    FARPROC	GetDDSurfaceLocal;
+    FARPROC	GetOLEThunkData;
+    FARPROC	GetSurfaceFromDC;
+    FARPROC	RegisterSpecialCase;
+    FARPROC	ReleaseDDThreadLock;
 } ddraw;
 
 HRESULT DoHookedDirectDrawCreateEx( GUID FAR* lpGuid, LPVOID* lplpDD, REFIID  iid, IUnknown FAR* pUnkOuter ) {
-	*lplpDD = new MyDirectDraw( nullptr );
+    *lplpDD = new MyDirectDraw( nullptr );
 
-	if ( !Engine::GraphicsEngine ) {
-		Engine::GAPI->OnGameStart();
-		Engine::CreateGraphicsEngine();
-	}
+    if ( !Engine::GraphicsEngine ) {
+        Engine::GAPI->OnGameStart();
+        Engine::CreateGraphicsEngine();
+    }
 
-	return S_OK;
+    return S_OK;
 }
 
 extern "C" HRESULT WINAPI HookedDirectDrawCreateEx( GUID FAR * lpGuid, LPVOID * lplpDD, REFIID  iid, IUnknown FAR * pUnkOuter ) {
-	//LogInfo() << "HookedDirectDrawCreateEx!";
-	HRESULT hr = S_OK;
+    //LogInfo() << "HookedDirectDrawCreateEx!";
+    HRESULT hr = S_OK;
 
-	if ( Engine::PassThrough ) {
-		DirectDrawCreateEx_type fn = (DirectDrawCreateEx_type)ddraw.DirectDrawCreateEx;
-		return fn( lpGuid, lplpDD, iid, pUnkOuter );
-	}
+    if ( Engine::PassThrough ) {
+        DirectDrawCreateEx_type fn = (DirectDrawCreateEx_type)ddraw.DirectDrawCreateEx;
+        return fn( lpGuid, lplpDD, iid, pUnkOuter );
+    }
 
-	hook_infunc
+    hook_infunc
 
-		return DoHookedDirectDrawCreateEx( lpGuid, lplpDD, iid, pUnkOuter );
+        return DoHookedDirectDrawCreateEx( lpGuid, lplpDD, iid, pUnkOuter );
 
-	hook_outfunc
+    hook_outfunc
 
-		return hr;
+        return hr;
 }
 
 extern "C" void WINAPI HookedAcquireDDThreadLock() {
-	if ( Engine::PassThrough ) {
-		DirectDrawSimple fn = (DirectDrawSimple)ddraw.AcquireDDThreadLock;
-		fn();
-		return;
-	}
-	// Do nothing
-	LogInfo() << "AcquireDDThreadLock called!";
+    if ( Engine::PassThrough ) {
+        DirectDrawSimple fn = (DirectDrawSimple)ddraw.AcquireDDThreadLock;
+        fn();
+        return;
+    }
+    // Do nothing
+    LogInfo() << "AcquireDDThreadLock called!";
 }
 
 extern "C" void WINAPI HookedReleaseDDThreadLock() {
-	if ( Engine::PassThrough ) {
-		DirectDrawSimple fn = (DirectDrawSimple)ddraw.ReleaseDDThreadLock;
-		fn();
-		return;
-	}
+    if ( Engine::PassThrough ) {
+        DirectDrawSimple fn = (DirectDrawSimple)ddraw.ReleaseDDThreadLock;
+        fn();
+        return;
+    }
 
-	// Do nothing
-	LogInfo() << "ReleaseDDThreadLock called!";
+    // Do nothing
+    LogInfo() << "ReleaseDDThreadLock called!";
 }
 
 __declspec(naked) void FakeAcquireDDThreadLock() { _asm { jmp[ddraw.AcquireDDThreadLock] } }
@@ -143,105 +144,124 @@ __declspec(naked) void FakeRegisterSpecialCase() { _asm { jmp[ddraw.RegisterSpec
 __declspec(naked) void FakeReleaseDDThreadLock() { _asm { jmp[ddraw.ReleaseDDThreadLock] } }
 
 void EnableCrashingOnCrashes() {
-	typedef BOOL( WINAPI* tGetPolicy )(LPDWORD lpFlags);
-	typedef BOOL( WINAPI* tSetPolicy )(DWORD dwFlags);
-	const DWORD EXCEPTION_SWALLOWING = 0x1;
+    typedef BOOL( WINAPI* tGetPolicy )(LPDWORD lpFlags);
+    typedef BOOL( WINAPI* tSetPolicy )(DWORD dwFlags);
+    const DWORD EXCEPTION_SWALLOWING = 0x1;
 
-	HMODULE kernel32 = LoadLibraryA( "kernel32.dll" );
-	tGetPolicy pGetPolicy = (tGetPolicy)GetProcAddress( kernel32,
-		"GetProcessUserModeExceptionPolicy" );
-	tSetPolicy pSetPolicy = (tSetPolicy)GetProcAddress( kernel32,
-		"SetProcessUserModeExceptionPolicy" );
-	if ( pGetPolicy && pSetPolicy ) {
-		DWORD dwFlags;
-		if ( pGetPolicy( &dwFlags ) ) {
-			// Turn off the filter
-			pSetPolicy( dwFlags & ~EXCEPTION_SWALLOWING );
-		}
-	}
+    HMODULE kernel32 = LoadLibraryA( "kernel32.dll" );
+    tGetPolicy pGetPolicy = (tGetPolicy)GetProcAddress( kernel32,
+        "GetProcessUserModeExceptionPolicy" );
+    tSetPolicy pSetPolicy = (tSetPolicy)GetProcAddress( kernel32,
+        "SetProcessUserModeExceptionPolicy" );
+    if ( pGetPolicy && pSetPolicy ) {
+        DWORD dwFlags;
+        if ( pGetPolicy( &dwFlags ) ) {
+            // Turn off the filter
+            pSetPolicy( dwFlags & ~EXCEPTION_SWALLOWING );
+        }
+    }
+}
+
+void CheckPlatformSupport() {
+    LogInstructionSet();
+    auto support_message = []( std::string isa_feature, bool is_supported ) {
+        if ( !is_supported ) {
+            ErrorBox( (std::string( "Incompatible System, wrong DLL?\n\n" + isa_feature + " required, but not supported on:\n" ) + InstructionSet::Brand()).c_str() );
+            exit( 1 );
+        }
+    };
+#if __AVX2__
+    support_message( "AVX2", InstructionSet::AVX2() );
+#elif __AVX__
+    support_message( "AVX", InstructionSet::AVX() );
+#elif __SSE2__
+    support_message( "SSE2", InstructionSet::SSE2() );
+#elif __SSE__
+    support_message( "SSE", InstructionSet::SSE() );
+#endif
 }
 
 BOOL WINAPI DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
-	if ( reason == DLL_PROCESS_ATTACH ) {
-		//DebugWrite_i("DDRAW Proxy DLL starting.\n", 0);
-		hLThis = hInst;
+    if ( reason == DLL_PROCESS_ATTACH ) {
+        //DebugWrite_i("DDRAW Proxy DLL starting.\n", 0);
+        hLThis = hInst;
 
-		Engine::PassThrough = false;
+        Engine::PassThrough = false;
 
-		//_CrtSetDbgFlag (_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+        //_CrtSetDbgFlag (_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 
-		if ( !Engine::PassThrough ) {
-			Log::Clear();
-			LogInfo() << "Starting DDRAW Proxy DLL.";
+        if ( !Engine::PassThrough ) {
+            Log::Clear();
+            LogInfo() << "Starting DDRAW Proxy DLL.";
 
-			if ( CoInitializeEx( NULL, COINIT::COINIT_APARTMENTTHREADED ) == S_OK ) {
-				LogInfo() << "COM initialized";
-			}
+            if ( CoInitializeEx( NULL, COINIT::COINIT_APARTMENTTHREADED ) == S_OK ) {
+                LogInfo() << "COM initialized";
+            }
 
-			if ( Toolbox::FileExists( "gmp.dll" ) || Toolbox::FileExists( "..\\gmp\\gmp.dll" ) ) {
-				GMPModeActive = true;
-				LogInfo() << "GMP Mode Enabled";
-			} else {
-				GMPModeActive = false;
-			}
+            if ( Toolbox::FileExists( "gmp.dll" ) || Toolbox::FileExists( "..\\gmp\\gmp.dll" ) ) {
+                GMPModeActive = true;
+                LogInfo() << "GMP Mode Enabled";
+            } else {
+                GMPModeActive = false;
+            }
 
-			// Check for right version
-			VersionCheck::CheckExecutable();
+            // Check for right version
+            VersionCheck::CheckExecutable();
+            CheckPlatformSupport();
+            HookedFunctions::OriginalFunctions.InitHooks();
 
-			HookedFunctions::OriginalFunctions.InitHooks();
+            Engine::GAPI = nullptr;
+            Engine::GraphicsEngine = nullptr;
 
-			Engine::GAPI = nullptr;
-			Engine::GraphicsEngine = nullptr;
+            // Create GothicAPI here to make all hooks work
+            Engine::CreateGothicAPI();
 
-			// Create GothicAPI here to make all hooks work
-			Engine::CreateGothicAPI();
+            GothicAPI::DisableErrorMessageBroadcast();
 
-			GothicAPI::DisableErrorMessageBroadcast();
+            EnableCrashingOnCrashes();
+            //SetUnhandledExceptionFilter(MyUnhandledExceptionFilter);
+        }
 
-			EnableCrashingOnCrashes();
-			//SetUnhandledExceptionFilter(MyUnhandledExceptionFilter);
-		}
+        char infoBuf[MAX_PATH];
+        GetSystemDirectoryA( infoBuf, MAX_PATH );
+        // We then append \ddraw.dll, which makes the string:
+        // C:\windows\system32\ddraw.dll
+        strcat_s( infoBuf, MAX_PATH, "\\ddraw.dll" );
 
-		char infoBuf[MAX_PATH];
-		GetSystemDirectoryA( infoBuf, MAX_PATH );
-		// We then append \ddraw.dll, which makes the string:
-		// C:\windows\system32\ddraw.dll
-		strcat_s( infoBuf, MAX_PATH, "\\ddraw.dll" );
+        ddraw.dll = LoadLibraryA( infoBuf );
+        if ( !ddraw.dll ) return FALSE;
 
-		ddraw.dll = LoadLibraryA( infoBuf );
-		if ( !ddraw.dll ) return FALSE;
+        ddraw.AcquireDDThreadLock = GetProcAddress( ddraw.dll, "AcquireDDThreadLock" );
+        ddraw.CheckFullscreen = GetProcAddress( ddraw.dll, "CheckFullscreen" );
+        ddraw.CompleteCreateSysmemSurface = GetProcAddress( ddraw.dll, "CompleteCreateSysmemSurface" );
+        ddraw.D3DParseUnknownCommand = GetProcAddress( ddraw.dll, "D3DParseUnknownCommand" );
+        ddraw.DDGetAttachedSurfaceLcl = GetProcAddress( ddraw.dll, "DDGetAttachedSurfaceLcl" );
+        ddraw.DDInternalLock = GetProcAddress( ddraw.dll, "DDInternalLock" );
+        ddraw.DDInternalUnlock = GetProcAddress( ddraw.dll, "DDInternalUnlock" );
+        ddraw.DSoundHelp = GetProcAddress( ddraw.dll, "DSoundHelp" );
+        ddraw.DirectDrawCreate = GetProcAddress( ddraw.dll, "DirectDrawCreate" );
+        ddraw.DirectDrawCreateClipper = GetProcAddress( ddraw.dll, "DirectDrawCreateClipper" );
+        ddraw.DirectDrawCreateEx = GetProcAddress( ddraw.dll, "DirectDrawCreateEx" );
+        ddraw.DirectDrawEnumerateA = GetProcAddress( ddraw.dll, "DirectDrawEnumerateA" );
+        ddraw.DirectDrawEnumerateExA = GetProcAddress( ddraw.dll, "DirectDrawEnumerateExA" );
+        ddraw.DirectDrawEnumerateExW = GetProcAddress( ddraw.dll, "DirectDrawEnumerateExW" );
+        ddraw.DirectDrawEnumerateW = GetProcAddress( ddraw.dll, "DirectDrawEnumerateW" );
+        ddraw.DllCanUnloadNow = GetProcAddress( ddraw.dll, "DllCanUnloadNow" );
+        ddraw.DllGetClassObject = GetProcAddress( ddraw.dll, "DllGetClassObject" );
+        ddraw.GetDDSurfaceLocal = GetProcAddress( ddraw.dll, "GetDDSurfaceLocal" );
+        ddraw.GetOLEThunkData = GetProcAddress( ddraw.dll, "GetOLEThunkData" );
+        ddraw.GetSurfaceFromDC = GetProcAddress( ddraw.dll, "GetSurfaceFromDC" );
+        ddraw.RegisterSpecialCase = GetProcAddress( ddraw.dll, "RegisterSpecialCase" );
+        ddraw.ReleaseDDThreadLock = GetProcAddress( ddraw.dll, "ReleaseDDThreadLock" );
 
-		ddraw.AcquireDDThreadLock = GetProcAddress( ddraw.dll, "AcquireDDThreadLock" );
-		ddraw.CheckFullscreen = GetProcAddress( ddraw.dll, "CheckFullscreen" );
-		ddraw.CompleteCreateSysmemSurface = GetProcAddress( ddraw.dll, "CompleteCreateSysmemSurface" );
-		ddraw.D3DParseUnknownCommand = GetProcAddress( ddraw.dll, "D3DParseUnknownCommand" );
-		ddraw.DDGetAttachedSurfaceLcl = GetProcAddress( ddraw.dll, "DDGetAttachedSurfaceLcl" );
-		ddraw.DDInternalLock = GetProcAddress( ddraw.dll, "DDInternalLock" );
-		ddraw.DDInternalUnlock = GetProcAddress( ddraw.dll, "DDInternalUnlock" );
-		ddraw.DSoundHelp = GetProcAddress( ddraw.dll, "DSoundHelp" );
-		ddraw.DirectDrawCreate = GetProcAddress( ddraw.dll, "DirectDrawCreate" );
-		ddraw.DirectDrawCreateClipper = GetProcAddress( ddraw.dll, "DirectDrawCreateClipper" );
-		ddraw.DirectDrawCreateEx = GetProcAddress( ddraw.dll, "DirectDrawCreateEx" );
-		ddraw.DirectDrawEnumerateA = GetProcAddress( ddraw.dll, "DirectDrawEnumerateA" );
-		ddraw.DirectDrawEnumerateExA = GetProcAddress( ddraw.dll, "DirectDrawEnumerateExA" );
-		ddraw.DirectDrawEnumerateExW = GetProcAddress( ddraw.dll, "DirectDrawEnumerateExW" );
-		ddraw.DirectDrawEnumerateW = GetProcAddress( ddraw.dll, "DirectDrawEnumerateW" );
-		ddraw.DllCanUnloadNow = GetProcAddress( ddraw.dll, "DllCanUnloadNow" );
-		ddraw.DllGetClassObject = GetProcAddress( ddraw.dll, "DllGetClassObject" );
-		ddraw.GetDDSurfaceLocal = GetProcAddress( ddraw.dll, "GetDDSurfaceLocal" );
-		ddraw.GetOLEThunkData = GetProcAddress( ddraw.dll, "GetOLEThunkData" );
-		ddraw.GetSurfaceFromDC = GetProcAddress( ddraw.dll, "GetSurfaceFromDC" );
-		ddraw.RegisterSpecialCase = GetProcAddress( ddraw.dll, "RegisterSpecialCase" );
-		ddraw.ReleaseDDThreadLock = GetProcAddress( ddraw.dll, "ReleaseDDThreadLock" );
+        *(void**)&DirectDrawCreateEx_t = (void*)GetProcAddress( ddraw.dll, "DirectDrawCreateEx" );
+    } else if ( reason == DLL_PROCESS_DETACH ) {
+        Engine::OnShutDown();
 
-		*(void**)&DirectDrawCreateEx_t = (void*)GetProcAddress( ddraw.dll, "DirectDrawCreateEx" );
-	} else if ( reason == DLL_PROCESS_DETACH ) {
-		Engine::OnShutDown();
+        CoUninitialize();
+        FreeLibrary( hDDRAW );
 
-		CoUninitialize();
-		FreeLibrary( hDDRAW );
-
-		LogInfo() << "DDRAW Proxy DLL signing off.\n";
-	}
-	return TRUE;
+        LogInfo() << "DDRAW Proxy DLL signing off.\n";
+    }
+    return TRUE;
 }

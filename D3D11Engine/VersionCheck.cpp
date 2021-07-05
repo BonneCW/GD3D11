@@ -13,7 +13,7 @@ namespace VersionCheck {
 	static const int CHECKSUM_G2_2_6_FIX = 0x008a3e89;
 	static const int CHECKSUM_G2_2_6_FIX_4GB = 0x008a3ea9;
 	static const int CHECKSUM_G1_1_08k = 0x0000eb3d;
-	static const int CHECKSUM_G1_1_12f = 0x0;
+	static const int CHECKSUM_G1_1_12f = 0x00862362;
 
 	/** Returns whether the given file exists */
 	bool FileExists( const std::string& file ) {
@@ -79,17 +79,26 @@ namespace VersionCheck {
 #endif
 
 #ifdef BUILD_GOTHIC_1_08k
-		if ( headersum != CHECKSUM_G1_1_08k && headersum != CHECKSUM_G1_1_12f ) {
+#ifdef BUILD_1_12F
+        if ( headersum != CHECKSUM_G1_1_12f ) {
+            LogWarnBox() << "Your Gothic-Executable does not match the checksum for this version of GD3D11!\n"
+                "This DLL only works for Gothic 1 - Version 1.12f.\n\n"
+                "You can continue and try anyways but the game will most likely crash.\n"
+                "\nYour checksum was: " << headersum;
+        }
+#else
+		if ( headersum != CHECKSUM_G1_1_08k ) {
 			LogWarnBox() << "Your Gothic-Executable does not match the checksum for this version of GD3D11!\n"
 				"This DLL only works for Gothic 1 - Version 1.08k_mod or the System-Pack.\n\n"
 				"You can continue and try anyways but the game will most likely crash.\n"
 				"\nYour checksum was: " << headersum;
 		}
+#endif
 
-		/*#ifdef PUBLIC_RELEASE
-				LogInfoBox() << "You are using the Gothic 1 version of GD3D11. This is not an official release, so please keep that in mind!\n"
-								"Not everything is working yet and it may crash frequently. You don't need to report every bug you see, because I likely have seen it myself by now.\n";
-		#endif*/
+        /*#ifdef PUBLIC_RELEASE
+                LogInfoBox() << "You are using the Gothic 1 version of GD3D11. This is not an official release, so please keep that in mind!\n"
+                                "Not everything is working yet and it may crash frequently. You don't need to report every bug you see, because I likely have seen it myself by now.\n";
+        #endif*/
 #endif
 	}
 

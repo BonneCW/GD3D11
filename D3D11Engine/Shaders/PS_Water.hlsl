@@ -128,16 +128,5 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	color = lerp(color, sceneWet, (1-shallowDepth));
 	
 	color.rgb = ApplyAtmosphericScatteringGround(Input.vWorldPosition, color.rgb);
-	
-	// Do spec lighting
-	float3 sunOrange = float3(0.6,0.3,0.1) * 2.0f;
-	float3 sunColor = lerp(sunOrange, 1.0f, AC_LightPos.y) * 5.0f;
-	
-	float3 reflect_vecSmall = reflect(-viewDirection, normalize(distortionSmall.xzy * float3(1,10,1)));
-	
-	float cos_spec = clamp(dot(reflect_vecSmall, -AC_LightPos.xyz * float3(1,1,1)), 0, 1);
-	float sun_spot = pow(cos_spec, 500.0f) * 0.5f;
-	color += sunColor * sun_spot;
-	
 	return float4(color, 1);
 }

@@ -23,21 +23,21 @@ HRESULT CompileShaderFromFile(WCHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szS
 
 
 void radix008A(CSFFT512x512_Plan* fft_plan,
-			   ID3D11UnorderedAccessView* pUAV_Dst,
-			   ID3D11ShaderResourceView * pSRV_Src,
+	Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> pUAV_Dst,
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> pSRV_Src,
 			   UINT thread_count,
 			   UINT istride)
 {
     // Setup execution configuration
 	UINT grid = thread_count / COHERENCY_GRANULARITY;
-	Microsoft::WRL::ComPtr<ID3D11DeviceContext> pd3dImmediateContext = fft_plan->pd3dImmediateContext.Get();
+	Microsoft::WRL::ComPtr<ID3D11DeviceContext1> pd3dImmediateContext = fft_plan->pd3dImmediateContext.Get();
 
 	// Buffers
-	ID3D11ShaderResourceView * cs_srvs[1] = {pSRV_Src};
-	pd3dImmediateContext->CSSetShaderResources(0, 1, cs_srvs);
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> cs_srvs = {pSRV_Src.Get()};
+	pd3dImmediateContext->CSSetShaderResources(0, 1, cs_srvs.GetAddressOf());
 
-	ID3D11UnorderedAccessView* cs_uavs[1] = {pUAV_Dst};
-	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, cs_uavs, (UINT*)(&cs_uavs[0]));
+	Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> cs_uavs = {pUAV_Dst.Get()};
+	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, cs_uavs.GetAddressOf(), (UINT*)(cs_uavs.GetAddressOf()));
 
 	// Shader
 	if (istride > 1)
@@ -49,56 +49,55 @@ void radix008A(CSFFT512x512_Plan* fft_plan,
 	pd3dImmediateContext->Dispatch(grid, 1, 1);
 
 	// Unbind resource
-	cs_srvs[0] = nullptr;
-	pd3dImmediateContext->CSSetShaderResources(0, 1, cs_srvs);
+	pd3dImmediateContext->CSSetShaderResources(0, 1, cs_srvs.ReleaseAndGetAddressOf());
 
-	cs_uavs[0] = nullptr;
-	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, cs_uavs, (UINT*)(&cs_uavs[0]));
+	cs_uavs = nullptr;
+	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, cs_uavs.GetAddressOf(), (UINT*)(cs_uavs.GetAddressOf()));
 }
 
 void fft_512x512_c2c(CSFFT512x512_Plan* fft_plan,
-					 ID3D11UnorderedAccessView* pUAV_Dst,
-					 ID3D11ShaderResourceView * pSRV_Dst,
-					 ID3D11ShaderResourceView * pSRV_Src)
+	Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> pUAV_Dst,
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> pSRV_Dst,
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> pSRV_Src)
 {
 	const UINT thread_count = fft_plan->slices * (512 * 512) / 8;
 	Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> pUAV_Tmp = fft_plan->pUAV_Tmp.Get();
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> pSRV_Tmp = fft_plan->pSRV_Tmp.Get();
-	Microsoft::WRL::ComPtr<ID3D11DeviceContext> pd3dContext = fft_plan->pd3dImmediateContext.Get();
-	Microsoft::WRL::ComPtr<ID3D11Buffer> cs_cbs[1];
+	Microsoft::WRL::ComPtr<ID3D11DeviceContext1> pd3dContext = fft_plan->pd3dImmediateContext.Get();
+	Microsoft::WRL::ComPtr<ID3D11Buffer> cs_cbs;
 
 	UINT istride = 512 * 512 / 8;
-	cs_cbs[0] = fft_plan->pRadix008A_CB[0].Get();
-	pd3dContext->CSSetConstantBuffers(0, 1, cs_cbs[0].GetAddressOf());
-	radix008A(fft_plan, pUAV_Tmp.Get(), pSRV_Src, thread_count, istride);
+	cs_cbs = fft_plan->pRadix008A_CB[0].Get();
+	pd3dContext->CSSetConstantBuffers(0, 1, cs_cbs.GetAddressOf());
+	radix008A(fft_plan, pUAV_Tmp.Get(), pSRV_Src.Get(), thread_count, istride);
 
 	istride /= 8;
-	cs_cbs[0] = fft_plan->pRadix008A_CB[1].Get();
-	pd3dContext->CSSetConstantBuffers(0, 1, cs_cbs[0].GetAddressOf());
-	radix008A(fft_plan, pUAV_Dst, pSRV_Tmp.Get(), thread_count, istride);
+	cs_cbs = fft_plan->pRadix008A_CB[1].Get();
+	pd3dContext->CSSetConstantBuffers(0, 1, cs_cbs.GetAddressOf());
+	radix008A(fft_plan, pUAV_Dst.Get(), pSRV_Tmp.Get(), thread_count, istride);
 
 	istride /= 8;
-	cs_cbs[0] = fft_plan->pRadix008A_CB[2].Get();
-	pd3dContext->CSSetConstantBuffers(0, 1, cs_cbs[0].GetAddressOf());
-	radix008A(fft_plan, pUAV_Tmp.Get(), pSRV_Dst, thread_count, istride);
+	cs_cbs = fft_plan->pRadix008A_CB[2].Get();
+	pd3dContext->CSSetConstantBuffers(0, 1, cs_cbs.GetAddressOf());
+	radix008A(fft_plan, pUAV_Tmp.Get(), pSRV_Dst.Get(), thread_count, istride);
 
 	istride /= 8;
-	cs_cbs[0] = fft_plan->pRadix008A_CB[3].Get();
-	pd3dContext->CSSetConstantBuffers(0, 1, cs_cbs[0].GetAddressOf());
-	radix008A(fft_plan, pUAV_Dst, pSRV_Tmp.Get(), thread_count, istride);
+	cs_cbs = fft_plan->pRadix008A_CB[3].Get();
+	pd3dContext->CSSetConstantBuffers(0, 1, cs_cbs.GetAddressOf());
+	radix008A(fft_plan, pUAV_Dst.Get(), pSRV_Tmp.Get(), thread_count, istride);
 
 	istride /= 8;
-	cs_cbs[0] = fft_plan->pRadix008A_CB[4].Get();
-	pd3dContext->CSSetConstantBuffers(0, 1, cs_cbs[0].GetAddressOf());
-	radix008A(fft_plan, pUAV_Tmp.Get(), pSRV_Dst, thread_count, istride);
+	cs_cbs = fft_plan->pRadix008A_CB[4].Get();
+	pd3dContext->CSSetConstantBuffers(0, 1, cs_cbs.GetAddressOf());
+	radix008A(fft_plan, pUAV_Tmp.Get(), pSRV_Dst.Get(), thread_count, istride);
 
 	istride /= 8;
-	cs_cbs[0] = fft_plan->pRadix008A_CB[5].Get();
-	pd3dContext->CSSetConstantBuffers(0, 1, cs_cbs[0].GetAddressOf());
-	radix008A(fft_plan, pUAV_Dst, pSRV_Tmp.Get(), thread_count, istride);
+	cs_cbs = fft_plan->pRadix008A_CB[5].Get();
+	pd3dContext->CSSetConstantBuffers(0, 1, cs_cbs.GetAddressOf());
+	radix008A(fft_plan, pUAV_Dst.Get(), pSRV_Tmp.Get(), thread_count, istride);
 }
 
-void create_cbuffers_512x512(CSFFT512x512_Plan* plan, ID3D11Device* pd3dDevice, UINT slices)
+void create_cbuffers_512x512(CSFFT512x512_Plan* plan, Microsoft::WRL::ComPtr<ID3D11Device1> pd3dDevice, UINT slices)
 {
 	// Create 6 cbuffers for 512x512 transform.
 
@@ -127,7 +126,7 @@ void create_cbuffers_512x512(CSFFT512x512_Plan* plan, ID3D11Device* pd3dDevice, 
 	const UINT thread_count = slices * (512 * 512) / 8;
 	UINT ostride = 512 * 512 / 8;
 	UINT istride = ostride;
-	double phase_base = -TWO_PI / (512.0 * 512.0);
+	double phase_base = -XM_2PI / (512.0 * 512.0);
 	
 	CB_Structure cb_data_buf0 = {thread_count, ostride, istride, 512, (float)phase_base};
 	cb_data.pSysMem = &cb_data_buf0;
@@ -187,17 +186,17 @@ void create_cbuffers_512x512(CSFFT512x512_Plan* plan, ID3D11Device* pd3dDevice, 
 	assert(plan->pRadix008A_CB[5].Get());
 }
 
-void fft512x512_create_plan(CSFFT512x512_Plan* plan, ID3D11Device* pd3dDevice, UINT slices)
+void fft512x512_create_plan(CSFFT512x512_Plan* plan, Microsoft::WRL::ComPtr<ID3D11Device1> pd3dDevice, UINT slices)
 {
 	plan->slices = slices;
 
 	// Context
-	pd3dDevice->GetImmediateContext(plan->pd3dImmediateContext.GetAddressOf());
+	pd3dDevice->GetImmediateContext1(plan->pd3dImmediateContext.GetAddressOf());
 	assert(plan->pd3dImmediateContext.Get());
 
 	// Compute shaders
-	Microsoft::WRL::ComPtr <ID3DBlob> pBlobCS;
-	Microsoft::WRL::ComPtr <ID3DBlob> pBlobCS2;
+	Microsoft::WRL::ComPtr<ID3DBlob> pBlobCS;
+	Microsoft::WRL::ComPtr<ID3DBlob> pBlobCS2;
 
     CompileShaderFromFile(L"CSFFT\\fft_512x512_c2c.hlsl", "Radix008A_CS", "cs_5_0", pBlobCS.GetAddressOf());
     CompileShaderFromFile(L"CSFFT\\fft_512x512_c2c.hlsl", "Radix008A_CS2", "cs_5_0", pBlobCS2.GetAddressOf());
@@ -211,7 +210,7 @@ void fft512x512_create_plan(CSFFT512x512_Plan* plan, ID3D11Device* pd3dDevice, U
     
 	// Constants
 	// Create 6 cbuffers for 512x512 transform
-	create_cbuffers_512x512(plan, pd3dDevice, slices);
+	create_cbuffers_512x512(plan, pd3dDevice.Get(), slices);
 
 	// Temp buffer
 	D3D11_BUFFER_DESC buf_desc;

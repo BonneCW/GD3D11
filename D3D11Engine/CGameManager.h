@@ -7,17 +7,17 @@
 class CGameManager {
 public:
 
-	/** Hooks the functions of this Class */
-	static void Hook() {
-		//XHook(HookedFunctions::OriginalFunctions.original_CGameManagerExitGame, GothicMemoryLocations::CGameManager::ExitGame, CGameManager::hooked_ExitGame);
-	}
+    /** Hooks the functions of this Class */
+    static void Hook() {
+        //XHook(HookedFunctions::OriginalFunctions.original_CGameManagerExitGame, GothicMemoryLocations::CGameManager::ExitGame, CGameManager::hooked_ExitGame);
+    }
 
-	static int __fastcall hooked_ExitGame( void* thisptr, void* unknwn ) {
-		HookedFunctions::OriginalFunctions.original_CGameManagerExitGame( thisptr );
+    static int __fastcall hooked_ExitGame( void* thisptr, void* unknwn ) {
+        HookedFunctions::OriginalFunctions.original_CGameManagerExitGame( thisptr );
 
-		Engine::OnShutDown();
+        Engine::OnShutDown();
 
-		return 1;
-	}
+        return 1;
+    }
 
 };

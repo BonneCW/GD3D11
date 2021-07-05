@@ -16,42 +16,42 @@ class zCVob;
 
 class BaseWidget {
 public:
-	BaseWidget( WidgetContainer* container );
-	virtual ~BaseWidget();
+    BaseWidget( WidgetContainer* container );
+    virtual ~BaseWidget();
 
-	/** Renders the widget */
-	virtual void RenderWidget();
+    /** Renders the widget */
+    virtual void RenderWidget();
 
-	/** Called when a mousebutton was clicked */
-	virtual void OnMButtonClick( int button );
+    /** Called when a mousebutton was clicked */
+    virtual void OnMButtonClick( int button );
 
-	/** Called when the owning window got a message */
-	virtual void OnWindowMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam );
+    /** Called when the owning window got a message */
+    virtual void OnWindowMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam );
 
-	/** Called when an object was added to the selection */
-	virtual void OnSelectionAdded( zCVob* vob );
+    /** Called when an object was added to the selection */
+    virtual void OnSelectionAdded( zCVob* vob );
 
-	/** Widget primitives */
-	void CreateArrowCone( int Detail, int Axis, const float4& Color, EditorLinePrimitive* Prim );
-	void CreateArrowCube( DirectX::XMFLOAT3* Offset, float Extends, const float4& Color, EditorLinePrimitive* Prim );
+    /** Widget primitives */
+    void CreateArrowCone( int Detail, int Axis, const float4& Color, EditorLinePrimitive* Prim );
+    void CreateArrowCube( DirectX::XMFLOAT3* Offset, float Extends, const float4& Color, EditorLinePrimitive* Prim );
 
-	/** Returns whether this widget is active or not */
-	virtual bool IsActive() const { return false; }
+    /** Returns whether this widget is active or not */
+    virtual bool IsActive() const { return false; }
 
 protected:
-	/** Captures the mouse in the middle of the screen and returns the delta since last frame */
-	float2 GetMouseDelta() const;
+    /** Captures the mouse in the middle of the screen and returns the delta since last frame */
+    float2 GetMouseDelta() const;
 
-	/** Hides/Shows the mouse */
-	void SetMouseVisibility( bool visible );
+    /** Hides/Shows the mouse */
+    void SetMouseVisibility( bool visible );
 
-	/** Transforms of the widget */
-	DirectX::XMFLOAT3 Position;
-	DirectX::XMFLOAT4X4 Rotation;
-	DirectX::XMFLOAT3 Scale;
+    /** Transforms of the widget */
+    DirectX::XMFLOAT3 Position;
+    DirectX::XMFLOAT4X4 Rotation;
+    DirectX::XMFLOAT3 Scale;
 
-	/** Owning widgetcontainer */
-	WidgetContainer* OwningContainer;
+    /** Owning widgetcontainer */
+    WidgetContainer* OwningContainer;
 
-	EditorLinePrimitive* testPrim;
+    EditorLinePrimitive* testPrim;
 };

@@ -15,7 +15,7 @@
 #ifndef _OCEAN_WAVE_H
 #define _OCEAN_WAVE_H
 
-#include <d3d11.h>
+#include <d3d11_1.h>
 
 #include "CSFFT/fft_512x512.h"
 
@@ -48,7 +48,7 @@ struct OceanParameter
 class OceanSimulator
 {
 public:
-	OceanSimulator(OceanParameter& params, ID3D11Device* pd3dDevice);
+	OceanSimulator(OceanParameter& params, Microsoft::WRL::ComPtr<ID3D11Device1> pd3dDevice);
 	~OceanSimulator();
 
 	// -------------------------- Initialization & simulation routines ------------------------
@@ -57,8 +57,8 @@ public:
 	void updateDisplacementMap(float time);
 
 	// Texture access
-	ID3D11ShaderResourceView * getD3D11DisplacementMap();
-	ID3D11ShaderResourceView * getD3D11GradientMap();
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> getD3D11DisplacementMap();
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> getD3D11GradientMap();
 
 	const OceanParameter& getParameters();
 
@@ -69,8 +69,8 @@ protected:
 	// ---------------------------------- GPU shading asset -----------------------------------
 
 	// D3D objects
-	ID3D11Device* m_pd3dDevice;
-	ID3D11DeviceContext* m_pd3dImmediateContext;
+	Microsoft::WRL::ComPtr<ID3D11Device1> m_pd3dDevice;
+	Microsoft::WRL::ComPtr<ID3D11DeviceContext1> m_pd3dImmediateContext;
 	
 	// Displacement map
 	Microsoft::WRL::ComPtr<ID3D11Texture2D> m_pDisplacementMap;		// (RGBA32F)
@@ -114,13 +114,13 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D11Buffer> m_pQuadVB;
 
 	// Shaders, layouts and constants
-	ID3D11ComputeShader* m_pUpdateSpectrumCS;
+	Microsoft::WRL::ComPtr<ID3D11ComputeShader> m_pUpdateSpectrumCS;
 
-	ID3D11VertexShader* m_pQuadVS;
-	ID3D11PixelShader* m_pUpdateDisplacementPS;
-	ID3D11PixelShader* m_pGenGradientFoldingPS;
+	Microsoft::WRL::ComPtr<ID3D11VertexShader> m_pQuadVS;
+	Microsoft::WRL::ComPtr<ID3D11PixelShader> m_pUpdateDisplacementPS;
+	Microsoft::WRL::ComPtr<ID3D11PixelShader> m_pGenGradientFoldingPS;
 
-	ID3D11InputLayout* m_pQuadLayout;
+	Microsoft::WRL::ComPtr<ID3D11InputLayout> m_pQuadLayout;
 
 	Microsoft::WRL::ComPtr<ID3D11Buffer> m_pImmutableCB;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> m_pPerFrameCB;

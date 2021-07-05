@@ -22,7 +22,6 @@ D2DSubView::D2DSubView( D2DView* view, D2DSubView* parent ) {
 }
 
 D2DSubView::~D2DSubView() {
-    //if (Layer)Layer->Release();
     for ( std::list<D2DSubView*>::const_iterator it = Children.cbegin(); it != Children.cend(); it++ ) {
         delete* it;
     }

@@ -26,7 +26,7 @@
 typedef struct CSFFT_512x512_Data_t
 {
 	// D3D11 objects
-	Microsoft::WRL::ComPtr<ID3D11DeviceContext> pd3dImmediateContext;
+	Microsoft::WRL::ComPtr<ID3D11DeviceContext1> pd3dImmediateContext;
 	Microsoft::WRL::ComPtr<ID3D11ComputeShader> pRadix008A_CS;
 	Microsoft::WRL::ComPtr<ID3D11ComputeShader> pRadix008A_CS2;
 
@@ -45,7 +45,6 @@ typedef struct CSFFT_512x512_Data_t
 ////////////////////////////////////////////////////////////////////////////////
 // Common constants
 ////////////////////////////////////////////////////////////////////////////////
-#define TWO_PI 6.283185307179586476925286766559
 
 #define FFT_DIMENSIONS 3U
 #define FFT_PLAN_SIZE_LIMIT (1U << 27)
@@ -54,10 +53,10 @@ typedef struct CSFFT_512x512_Data_t
 #define FFT_INVERSE 1
 
 
-void fft512x512_create_plan(CSFFT512x512_Plan* plan, ID3D11Device* pd3dDevice, UINT slices);
+void fft512x512_create_plan(CSFFT512x512_Plan* plan, Microsoft::WRL::ComPtr<ID3D11Device1> pd3dDevice, UINT slices);
 void fft512x512_destroy_plan(CSFFT512x512_Plan* plan);
 
 void fft_512x512_c2c(CSFFT512x512_Plan* fft_plan, 
-					 ID3D11UnorderedAccessView* pUAV_Dst,
-					 ID3D11ShaderResourceView * pSRV_Dst,
-					 ID3D11ShaderResourceView * pSRV_Src);
+	Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> pUAV_Dst,
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> pSRV_Dst,
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> pSRV_Src);

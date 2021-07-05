@@ -203,11 +203,4 @@ float3 ACESFittedTonemap(float3 vColor, Texture2D lumTex, SamplerState samplerSt
 	return retColor;
 }
 
-//#define ToneMap ToneMap_jafEq4
-//#define ToneMap Uncharted2Tonemap
-//#define ToneMap ACESFilmTonemap
-#define ToneMap PerceptualQuantizerTonemap
-//#define ToneMap ToneMap_Simple
-//#define ToneMap ACESFittedTonemap
-
 #endif

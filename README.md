@@ -7,7 +7,8 @@ And now, that they can actually use their power to render, we not only get a big
 
 ## Bugs & Problems
 
-If you have problems with building GD3D11 after following these instructions or experience bugs/problems with GD3D11 itself, open an issue on this GitHub page or post in the D3D11 thread on ["World of Gothic" (WOG)](http://forum.worldofplayers.de/forum/forums/104-Editing).
+If you have problems with building GD3D11 after following these instructions or experience bugs/problems with GD3D11 itself, open an issue on this GitHub page or post in the D3D11 thread on ["World of Gothic" (WOG)](http://forum.worldofplayers.de/forum/forums/104-Editing).  
+But first take a look at the [KNOWN ISSUES](./known_issues.md)
 
 ## Building
 

@@ -20,7 +20,7 @@ SV_GMeshInfoView::SV_GMeshInfoView( D2DView* view, D2DSubView* parent ) : D2DSub
 
 	IsDraggingView = false;
 
-	ObjectPosition = XMFLOAT3( 0, 0, 0 );
+	ObjectPosition = XMVectorZero();
 	SetObjectOrientation( 0, 0, 10.0f );
 	RT = nullptr;
 	DS = nullptr;
@@ -64,12 +64,12 @@ void SV_GMeshInfoView::SetMeshes( const std::map<zCTexture*, MeshInfo*>& meshes,
 		}
 	}
 
-	XMVECTOR XMV_bbmin = XMLoadFloat3( &bbmin );
-	XMVECTOR XMV_bbmax = XMLoadFloat3( &bbmax );
+	FXMVECTOR XMV_bbmin = XMLoadFloat3( &bbmin );
+	FXMVECTOR XMV_bbmax = XMLoadFloat3( &bbmax );
 
-	XMStoreFloat3( &ObjectPosition, (XMV_bbmin + XMV_bbmax) * -0.5f );
+	ObjectPosition = (XMV_bbmin + XMV_bbmax) * -0.5f;
 	float distance;
-	XMStoreFloat( &distance, XMVector3LengthEst( XMV_bbmin - XMV_bbmin ) * 0.5f );
+	XMStoreFloat( &distance, XMVector3Length( XMV_bbmin - XMV_bbmin ) * 0.5f );
 	SetObjectOrientation( 0, 0, distance );
 }
 
@@ -78,28 +78,16 @@ void SV_GMeshInfoView::SetName( const std::string& name ) {}
 
 /** Sets the rotation of this object in the view */
 void SV_GMeshInfoView::SetObjectOrientation( float yaw, float pitch, float distance ) {
-	ObjectYaw = yaw;
-	ObjectPitch = pitch;
-	ObjectDistance = distance;
 
-	XMMATRIX xmObjectWorldMatrix = XMLoadFloat4x4( &ObjectWorldMatrix );
-
-	xmObjectWorldMatrix = XMMatrixTranslation( ObjectPosition.x, ObjectPosition.y, ObjectPosition.z );
+	ObjectWorldMatrix = XMMatrixTranslation(XMVectorGetX(ObjectPosition), XMVectorGetY(ObjectPosition), XMVectorGetZ(ObjectPosition));
 
 	XMMATRIX rotY = XMMatrixRotationY( yaw );
 	XMMATRIX rotZ = XMMatrixRotationZ( pitch );
 
-	xmObjectWorldMatrix *= rotY * rotZ;
-	xmObjectWorldMatrix = XMMatrixTranspose( xmObjectWorldMatrix );
+	ObjectWorldMatrix = XMMatrixTranspose(ObjectWorldMatrix * rotY * rotZ);
 
-	XMMATRIX xmObjectViewMatrix = XMLoadFloat4x4( &ObjectViewMatrix );
-
-	constexpr XMVECTORF32 c_XM_0100 = { { { 0.0f, 1.0f, 0.0f, 0.0f } } };
-	xmObjectViewMatrix = XMMatrixLookAtLH( XMVectorSet( -distance, 0, 0, 0 ), DirectX::g_XMZero, c_XM_0100 );
-	xmObjectViewMatrix = XMMatrixTranspose( xmObjectViewMatrix );
-
-	XMStoreFloat4x4( &ObjectWorldMatrix, xmObjectWorldMatrix );
-	XMStoreFloat4x4( &ObjectViewMatrix, xmObjectViewMatrix );
+	constexpr XMVECTORF32 c_XM_0100 = { 0, 1, 0, 0 };
+	ObjectViewMatrix = XMMatrixTranspose(XMMatrixLookAtLH(XMVectorSet(-distance, 0, 0, 0), g_XMZero, c_XM_0100) );
 }
 
 /** Updates the view */
@@ -109,23 +97,18 @@ void SV_GMeshInfoView::UpdateView() {
 
 	D3D11GraphicsEngine* g = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
 
-	XMMATRIX xmObjectProjMatrix = XMLoadFloat4x4( &ObjectProjMatrix );
-
-	xmObjectProjMatrix = XMMatrixPerspectiveFovLH( XMConvertToRadians( FOV ), GetSize().height / GetSize().width, 0.01f, 10000.0f );
-	xmObjectProjMatrix = XMMatrixTranspose( xmObjectProjMatrix );
-
-	XMStoreFloat4x4( &ObjectProjMatrix, xmObjectProjMatrix );
+	ObjectProjMatrix = XMMatrixTranspose( XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), GetSize().height / GetSize().width, 0.01f, 10000.0f) );
 
 	g->SetDefaultStates();
 	Engine::GAPI->GetRendererState().RasterizerState.CullMode = GothicRasterizerStateInfo::CM_CULL_NONE;
 	Engine::GAPI->GetRendererState().RasterizerState.SetDirty();
 
-	XMFLOAT4X4 oldProj = Engine::GAPI->GetProjTransformDx();
+	XMMATRIX oldProj = XMLoadFloat4x4(&Engine::GAPI->GetProjTransform());
 
 	// Set transforms
-	Engine::GAPI->SetWorldTransformDX( ObjectWorldMatrix );
-	Engine::GAPI->SetViewTransformDX( ObjectViewMatrix );
-	Engine::GAPI->SetProjTransformDX( ObjectProjMatrix );
+	Engine::GAPI->SetWorldTransformXM(ObjectWorldMatrix);
+	Engine::GAPI->SetViewTransformXM(ObjectViewMatrix);
+	Engine::GAPI->SetProjTransformXM(ObjectProjMatrix);
 
 	// Set Viewport
 	D3D11_VIEWPORT oldVP;
@@ -180,7 +163,7 @@ void SV_GMeshInfoView::UpdateView() {
 	}
 	// Reset viewport
 	g->GetContext()->RSSetViewports( 1, &oldVP );
-	Engine::GAPI->SetProjTransformDX( oldProj );
+	Engine::GAPI->SetProjTransformXM(oldProj);
 
 	// Update panel
 	Panel->SetD3D11TextureAsImage( RT->GetTexture().Get(), INT2( RT->GetSizeX(), RT->GetSizeY() ) );
@@ -237,10 +220,10 @@ void SV_GMeshInfoView::SetRect( const D2D1_RECT_F& rect ) {
 
 	// Create new RT
 	delete RT;
-	RT = new RenderToTextureBuffer( g->GetDevice(), (UINT)std::max( 8.0f, GetSize().width ), (UINT)std::max( 8.0f, GetSize().height ), DXGI_FORMAT_R8G8B8A8_UNORM );
+	RT = new RenderToTextureBuffer( g->GetDevice().Get(), (UINT)std::max( 8.0f, GetSize().width ), (UINT)std::max( 8.0f, GetSize().height ), DXGI_FORMAT_R8G8B8A8_UNORM );
 
 	delete DS;
-	DS = new RenderToDepthStencilBuffer( g->GetDevice(), (UINT)std::max( 8.0f, GetSize().width ), (UINT)std::max( 8.0f, GetSize().height ), DXGI_FORMAT_R32_TYPELESS, nullptr, DXGI_FORMAT_D32_FLOAT, DXGI_FORMAT_R32_FLOAT );
+	DS = new RenderToDepthStencilBuffer( g->GetDevice().Get(), (UINT)std::max( 8.0f, GetSize().width ), (UINT)std::max( 8.0f, GetSize().height ), DXGI_FORMAT_R32_TYPELESS, nullptr, DXGI_FORMAT_D32_FLOAT, DXGI_FORMAT_R32_FLOAT );
 }
 
 /** Processes a window-message. Return false to stop the message from going to children */

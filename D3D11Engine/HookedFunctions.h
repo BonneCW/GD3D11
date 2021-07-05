@@ -15,6 +15,7 @@ class zCBspBase;
 class oCNPC;
 class zCPolygon;
 class zCTexture;
+class zCViewDraw;
 
 template <class T>
 class zCTree;
@@ -51,6 +52,7 @@ typedef void( __thiscall* zCRnd_D3D_DrawPolySimple )(void*, zCTexture*, void*, i
 typedef int( __thiscall* zCOptionReadInt )(void*, zSTRING const&, char const*, int);
 typedef int( __thiscall* zCOptionReadBool )(void*, zSTRING const&, char const*, int);
 typedef unsigned long( __thiscall* zCOptionReadDWORD )(void*, zSTRING const&, char const*, unsigned long);
+typedef zCViewDraw&(__cdecl* zCViewDrawGetScreen)(void);
 typedef void( __cdecl* zCViewSetMode )(int, int, int, HWND*);
 typedef int( __thiscall* zCViewFontSize )(void*, const zSTRING&);
 typedef void( __thiscall* zCViewBlitText )(void*);
@@ -90,86 +92,87 @@ typedef void( __thiscall* zCVobEndMovement )(void*, int);
 struct zTRndSurfaceDesc;
 struct HookedFunctionInfo {
 
-	/** Init all hooks here */
-	void InitHooks();
+    /** Init all hooks here */
+    void InitHooks();
 
-	zCBspTreeLoadBIN original_zCBspTreeLoadBIN;
-	zCWorldRender original_zCWorldRender;
-	zCWorldVobAddedToWorld original_zCWorldVobAddedToWorld;
-	zCBspTreeAddVob original_zCBspTreeAddVob;
-	oCWorldInsertVobInWorld original_oCWorldInsertVobInWorld;
-	zCWorldLoadWorld original_zCWorldLoadWorld;
-	oCGameEnterWorld original_oCGameEnterWorld;
-	oCGameUpdatePlayerStatus original_oCGameUpdatePlayerStatus;
-	zCWorldVobRemovedFromWorld original_zCWorldVobRemovedFromWorld;
-	Alg_Rotation3DNRad original_Alg_Rotation3DNRad;
-	GenericDestructor original_zCMaterialDestructor;
-	GenericDestructor original_zCParticleFXDestructor;
-	GenericDestructor original_zCVisualDestructor;
-	zCMaterialConstruktor original_zCMaterialConstruktor;
-	zCMaterialInitValues original_zCMaterialInitValues;
-	zFILEOpen original_zFILEOpen;
-	zCRnd_D3DVid_SetScreenMode original_zCRnd_D3DVid_SetScreenMode;
-	zCRnd_D3D_DrawPoly original_zCRnd_D3D_DrawPoly;
-	zCRnd_D3D_DrawPolySimple original_zCRnd_D3D_DrawPolySimple;
-	zCOptionReadInt original_zCOptionReadInt;
-	zCOptionReadBool original_zCOptionReadBool;
-	zCOptionReadDWORD original_zCOptionReadDWORD;
-	zCViewSetMode original_zCViewSetMode;
-	zCViewFontSize original_zCViewFontSize;
-	zCViewBlitText original_zCViewBlit;
-	zCViewBlitText original_zCViewBlitText;
-	zCViewPrint original_zCViewPrint;
-	HandledWinMain original_HandledWinMain;
-	CGameManagerExitGame original_CGameManagerExitGame;
-	zCExceptionHandlerUnhandledExceptionFilter original_zCExceptionHandler_UnhandledExceptionFilter;
-	GenericThiscall original_zCWorldDisposeWorld;
-	zCWorldDisposeVobs original_zCWorldDisposeVobs;
-	oCSpawnManagerSpawnNpc original_oCSpawnManagerSpawnNpc;
-	oCSpawnManagerCheckRemoveNpc original_oCSpawnManagerCheckRemoveNpc;
-	oCSpawnManagerCheckInsertNpc original_oCSpawnManagerCheckInsertNpc;
-	zCVobSetVisual original_zCVobSetVisual;
-	GenericDestructor original_zCVobDestructor;
-	zCTex_D3DXTEX_BuildSurfaces original_zCTex_D3DXTEX_BuildSurfaces;
-	zCTextureLoadResourceData ofiginal_zCTextureLoadResourceData;
-	zCThreadSuspendThread original_zCThreadSuspendThread;
-	zCResourceManagerCacheOut original_zCResourceManagerCacheOut;
-	zCQuadMarkCreateQuadMark original_zCQuadMarkCreateQuadMark;
-	GenericDestructor original_zCQuadMarkDestructor;
-	GenericThiscall original_zCQuadMarkConstructor;
-	oCSpawnManagerInsertNpc original_oCSpawnManagerInsertNpc;
-	oCNPCEnable original_oCNPCEnable;
-	GenericThiscall original_oCNPCDisable;
-	GenericThiscall original_oCNPCInitModel;
-	oCWorldDisableVob original_oCWorldDisableVob;
-	oCWorldEnableVob original_oCWorldEnableVob;
-	oCWorldRemoveVob original_oCWorldRemoveVob;
-	oCWorldRemoveFromLists original_oCWorldRemoveFromLists;
-	zCBinkPlayerOpenVideo original_zCBinkPlayerOpenVideo;
-	zCVobEndMovement original_zCVobEndMovement;
-	zCBspBaseCollectPolysInBBox3D original_zCBspBaseCollectPolysInBBox3D;
-	zCBspBaseCheckRayAgainstPolys original_zCBspBaseCheckRayAgainstPolys;
-	zCBspBaseCheckRayAgainstPolys original_zCBspBaseCheckRayAgainstPolysCache;
-	zCBspBaseCheckRayAgainstPolys original_zCBspBaseCheckRayAgainstPolysNearestHit;
-	//zCActiveSndAutoCalcObstruction original_zCActiveSndAutoCalcObstruction;
-	zCModelPrototypeLoadModelASC original_zCModelPrototypeLoadModelASC;
-	zCModelPrototypeReadMeshAndTreeMSB original_zCModelPrototypeReadMeshAndTreeMSB;
+    zCBspTreeLoadBIN original_zCBspTreeLoadBIN;
+    zCWorldRender original_zCWorldRender;
+    zCWorldVobAddedToWorld original_zCWorldVobAddedToWorld;
+    zCBspTreeAddVob original_zCBspTreeAddVob;
+    oCWorldInsertVobInWorld original_oCWorldInsertVobInWorld;
+    zCWorldLoadWorld original_zCWorldLoadWorld;
+    oCGameEnterWorld original_oCGameEnterWorld;
+    oCGameUpdatePlayerStatus original_oCGameUpdatePlayerStatus;
+    zCWorldVobRemovedFromWorld original_zCWorldVobRemovedFromWorld;
+    Alg_Rotation3DNRad original_Alg_Rotation3DNRad;
+    GenericDestructor original_zCMaterialDestructor;
+    GenericDestructor original_zCParticleFXDestructor;
+    GenericDestructor original_zCVisualDestructor;
+    zCMaterialConstruktor original_zCMaterialConstruktor;
+    zCMaterialInitValues original_zCMaterialInitValues;
+    zFILEOpen original_zFILEOpen;
+    zCRnd_D3DVid_SetScreenMode original_zCRnd_D3DVid_SetScreenMode;
+    zCRnd_D3D_DrawPoly original_zCRnd_D3D_DrawPoly;
+    zCRnd_D3D_DrawPolySimple original_zCRnd_D3D_DrawPolySimple;
+    zCOptionReadInt original_zCOptionReadInt;
+    zCOptionReadBool original_zCOptionReadBool;
+    zCOptionReadDWORD original_zCOptionReadDWORD;
+    zCViewDrawGetScreen original_zCViewDrawGetScreen;
+    zCViewSetMode original_zCViewSetMode;
+    zCViewFontSize original_zCViewFontSize;
+    zCViewBlitText original_zCViewBlit;
+    zCViewBlitText original_zCViewBlitText;
+    zCViewPrint original_zCViewPrint;
+    HandledWinMain original_HandledWinMain;
+    CGameManagerExitGame original_CGameManagerExitGame;
+    zCExceptionHandlerUnhandledExceptionFilter original_zCExceptionHandler_UnhandledExceptionFilter;
+    GenericThiscall original_zCWorldDisposeWorld;
+    zCWorldDisposeVobs original_zCWorldDisposeVobs;
+    oCSpawnManagerSpawnNpc original_oCSpawnManagerSpawnNpc;
+    oCSpawnManagerCheckRemoveNpc original_oCSpawnManagerCheckRemoveNpc;
+    oCSpawnManagerCheckInsertNpc original_oCSpawnManagerCheckInsertNpc;
+    zCVobSetVisual original_zCVobSetVisual;
+    GenericDestructor original_zCVobDestructor;
+    zCTex_D3DXTEX_BuildSurfaces original_zCTex_D3DXTEX_BuildSurfaces;
+    zCTextureLoadResourceData ofiginal_zCTextureLoadResourceData;
+    zCThreadSuspendThread original_zCThreadSuspendThread;
+    zCResourceManagerCacheOut original_zCResourceManagerCacheOut;
+    zCQuadMarkCreateQuadMark original_zCQuadMarkCreateQuadMark;
+    GenericDestructor original_zCQuadMarkDestructor;
+    GenericThiscall original_zCQuadMarkConstructor;
+    oCSpawnManagerInsertNpc original_oCSpawnManagerInsertNpc;
+    oCNPCEnable original_oCNPCEnable;
+    GenericThiscall original_oCNPCDisable;
+    GenericThiscall original_oCNPCInitModel;
+    oCWorldDisableVob original_oCWorldDisableVob;
+    oCWorldEnableVob original_oCWorldEnableVob;
+    oCWorldRemoveVob original_oCWorldRemoveVob;
+    oCWorldRemoveFromLists original_oCWorldRemoveFromLists;
+    zCBinkPlayerOpenVideo original_zCBinkPlayerOpenVideo;
+    zCVobEndMovement original_zCVobEndMovement;
+    zCBspBaseCollectPolysInBBox3D original_zCBspBaseCollectPolysInBBox3D;
+    zCBspBaseCheckRayAgainstPolys original_zCBspBaseCheckRayAgainstPolys;
+    zCBspBaseCheckRayAgainstPolys original_zCBspBaseCheckRayAgainstPolysCache;
+    zCBspBaseCheckRayAgainstPolys original_zCBspBaseCheckRayAgainstPolysNearestHit;
+    //zCActiveSndAutoCalcObstruction original_zCActiveSndAutoCalcObstruction;
+    zCModelPrototypeLoadModelASC original_zCModelPrototypeLoadModelASC;
+    zCModelPrototypeReadMeshAndTreeMSB original_zCModelPrototypeReadMeshAndTreeMSB;
 
-	/** Function hooks */
-	static int __stdcall hooked_HandledWinMain( HINSTANCE hInstance, HINSTANCE hPrev, LPSTR szCmdLine, int sw );
-	static void __cdecl hooked_ExitGameFunc();
+    /** Function hooks */
+    static int __stdcall hooked_HandledWinMain( HINSTANCE hInstance, HINSTANCE hPrev, LPSTR szCmdLine, int sw );
+    static void __cdecl hooked_ExitGameFunc();
 
-	/** Unhandled exception handler */
-	static long __stdcall hooked_zCExceptionHandlerUnhandledExceptionFilter( EXCEPTION_POINTERS* exceptionPtrs );
+    /** Unhandled exception handler */
+    static long __stdcall hooked_zCExceptionHandlerUnhandledExceptionFilter( EXCEPTION_POINTERS* exceptionPtrs );
 
-	/** Single function for making the bink-player working again */
-	/** Returns the pixelformat of a bink-surface */
-	static long __fastcall hooked_zBinkPlayerGetPixelFormat( void* thisptr, void* unknwn, zTRndSurfaceDesc& desc );
-	static int __fastcall hooked_zBinkPlayerOpenVideo( void* thisptr, void* unknwn, zSTRING str );
-	static void __fastcall hooked_zCActiveSndAutoCalcObstruction( void* thisptr, void* unknwn, int i );
+    /** Single function for making the bink-player working again */
+    /** Returns the pixelformat of a bink-surface */
+    static long __fastcall hooked_zBinkPlayerGetPixelFormat( void* thisptr, void* unknwn, zTRndSurfaceDesc& desc );
+    static int __fastcall hooked_zBinkPlayerOpenVideo( void* thisptr, void* unknwn, zSTRING str );
+    static void __fastcall hooked_zCActiveSndAutoCalcObstruction( void* thisptr, void* unknwn, int i );
 };
 
 namespace HookedFunctions {
-	/** Holds all the original functions */
-	__declspec(selectany) HookedFunctionInfo OriginalFunctions;
+    /** Holds all the original functions */
+    __declspec(selectany) HookedFunctionInfo OriginalFunctions;
 };

@@ -34,8 +34,19 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	float4 sample = TX_Scene.Sample(SS_Linear, Input.vTexcoord);
 	float3 HDRColor = sample.rgb;
 	//HDRColor = float3(Input.vTexcoord.r, 0, 0);
-	
-	float3 toneMapped = saturate(ToneMap(HDRColor, TX_Lum, SS_Linear));
+#if USE_TONEMAP == 0
+		float3 toneMapped = saturate(ToneMap_jafEq4(HDRColor, TX_Lum, SS_Linear));
+#elif USE_TONEMAP == 1
+		float3 toneMapped = saturate(Uncharted2Tonemap(HDRColor, TX_Lum, SS_Linear));
+#elif USE_TONEMAP == 2
+		float3 toneMapped = saturate(ACESFilmTonemap(HDRColor, TX_Lum, SS_Linear));
+#elif USE_TONEMAP == 3
+		float3 toneMapped = saturate(PerceptualQuantizerTonemap(HDRColor, TX_Lum, SS_Linear));
+#elif USE_TONEMAP == 4
+		float3 toneMapped = saturate(ToneMap_Simple(HDRColor, TX_Lum, SS_Linear));
+#elif USE_TONEMAP == 5
+		float3 toneMapped = saturate(ACESFittedTonemap(HDRColor, TX_Lum, SS_Linear));
+#endif
 	
 	float3 bloom = TX_Bloom.Sample(SS_Linear, Input.vTexcoord).rgb * HDR_BloomStrength;
 

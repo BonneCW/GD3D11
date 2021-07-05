@@ -172,6 +172,8 @@ typedef float GFSDK_SSAO_FLOAT;
 typedef size_t GFSDK_SSAO_SIZE_T;
 typedef uint64_t GFSDK_SSAO_UINT64;
 
+struct ID3D11Device1;
+struct ID3D11DeviceContext1;
 struct ID3D11ShaderResourceView;
 struct ID3D11BlendState;
 struct ID3D11DepthStencilState;
@@ -432,13 +434,11 @@ struct GFSDK_SSAO_InputDepthData_D3D12 : GFSDK_SSAO_InputDepthData
 
 struct GFSDK_SSAO_InputDepthData_D3D11 : GFSDK_SSAO_InputDepthData
 {
-    ID3D11ShaderResourceView*       pFullResDepthTextureSRV;            // Full-resolution depth texture
-    ID3D11ShaderResourceView*       pFullResDepthTexture2ndLayerSRV;    // Full-resolution depth texture for the second layer
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> pFullResDepthTextureSRV;            // Full-resolution depth texture
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> pFullResDepthTexture2ndLayerSRV;    // Full-resolution depth texture for the second layer
 
     GFSDK_SSAO_InputDepthData_D3D11()
     {
-        pFullResDepthTextureSRV = NULL;
-        pFullResDepthTexture2ndLayerSRV = NULL;
     }
 };
 
@@ -485,10 +485,9 @@ struct GFSDK_SSAO_InputNormalData_D3D12 : GFSDK_SSAO_InputNormalData
 
 struct GFSDK_SSAO_InputNormalData_D3D11 : GFSDK_SSAO_InputNormalData
 {
-    ID3D11ShaderResourceView*   pFullResNormalTextureSRV;           // Full-resolution world-space normal texture
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> pFullResNormalTextureSRV;           // Full-resolution world-space normal texture
 
     GFSDK_SSAO_InputNormalData_D3D11()
-        : pFullResNormalTextureSRV(NULL)
     {
     }
 };
@@ -654,12 +653,11 @@ struct GFSDK_SSAO_CustomBlendState_D3D12
 
 struct GFSDK_SSAO_CustomBlendState_D3D11
 {
-    ID3D11BlendState*               pBlendState;
+    Microsoft::WRL::ComPtr<ID3D11BlendState> pBlendState;
     const GFSDK_SSAO_FLOAT*         pBlendFactor;
 
     GFSDK_SSAO_CustomBlendState_D3D11()
-        : pBlendState(NULL)
-        , pBlendFactor(NULL)
+        : pBlendFactor(NULL)
     {
     }
 };
@@ -696,12 +694,11 @@ struct GFSDK_SSAO_BlendState_D3D11
 
 struct GFSDK_SSAO_CustomDepthStencilState_D3D11
 {
-    ID3D11DepthStencilState*        pDepthStencilState;
+    Microsoft::WRL::ComPtr<ID3D11DepthStencilState> pDepthStencilState;
     GFSDK_SSAO_UINT                 StencilRef;
 
     GFSDK_SSAO_CustomDepthStencilState_D3D11()
-        : pDepthStencilState(NULL)
-        , StencilRef(0)
+        : StencilRef(0)
     {
     }
 };
@@ -734,11 +731,10 @@ struct GFSDK_SSAO_Output_D3D12
 
 struct GFSDK_SSAO_Output_D3D11
 {
-    ID3D11RenderTargetView*             pRenderTargetView;      // Output render target of RenderAO
+    Microsoft::WRL::ComPtr<ID3D11RenderTargetView> pRenderTargetView;      // Output render target of RenderAO
     GFSDK_SSAO_BlendState_D3D11         Blend;                  // Blend state used when writing the AO to pRenderTargetView
 
     GFSDK_SSAO_Output_D3D11()
-        : pRenderTargetView(NULL)
     {
     }
 };
@@ -824,7 +820,7 @@ public:
     //     GFSDK_SSAO_OK                                   - Success
     //---------------------------------------------------------------------------------------------------
     virtual GFSDK_SSAO_Status RenderAO(
-        ID3D11DeviceContext* pDeviceContext,
+        Microsoft::WRL::ComPtr<ID3D11DeviceContext1> pDeviceContext,
         const GFSDK_SSAO_InputData_D3D11& InputData,
         const GFSDK_SSAO_Parameters& Parameters,
         const GFSDK_SSAO_Output_D3D11& Output,
@@ -887,7 +883,7 @@ public:
 //     GFSDK_SSAO_OK                                   - Success
 //---------------------------------------------------------------------------------------------------
 GFSDK_SSAO_DECL(GFSDK_SSAO_Status, GFSDK_SSAO_CreateContext_D3D11,
-    ID3D11Device* pD3DDevice,
+    Microsoft::WRL::ComPtr<ID3D11Device1> pD3DDevice,
     GFSDK_SSAO_Context_D3D11** ppContext,
     GFSDK_SSAO_CUSTOM_HEAP_ARGUMENT,
     GFSDK_SSAO_VERSION_ARGUMENT);

@@ -2,7 +2,7 @@
 #ifndef ATMOSPHERIC_SCATTERING_H_
 #define ATMOSPHERIC_SCATTERING_H_
 
-static const float NIGHT_BRIGHTNESS = 1.0f;
+static const float NIGHT_BRIGHTNESS = 2.0f;
 
 cbuffer Atmosphere : register( b1 )
 {

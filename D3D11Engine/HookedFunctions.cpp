@@ -23,6 +23,9 @@
 #include "oCNPC.h"
 #include "zCSkyController_Outdoor.h"
 
+#include "zQuat.h"
+#include "zMat4.h"
+
 #if _MSC_VER >= 1300
 #include <Tlhelp32.h>
 #endif
@@ -31,146 +34,148 @@
 
 /** Init all hooks here */
 void HookedFunctionInfo::InitHooks() {
-	LogInfo() << "Initializing hooks";
+    LogInfo() << "Initializing hooks";
 
-	DWORD dwProtect;
-	VirtualProtect( (void*)GothicMemoryLocations::zCWorld::Render, 0x255, PAGE_EXECUTE_READWRITE, &dwProtect );
+    DWORD dwProtect;
+    VirtualProtect( (void*)GothicMemoryLocations::zCWorld::Render, 0x255, PAGE_EXECUTE_READWRITE, &dwProtect );
 
-	oCGame::Hook();
-	zCBspTree::Hook();
-	zCWorld::Hook();
-	zCMaterial::Hook();
-	zCBspNode::Hook();
-	zFILE::Hook();
-	zCOption::Hook();
-	zCRndD3D::Hook();
-	zCParticleFX::Hook();
-	zCView::Hook();
-	CGameManager::Hook();
-	zCVisual::Hook();
-	zCTimer::Hook();
-	zCModel::Hook();
-	zCModelPrototype::Hook();
-	oCSpawnManager::Hook();
-	zCVob::Hook();
-	zCTexture::Hook();
-	zCThread::Hook();
-	//zCResourceManager::Hook();
-	zCQuadMark::Hook();
-	oCNPC::Hook();
-	zCSkyController_Outdoor::Hook();
+    oCGame::Hook();
+    zCBspTree::Hook();
+    zCWorld::Hook();
+    zCMaterial::Hook();
+    zCBspNode::Hook();
+    zFILE::Hook();
+    zCOption::Hook();
+    zCRndD3D::Hook();
+    zCParticleFX::Hook();
+    zCView::Hook();
+    CGameManager::Hook();
+    zCVisual::Hook();
+    zCTimer::Hook();
+    zCModel::Hook();
+    zCModelPrototype::Hook();
+    oCSpawnManager::Hook();
+    zCVob::Hook();
+    zCTexture::Hook();
+    zCThread::Hook();
+    //zCResourceManager::Hook();
+    zCQuadMark::Hook();
+    oCNPC::Hook();
+    zCSkyController_Outdoor::Hook();
 
-	//XHook(original_zCExceptionHandler_UnhandledExceptionFilter, GothicMemoryLocations::Functions::zCExceptionHandler_UnhandledExceptionFilter, HookedFunctionInfo::hooked_zCExceptionHandlerUnhandledExceptionFilter);
-	//XHook(original_HandledWinMain, GothicMemoryLocations::Functions::HandledWinMain, HookedFunctionInfo::hooked_HandledWinMain);
-	//XHook(original_ExitGameFunc, GothicMemoryLocations::Functions::ExitGameFunc, HookedFunctionInfo::hooked_ExitGameFunc);
+    //XHook(original_zCExceptionHandler_UnhandledExceptionFilter, GothicMemoryLocations::Functions::zCExceptionHandler_UnhandledExceptionFilter, HookedFunctionInfo::hooked_zCExceptionHandlerUnhandledExceptionFilter);
+    //XHook(original_HandledWinMain, GothicMemoryLocations::Functions::HandledWinMain, HookedFunctionInfo::hooked_HandledWinMain);
+    //XHook(original_ExitGameFunc, GothicMemoryLocations::Functions::ExitGameFunc, HookedFunctionInfo::hooked_ExitGameFunc);
 
-	// Kill the check for doing freelook only in fullscreen, since we force the game to run windowed internally
-	//int flSize = GothicMemoryLocations::GlobalObjects::NOP_FreelookWindowedCheckEnd - GothicMemoryLocations::GlobalObjects::NOP_FreelookWindowedCheckStart;
-	//VirtualProtect((void *)GothicMemoryLocations::GlobalObjects::NOP_FreelookWindowedCheckStart, flSize, PAGE_EXECUTE_READWRITE, &dwProtect);
-	//REPLACE_RANGE(GothicMemoryLocations::GlobalObjects::NOP_FreelookWindowedCheckStart, GothicMemoryLocations::GlobalObjects::NOP_FreelookWindowedCheckEnd-1, INST_NOP);
+    // Kill the check for doing freelook only in fullscreen, since we force the game to run windowed internally
+    //int flSize = GothicMemoryLocations::GlobalObjects::NOP_FreelookWindowedCheckEnd - GothicMemoryLocations::GlobalObjects::NOP_FreelookWindowedCheckStart;
+    //VirtualProtect((void *)GothicMemoryLocations::GlobalObjects::NOP_FreelookWindowedCheckStart, flSize, PAGE_EXECUTE_READWRITE, &dwProtect);
+    //REPLACE_RANGE(GothicMemoryLocations::GlobalObjects::NOP_FreelookWindowedCheckStart, GothicMemoryLocations::GlobalObjects::NOP_FreelookWindowedCheckEnd-1, INST_NOP);
 
-	// Hook the single bink-function
-	XHook( GothicMemoryLocations::zCBinkPlayer::GetPixelFormat, HookedFunctionInfo::hooked_zBinkPlayerGetPixelFormat );
+    // Hook the single bink-function
+    XHook( GothicMemoryLocations::zCBinkPlayer::GetPixelFormat, HookedFunctionInfo::hooked_zBinkPlayerGetPixelFormat );
 
 #if defined(BUILD_GOTHIC_2_6_fix) || defined(BUILD_GOTHIC_1_08k)
-	XHook( original_zCBinkPlayerOpenVideo, GothicMemoryLocations::zCBinkPlayer::OpenVideo, HookedFunctionInfo::hooked_zBinkPlayerOpenVideo );
+    XHook( original_zCBinkPlayerOpenVideo, GothicMemoryLocations::zCBinkPlayer::OpenVideo, HookedFunctionInfo::hooked_zBinkPlayerOpenVideo );
 #endif
-	original_Alg_Rotation3DNRad = (Alg_Rotation3DNRad)GothicMemoryLocations::Functions::Alg_Rotation3DNRad;
+    original_Alg_Rotation3DNRad = (Alg_Rotation3DNRad)GothicMemoryLocations::Functions::Alg_Rotation3DNRad;
 
 #ifdef BUILD_GOTHIC_2_6_fix
-	// Remove automatic volume change of sounds regarding whether the camera is indoor or outdoor
-	// TODO: Implement!
-	if ( !GMPModeActive ) {
-		XHook( GothicMemoryLocations::zCActiveSnd::AutoCalcObstruction, HookedFunctionInfo::hooked_zCActiveSndAutoCalcObstruction );
-	}
+    // Remove automatic volume change of sounds regarding whether the camera is indoor or outdoor
+    // TODO: Implement!
+    if ( !GMPModeActive ) {
+        XHook( GothicMemoryLocations::zCActiveSnd::AutoCalcObstruction, HookedFunctionInfo::hooked_zCActiveSndAutoCalcObstruction );
+    }
 
-	// Workaround to fix disappearing ui elements under certain circumstances
-	// e.g. praying at Beliar statue, screen blend causing dialog boxes to disappear.
-	LogInfo() << "Patching: Overriding zCVobScreenFX::OnTick() if (blend.visible) -> if (false)";
-	PatchAddr( 0x61808Fu, "\x90\xE9");
+    zQuat::Hook();
+    zMat4::Hook();
 
-	LogInfo() << "Patching: Interupt gamestart sound";
-	PatchAddr( 0x004DB89F, "\x00" );
+    // Workaround to fix disappearing ui elements under certain circumstances
+    // e.g. praying at Beliar statue, screen blend causing dialog boxes to disappear.
+    LogInfo() << "Patching: Overriding zCVobScreenFX::OnTick() if (blend.visible) -> if (false)";
+    PatchAddr( 0x61808Fu, "\x90\xE9" );
 
-	LogInfo() << "Patching: Fix low framerate";
-	PatchAddr( 0x004DDC6F, "\x08" );
+    LogInfo() << "Patching: Interupt gamestart sound";
+    PatchAddr( 0x004DB89F, "\x00" );
 
-	LogInfo() << "Patching: LOW_FPS_NaN_check";
-	PatchAddr( 0x0066E59A, "\x81\x3A\x00\x00\xC0\xFF\x0F\x84\xF3\x3C\xEC\xFF\x81\x3A\x00\x00\xC0\x7F\x0F\x84\xE7\x3C\xEC\xFF\xD9\x45\x00\x8D\x44\x8C\x20\xE9\xEB\x3C\xEC\xFF" );
-	PatchAddr( 0x005322A2, "\xE9\xF3\xC2\x13\x00\x90\x90" );
-	PatchAddr( 0x0066E5BE, "\x81\x7C\xE4\x20\x00\x00\xC0\xFF\x0F\x84\x2A\x2B\xEC\xFF\x81\x7C\xE4\x20\x00\x00\xC0\x7F\x0F\x84\x1C\x2B\xEC\xFF\xE9\xC1\x2A\xEC\xFF" );
-	PatchAddr( 0x0061E412, "\xE8\xA7\x01\x05\x00");
+    LogInfo() << "Patching: Fix low framerate";
+    PatchAddr( 0x004DDC6F, "\x08" );
 
+    LogInfo() << "Patching: LOW_FPS_NaN_check";
+    PatchAddr( 0x0066E59A, "\x81\x3A\x00\x00\xC0\xFF\x0F\x84\xF3\x3C\xEC\xFF\x81\x3A\x00\x00\xC0\x7F\x0F\x84\xE7\x3C\xEC\xFF\xD9\x45\x00\x8D\x44\x8C\x20\xE9\xEB\x3C\xEC\xFF" );
+    PatchAddr( 0x005322A2, "\xE9\xF3\xC2\x13\x00\x90\x90" );
+    PatchAddr( 0x0066E5BE, "\x81\x7C\xE4\x20\x00\x00\xC0\xFF\x0F\x84\x2A\x2B\xEC\xFF\x81\x7C\xE4\x20\x00\x00\xC0\x7F\x0F\x84\x1C\x2B\xEC\xFF\xE9\xC1\x2A\xEC\xFF" );
+    PatchAddr( 0x0061E412, "\xE8\xA7\x01\x05\x00" );
 
 #endif
-	// HACK Workaround to fix debuglines in godmode
+    // HACK Workaround to fix debuglines in godmode
 #if (defined BUILD_GOTHIC_2_6_fix)
-	LogInfo() << "Patching: Godmode Debuglines";
-	// oCMagFrontier::GetDistanceNewWorld
-	PatchAddr(0x00473f37, "\xBD\x00\x00\x00\x00"); // replace MOV EBP, 0x1 with MOV EBP, 0x0
-	// oCMagFrontier::GetDistanceDragonIsland
-	PatchAddr(0x004744c1, "\xBF\x00\x00\x00\x00"); // replace MOV EDI, 0x1 with MOV EDI, 0x0
-	// oCMagFrontier::GetDistanceAddonWorld
-	PatchAddr(0x00474681, "\xBF\x00\x00\x00\x00"); // replace MOV EDI, 0x1 with MOV EDI, 0x0
+    LogInfo() << "Patching: Godmode Debuglines";
+    // oCMagFrontier::GetDistanceNewWorld
+    PatchAddr( 0x00473f37, "\xBD\x00\x00\x00\x00" ); // replace MOV EBP, 0x1 with MOV EBP, 0x0
+    // oCMagFrontier::GetDistanceDragonIsland
+    PatchAddr( 0x004744c1, "\xBF\x00\x00\x00\x00" ); // replace MOV EDI, 0x1 with MOV EDI, 0x0
+    // oCMagFrontier::GetDistanceAddonWorld
+    PatchAddr( 0x00474681, "\xBF\x00\x00\x00\x00" ); // replace MOV EDI, 0x1 with MOV EDI, 0x0
 #endif
 }
 
 /** Function hooks */
 int __stdcall HookedFunctionInfo::hooked_HandledWinMain( HINSTANCE hInstance, HINSTANCE hPrev, LPSTR szCmdLine, int sw ) {
-	int r = HookedFunctions::OriginalFunctions.original_HandledWinMain( hInstance, hPrev, szCmdLine, sw );
+    int r = HookedFunctions::OriginalFunctions.original_HandledWinMain( hInstance, hPrev, szCmdLine, sw );
 
-	return r;
+    return r;
 }
 
 void __fastcall HookedFunctionInfo::hooked_zCActiveSndAutoCalcObstruction( void* thisptr, void* unknwn, int i ) {
-	// Just do nothing here. Something was inside zCBspTree::Render that managed this and thus voices get really quiet in indoor locations
-	// This function is for calculating the automatic volume-changes when the camera goes in/out buildings
-	// We keep everything on the same level by removing it
+    // Just do nothing here. Something was inside zCBspTree::Render that managed this and thus voices get really quiet in indoor locations
+    // This function is for calculating the automatic volume-changes when the camera goes in/out buildings
+    // We keep everything on the same level by removing it
 }
 
 void __cdecl HookedFunctionInfo::hooked_ExitGameFunc() {
-	Engine::OnShutDown();
+    Engine::OnShutDown();
 
-	HookedFunctions::OriginalFunctions.hooked_ExitGameFunc();
+    HookedFunctions::OriginalFunctions.hooked_ExitGameFunc();
 }
 
 long __stdcall HookedFunctionInfo::hooked_zCExceptionHandlerUnhandledExceptionFilter( EXCEPTION_POINTERS* exceptionPtrs ) {
-	return HookedFunctions::OriginalFunctions.original_zCExceptionHandler_UnhandledExceptionFilter( exceptionPtrs );
+    return HookedFunctions::OriginalFunctions.original_zCExceptionHandler_UnhandledExceptionFilter( exceptionPtrs );
 }
 
 /** Returns the pixelformat of a bink-surface */
 long __fastcall HookedFunctionInfo::hooked_zBinkPlayerGetPixelFormat( void* thisptr, void* unknwn, zTRndSurfaceDesc& desc ) {
-	int* cd = (int*)&desc;
+    int* cd = (int*)&desc;
 
-	// Resolution is at pos [2] and [3]
-	//cd[2] = Engine::GraphicsEngine->GetResolution().x;
-	//cd[3] = Engine::GraphicsEngine->GetResolution().y;
+    // Resolution is at pos [2] and [3]
+    //cd[2] = Engine::GraphicsEngine->GetResolution().x;
+    //cd[3] = Engine::GraphicsEngine->GetResolution().y;
 
-	/*for(int i=0;i<0x7C;i++)
-	{
-	cd[i] = i;
-	}*/
+    /*for(int i=0;i<0x7C;i++)
+    {
+    cd[i] = i;
+    }*/
 
-	return 4; // 4 satisfies gothic enough to play the video
-	//Global::HookedFunctions.zBinkPlayerGetPixelFormat(thisptr, desc);
+    return 4; // 4 satisfies gothic enough to play the video
+    //Global::HookedFunctions.zBinkPlayerGetPixelFormat(thisptr, desc);
 }
 
 int __fastcall HookedFunctionInfo::hooked_zBinkPlayerOpenVideo( void* thisptr, void* unknwn, zSTRING str ) {
-	int r = HookedFunctions::OriginalFunctions.original_zCBinkPlayerOpenVideo( thisptr, str );
+    int r = HookedFunctions::OriginalFunctions.original_zCBinkPlayerOpenVideo( thisptr, str );
 
-	struct BinkInfo {
-		unsigned int ResX;
-		unsigned int ResY;
-		// ... unimportant
-	};
+    struct BinkInfo {
+        unsigned int ResX;
+        unsigned int ResY;
+        // ... unimportant
+    };
 
-	// Grab the resolution
-	// This structure stores width and height as first two parameters, as ints.
-	BinkInfo* res = *(BinkInfo**)(((char*)thisptr) + (GothicMemoryLocations::zCBinkPlayer::Offset_VideoHandle));
+    // Grab the resolution
+    // This structure stores width and height as first two parameters, as ints.
+    BinkInfo* res = *(BinkInfo**)(((char*)thisptr) + (GothicMemoryLocations::zCBinkPlayer::Offset_VideoHandle));
 
-	if ( res ) {
-		Engine::GAPI->GetRendererState().RendererInfo.PlayingMovieResolution = INT2( res->ResX, res->ResY );
-	}
+    if ( res ) {
+        Engine::GAPI->GetRendererState().RendererInfo.PlayingMovieResolution = INT2( res->ResX, res->ResY );
+    }
 
-	return r;
+    return r;
 }

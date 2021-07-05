@@ -16,6 +16,10 @@ Global
 		Debug|x64 = Debug|x64
 		Profile|Win32 = Profile|Win32
 		Profile|x64 = Profile|x64
+		Release_AVX|Win32 = Release_AVX|Win32
+		Release_AVX|x64 = Release_AVX|x64
+		Release_G1_AVX|Win32 = Release_G1_AVX|Win32
+		Release_G1_AVX|x64 = Release_G1_AVX|x64
 		Release_G1|Win32 = Release_G1|Win32
 		Release_G1|x64 = Release_G1|x64
 		Release_NoOpt_G1|Win32 = Release_NoOpt_G1|Win32
@@ -36,6 +40,12 @@ Global
 		{4F42CE68-EB4D-4355-9DCA-28F611D3845F}.Profile|Win32.Build.0 = Release|Win32
 		{4F42CE68-EB4D-4355-9DCA-28F611D3845F}.Profile|x64.ActiveCfg = Release|Win32
 		{4F42CE68-EB4D-4355-9DCA-28F611D3845F}.Profile|x64.Build.0 = Release|Win32
+		{4F42CE68-EB4D-4355-9DCA-28F611D3845F}.Release_AVX|Win32.ActiveCfg = Release_AVX|Win32
+		{4F42CE68-EB4D-4355-9DCA-28F611D3845F}.Release_AVX|Win32.Build.0 = Release_AVX|Win32
+		{4F42CE68-EB4D-4355-9DCA-28F611D3845F}.Release_AVX|x64.ActiveCfg = Release_AVX|Win32
+		{4F42CE68-EB4D-4355-9DCA-28F611D3845F}.Release_G1_AVX|Win32.ActiveCfg = Release_G1_AVX|Win32
+		{4F42CE68-EB4D-4355-9DCA-28F611D3845F}.Release_G1_AVX|Win32.Build.0 = Release_G1_AVX|Win32
+		{4F42CE68-EB4D-4355-9DCA-28F611D3845F}.Release_G1_AVX|x64.ActiveCfg = Release_G1_AVX|Win32
 		{4F42CE68-EB4D-4355-9DCA-28F611D3845F}.Release_G1|Win32.ActiveCfg = Release_G1|Win32
 		{4F42CE68-EB4D-4355-9DCA-28F611D3845F}.Release_G1|Win32.Build.0 = Release_G1|Win32
 		{4F42CE68-EB4D-4355-9DCA-28F611D3845F}.Release_G1|x64.ActiveCfg = Release_G1|Win32

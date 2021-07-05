@@ -52,9 +52,9 @@ __declspec(selectany) std::string LOGFILE;
 /** Returns false if failed (bool-function) */
 #define LE_RB(x) { hr = (x); if (FAILED(hr)){LogError() << "failed with code: " << hr << "!"; return false;} }
 
-#define ErrorBox(Msg) MessageBoxA(nullptr,Msg,"Error!",MB_OK|MB_ICONERROR|MB_TOPMOST)
-#define InfoBox(Msg) MessageBoxA(nullptr,Msg,"Info!",MB_OK|MB_ICONASTERISK|MB_TOPMOST)
-#define WarnBox(Msg) MessageBoxA(nullptr,Msg,"Warning!",MB_OK|MB_ICONEXCLAMATION|MB_TOPMOST)
+#define ErrorBox(Msg) MessageBoxA(nullptr,Msg,"GD3D11: Error!",MB_OK|MB_ICONERROR|MB_TOPMOST)
+#define InfoBox(Msg) MessageBoxA(nullptr,Msg,"GD3D11: Info!",MB_OK|MB_ICONASTERISK|MB_TOPMOST)
+#define WarnBox(Msg) MessageBoxA(nullptr,Msg,"GD3D11: Warning!",MB_OK|MB_ICONEXCLAMATION|MB_TOPMOST)
 
 #endif
 

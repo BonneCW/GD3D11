@@ -3,10 +3,10 @@
 struct BaseVobInfo;
 class BaseShadowedPointLight {
 public:
-	BaseShadowedPointLight();
-	virtual ~BaseShadowedPointLight();
+    BaseShadowedPointLight();
+    virtual ~BaseShadowedPointLight();
 
-	/** Called when a vob got removed from the world */
-	virtual void OnVobRemovedFromWorld( BaseVobInfo* vob ) {};
+    /** Called when a vob got removed from the world */
+    virtual void OnVobRemovedFromWorld( BaseVobInfo* vob ) {};
 };
 

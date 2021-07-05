@@ -466,7 +466,7 @@ void D2DEditorView::DoVegetationRemove() {
 	float removeRange = 250.0f * (1.0f + MMWDelta * 0.01f);
 
 	if ( Selection.SelectedVegetationBox ) {
-		if ( Engine::GAPI->TraceWorldMesh( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*)&wDir, hit, nullptr, hitTri ) ) {
+		if ( Engine::GAPI->TraceWorldMesh( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*) & wDir, hit, nullptr, hitTri ) ) {
 			DirectX::XMFLOAT4 c;
 
 			// Do this when only Mouse1 and CTRL are pressed
@@ -503,7 +503,7 @@ void D2DEditorView::DoVegetationPlacement() {
 		rtp = &TracedTexture;
 
 	// Trace the worldmesh from the cursor
-	if ( Engine::GAPI->TraceWorldMesh( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*)&wDir, hit, rtp, hitTri ) ) {
+	if ( Engine::GAPI->TraceWorldMesh( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*) & wDir, hit, rtp, hitTri ) ) {
 		// Update the position if successful
 		DraggedBoxCenter = hit;
 
@@ -515,7 +515,7 @@ void D2DEditorView::DoVegetationPlacement() {
 		Engine::GraphicsEngine->GetLineRenderer()->AddAABBMinMax( minAABB, maxAABB );
 
 		// Visualize triangle
-		XMVECTOR nrm = XMLoadFloat3( &Toolbox::ComputeNormal( hitTri[0], hitTri[1], hitTri[2] ) );
+		FXMVECTOR nrm = Toolbox::ComputeNormal( hitTri[0], hitTri[1], hitTri[2] );
 		XMFLOAT3 hitTri0_XMFLOAT3;
 		XMFLOAT3 hitTri1_XMFLOAT3;
 		XMFLOAT3 hitTri2_XMFLOAT3;
@@ -555,25 +555,25 @@ void D2DEditorView::DoSelection() {
 	TracedMaterial = nullptr;
 
 	// Trace mesh-less vegetationboxes
-	TracedVegetationBox = TraceVegetationBoxes( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*)&wDir );
+	TracedVegetationBox = TraceVegetationBoxes( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*) & wDir );
 	if ( TracedVegetationBox ) {
 		TracedVegetationBox->VisualizeGrass( DirectX::XMFLOAT4( 1, 1, 1, 1 ) );
 		return;
 	}
 
 	// Trace vobs
-	tVob = Engine::GAPI->TraceStaticMeshVobsBB( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*)&wDir, hitVob, &hitMaterialVob );
-	tSkelVob = Engine::GAPI->TraceSkeletalMeshVobsBB( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*)&wDir, hitSkel );
+	tVob = Engine::GAPI->TraceStaticMeshVobsBB( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*) & wDir, hitVob, &hitMaterialVob );
+	tSkelVob = Engine::GAPI->TraceSkeletalMeshVobsBB( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*) & wDir, hitSkel );
 
 	// Trace the worldmesh from the cursor
-	Engine::GAPI->TraceWorldMesh( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*)&wDir, hitWorld, &TracedTexture, hitTri, &hitMesh, &hitMaterial );
+	Engine::GAPI->TraceWorldMesh( Engine::GAPI->GetCameraPosition(), *(DirectX::XMFLOAT3*) & wDir, hitWorld, &TracedTexture, hitTri, &hitMesh, &hitMaterial );
 
 	float lenVob;
-	XMStoreFloat( &lenVob, DirectX::XMVector3LengthEst( Engine::GAPI->GetCameraPositionXM() - XMLoadFloat3( &hitVob ) ) );
+	XMStoreFloat( &lenVob, DirectX::XMVector3Length( Engine::GAPI->GetCameraPositionXM() - XMLoadFloat3( &hitVob ) ) );
 	float lenSkel;
-	XMStoreFloat( &lenSkel, DirectX::XMVector3LengthEst( Engine::GAPI->GetCameraPositionXM() - XMLoadFloat3( &hitSkel ) ) );
+	XMStoreFloat( &lenSkel, DirectX::XMVector3Length( Engine::GAPI->GetCameraPositionXM() - XMLoadFloat3( &hitSkel ) ) );
 	float lenWorld;
-	XMStoreFloat( &lenWorld, DirectX::XMVector3LengthEst( Engine::GAPI->GetCameraPositionXM() - XMLoadFloat3( &hitWorld ) ) );
+	XMStoreFloat( &lenWorld, DirectX::XMVector3Length( Engine::GAPI->GetCameraPositionXM() - XMLoadFloat3( &hitWorld ) ) );
 
 	// Check world hit
 	if ( lenWorld < lenVob && lenWorld < lenSkel ) {
@@ -583,7 +583,7 @@ void D2DEditorView::DoSelection() {
 			memcpy( SelectedTriangle, hitTri, sizeof( SelectedTriangle ) );
 
 			// Visualize triangle
-			XMVECTOR nrm = XMLoadFloat3( &Toolbox::ComputeNormal( hitTri[0], hitTri[1], hitTri[2] ) );
+			FXMVECTOR nrm = Toolbox::ComputeNormal( hitTri[0], hitTri[1], hitTri[2] ) ;
 			XMFLOAT3 hitTri0_XMFLOAT3;
 			XMFLOAT3 hitTri1_XMFLOAT3;
 			XMFLOAT3 hitTri2_XMFLOAT3;
@@ -639,9 +639,8 @@ void D2DEditorView::DoSelection() {
 		TracedMaterial = hitMaterialVob;
 
 		if ( Selection.SelectedVobInfo != TracedVobInfo && hitMaterialVob ) {
-			XMMATRIX XMM_world = DirectX::XMMatrixTranspose( XMLoadFloat4x4( TracedVobInfo->Vob->GetWorldMatrixPtr() ) );
 			XMFLOAT4X4 world;
-			XMStoreFloat4x4( &world, XMM_world );
+			XMStoreFloat4x4( &world, XMMatrixTranspose(XMLoadFloat4x4(TracedVobInfo->Vob->GetWorldMatrixPtr())) );
 			VisualizeMeshInfo( TracedVobInfo->VisualInfo->Meshes[hitMaterialVob][0], DirectX::XMFLOAT4( 1, 1, 1, 1 ), false, &world );
 		}
 
@@ -672,7 +671,9 @@ void D2DEditorView::VisualizeMeshInfo( MeshInfo* m, const DirectX::XMFLOAT4& col
 		}
 
 		// Visualize triangle
-		//DirectX::XMFLOAT3 nrm = Toolbox::ComputeNormal(tri[0], tri[1], tri[2]);
+		//FXMVECTOR NRM_XM = Toolbox::ComputeNormal(tri[0], tri[1], tri[2]);
+		// XMFloat3 nrm;
+		// XMStoreFloat3 ( &nrm, NRM_XM);
 		//Engine::GraphicsEngine->GetLineRenderer()->AddTriangle(tri[0] + nrm, tri[1] + nrm, tri[2] + nrm, color);
 
 		if ( showBounds ) {
@@ -757,7 +758,7 @@ void D2DEditorView::OnMouseClick( int button ) {
 		if ( Keys[VK_SHIFT] ) {
 			LogInfo() << "Setting player position to: " << float3( TracedPosition ).toString();
 			XMFLOAT3 pos;
-			constexpr XMVECTORF32 c_XM_0_500_0_0 = { { { 0, 500.0f, 0, 0 } } };
+			constexpr XMVECTORF32 c_XM_0_500_0_0 = { { { 0, 500, 0, 0 } } };
 			XMStoreFloat3( &pos, XMLoadFloat3( &TracedPosition ) + c_XM_0_500_0_0 );
 			Engine::GAPI->SetPlayerPosition( pos );
 		} else if ( Mode == EM_PLACE_VEGETATION ) {
@@ -844,14 +845,16 @@ void D2DEditorView::UpdateSelectionPanel() {
 		MyDirectDrawSurface7* surface = Engine::GAPI->GetSurface( Selection.SelectedMaterial->GetTexture()->GetNameWithoutExt() );
 
 		if ( surface ) {
-			auto thumb = (surface->GetEngineTexture())->GetThumbnail();
-			if ( !thumb ) {
+            auto& thumb = (surface->GetEngineTexture())->GetThumbnail();
+            if ( !thumb.Get() ) {
 				XLE( (surface->GetEngineTexture())->CreateThumbnail() );
-				thumb = (surface->GetEngineTexture())->GetThumbnail();
-			}
+                auto& thumb2 = (surface->GetEngineTexture())->GetThumbnail();
+                SelectedImagePanel->SetD3D11TextureAsImage( thumb2.Get(), INT2( 256, 256 ) );
+            } else {
 			SelectedImagePanel->SetD3D11TextureAsImage( thumb.Get(), INT2( 256, 256 ) );
 		}
 	}
+    }
 
 	if ( Selection.SelectedMesh ) {
 		WorldMeshInfo* info = (WorldMeshInfo*)Selection.SelectedMesh;
@@ -894,8 +897,8 @@ void D2DEditorView::ResetEditorCamera() {
 	// Save current camera-matrix
 	CStartWorld = *oCGame::GetGame()->_zCSession_camVob->GetWorldMatrixPtr();
 	constexpr XMVECTORF32 c_XM_1000 = { { { 1, 0, 0, 0 } } };
-	XMVECTOR dir = DirectX::XMVector3Transform( c_XM_1000, XMLoadFloat4x4( &CStartWorld ) );
-	CYaw = asinf( -XMVectorGetZ( dir ) / XMVectorGetX( DirectX::XMVector3LengthEst( dir ) ) ) + XM_PIDIV2;
+	XMVECTOR dir = XMVector3Transform( c_XM_1000, XMLoadFloat4x4( &CStartWorld ) );
+	CYaw = asinf( -XMVectorGetZ(dir) / XMVectorGetX( DirectX::XMVector3Length( dir ) ) ) + XM_PIDIV2;
 	CPitch = 0;//atan(- CStartWorld._31 / sqrt(CStartWorld._32 * CStartWorld._32 + CStartWorld._33 * CStartWorld._33));
 }
 
@@ -950,26 +953,21 @@ void D2DEditorView::DoEditorMovement() {
 		CYaw += diff.x * rSpeed;
 	} else if ( MButtons[0] && MButtons[1] ) // Both, move sideways
 	{
-		XMVECTOR fwd = DirectX::XMVectorSet( sinf( CYaw ), 0.0f, cosf( CYaw ), 0.0f );
+		FXMVECTOR fwd = DirectX::XMVectorSet( sinf( CYaw ), 0.0f, cosf( CYaw ), 0 );
 
 		constexpr XMVECTORF32 up = { { { 0, 1, 0, 0 } } };
-		XMVECTOR side = DirectX::XMVector3Cross( fwd, up );
+		FXMVECTOR side = DirectX::XMVector3Cross( fwd, up );
 
-		XMVECTOR XMV_position;
 		XMFLOAT3 position_add;
-		XMV_position += side * -diff.x * mSpeed;
-		XMV_position += up * -diff.y * mSpeed;
-		XMStoreFloat3( &position_add, XMV_position );
+		XMStoreFloat3( &position_add, ( (side * -diff.x) + (up * -diff.y ) ) * mSpeed );
 		position.x += position_add.x;
 		position.y += position_add.y;
 		position.z += position_add.z;
 	}
 
-	XMMATRIX rot = DirectX::XMMatrixRotationRollPitchYaw( CPitch, CYaw, 0 );
-
 	XMMATRIX world = DirectX::XMMatrixTranslation( position.x, position.y, position.z );
 
-	rot = DirectX::XMMatrixTranspose( rot );
+	//XMMATRIX rot = DirectX::XMMatrixTranspose( DirectX::XMMatrixRotationRollPitchYaw(CPitch, CYaw, 0) ); //rot not used?
 
 	XMStoreFloat4x4( &*m, DirectX::XMMatrixTranspose( world ) );
 
@@ -1176,9 +1174,9 @@ void D2DEditorView::OnDelete() {
 
 	if ( Selection.SelectedMesh && Selection.SelectedMaterial && Selection.SelectedMaterial->GetTexture() ) {
 		// Find the section of this mesh
-		XMVECTOR Position0 = XMVectorSet( Selection.SelectedMesh->Vertices[0].Position.x, Selection.SelectedMesh->Vertices[0].Position.y, Selection.SelectedMesh->Vertices[0].Position.z, 0 );
-		XMVECTOR Position1 = XMVectorSet( Selection.SelectedMesh->Vertices[1].Position.x, Selection.SelectedMesh->Vertices[1].Position.y, Selection.SelectedMesh->Vertices[1].Position.z, 0 );
-		XMVECTOR Position2 = XMVectorSet( Selection.SelectedMesh->Vertices[2].Position.x, Selection.SelectedMesh->Vertices[2].Position.y, Selection.SelectedMesh->Vertices[2].Position.z, 0 );
+		FXMVECTOR Position0 = XMVectorSet( Selection.SelectedMesh->Vertices[0].Position.x, Selection.SelectedMesh->Vertices[0].Position.y, Selection.SelectedMesh->Vertices[0].Position.z, 0 );
+		FXMVECTOR Position1 = XMVectorSet( Selection.SelectedMesh->Vertices[1].Position.x, Selection.SelectedMesh->Vertices[1].Position.y, Selection.SelectedMesh->Vertices[1].Position.z, 0 );
+		FXMVECTOR Position2 = XMVectorSet( Selection.SelectedMesh->Vertices[2].Position.x, Selection.SelectedMesh->Vertices[2].Position.y, Selection.SelectedMesh->Vertices[2].Position.z, 0 );
 		DirectX::XMFLOAT3 avgPos;
 		XMStoreFloat3( &avgPos, (Position0 + Position1 + Position2) / 3.0f );
 
@@ -1427,9 +1425,9 @@ void D2DEditorView::SmoothMesh( WorldMeshInfo* mesh, bool tesselate ) {
 
 
 	// Cleanup
-	SAFE_DELETE( mesh->MeshVertexBuffer );
-	SAFE_DELETE( mesh->MeshIndexBuffer );
-	SAFE_DELETE( mesh->MeshIndexBufferPNAEN );
+	SAFE_DELETE(mesh->MeshVertexBuffer);
+	SAFE_DELETE(mesh->MeshIndexBuffer);
+	SAFE_DELETE(mesh->MeshIndexBufferPNAEN);
 
 	// Recreate the buffers
 	Engine::GraphicsEngine->CreateVertexBuffer( &mesh->MeshVertexBuffer );

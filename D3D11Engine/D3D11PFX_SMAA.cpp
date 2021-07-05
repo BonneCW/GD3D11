@@ -17,7 +17,6 @@ using namespace DirectX;
 D3D11PFX_SMAA::D3D11PFX_SMAA( D3D11PfxRenderer* rnd ) : D3D11PFX_Effect( rnd ) {
 	EdgesTex = nullptr;
 	BlendTex = nullptr;
-	SMAAShader = nullptr;
 
 	Init();
 }
@@ -26,8 +25,6 @@ D3D11PFX_SMAA::D3D11PFX_SMAA( D3D11PfxRenderer* rnd ) : D3D11PFX_Effect( rnd ) {
 D3D11PFX_SMAA::~D3D11PFX_SMAA() {
 	delete EdgesTex;
 	delete BlendTex;
-
-	SAFE_RELEASE( SMAAShader );
 }
 
 HRESULT D3DX11CreateEffectFromFile_RES(
@@ -36,14 +33,14 @@ HRESULT D3DX11CreateEffectFromFile_RES(
 	LPCSTR pProfile,
 	UINT HLSLFlags,
 	UINT FXFlags,
-	ID3D11Device* pDevice,
+	const Microsoft::WRL::ComPtr<ID3D11Device1>& pDevice,
 	void* pPump,
 	ID3DX11Effect** ppEffect,
 	HRESULT* pHResult
 ) {
 	Microsoft::WRL::ComPtr<ID3DBlob> ErrorsBuffer;
 
-	HRESULT hr = D3DX11CompileEffectFromFile( Toolbox::ToWideChar( pFileName ).c_str(), pDefines, D3D_COMPILE_STANDARD_FILE_INCLUDE, HLSLFlags, FXFlags, pDevice, ppEffect, &ErrorsBuffer );
+	HRESULT hr = D3DX11CompileEffectFromFile( Toolbox::ToWideChar( pFileName ).c_str(), pDefines, D3D_COMPILE_STANDARD_FILE_INCLUDE, HLSLFlags, FXFlags, pDevice.Get(), ppEffect, ErrorsBuffer.GetAddressOf() );
 
 	char* Errors;
 	if ( ErrorsBuffer.Get() ) {
@@ -66,10 +63,7 @@ bool D3D11PFX_SMAA::Init() {
 
 	D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
 
-	LE( D3DX11CreateEffectFromFile_RES( "System\\GD3D11\\Shaders\\SMAA.fx", nullptr, "fx_5_0", D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, engine->GetDevice().Get(), nullptr, &SMAAShader, nullptr ) );
-
-	SAFE_RELEASE( AreaTextureSRV );
-	SAFE_RELEASE( SearchTextureSRV );
+	LE( D3DX11CreateEffectFromFile_RES( "System\\GD3D11\\Shaders\\SMAA.fx", nullptr, "fx_5_0", D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, engine->GetDevice().Get(), nullptr, SMAAShader.GetAddressOf(), nullptr ) );
 
 	/*SMAAShader->AddCustomVariable("colorTex", CVT_SHADER_RES_VIEW, &ColorTexIdx);
 	SMAAShader->AddCustomVariable("colorTexGamma", CVT_SHADER_RES_VIEW, &ColorTexGammaIdx);
@@ -83,10 +77,10 @@ bool D3D11PFX_SMAA::Init() {
 	SMAAShader->AddCustomVariable("searchTex", CVT_SHADER_RES_VIEW, &SearchTexIdx);*/
 
 	// Load the textures
-	hr = CreateDDSTextureFromFile( engine->GetDevice().Get(), L"system\\GD3D11\\Textures\\SMAA_AreaTexDX10.dds", nullptr, AreaTextureSRV.GetAddressOf() );
+	hr = CreateDDSTextureFromFile( engine->GetDevice().Get(), L"system\\GD3D11\\Textures\\SMAA_AreaTexDX10.dds", nullptr, AreaTextureSRV.ReleaseAndGetAddressOf() );
 	LE( hr );
 
-	hr = CreateDDSTextureFromFile( engine->GetDevice().Get(), L"system\\GD3D11\\Textures\\SMAA_SearchTex.dds", nullptr, SearchTextureSRV.GetAddressOf() );
+	hr = CreateDDSTextureFromFile( engine->GetDevice().Get(), L"system\\GD3D11\\Textures\\SMAA_SearchTex.dds", nullptr, SearchTextureSRV.ReleaseAndGetAddressOf() );
 	LE( hr );
 
 	SMAAShader->GetVariableByName( "areaTex" )->AsShaderResource()->SetResource( AreaTextureSRV.Get() );
@@ -100,7 +94,7 @@ bool D3D11PFX_SMAA::Init() {
 }
 
 /** Renders the PostFX */
-void D3D11PFX_SMAA::RenderPostFX( ID3D11ShaderResourceView* renderTargetSRV ) {
+void D3D11PFX_SMAA::RenderPostFX(const Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>& renderTargetSRV ) {
 	D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
 	engine->SetDefaultStates();
 	engine->UpdateRenderStates();
@@ -126,8 +120,7 @@ void D3D11PFX_SMAA::RenderPostFX( ID3D11ShaderResourceView* renderTargetSRV ) {
 
 	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> OldRTV;
 	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> OldDSV;
-	ID3DX11EffectShaderResourceVariable* SRV = nullptr;
-	ID3D11ShaderResourceView* const NoSRV[3] = { nullptr,nullptr, nullptr };
+	ID3D11ShaderResourceView* const NoSRV[3] = { nullptr, nullptr, nullptr };
 
 	engine->GetContext()->OMGetRenderTargets( 1, OldRTV.GetAddressOf(), OldDSV.GetAddressOf() );
 	engine->GetContext()->ClearDepthStencilView( OldDSV.Get(), D3D11_CLEAR_STENCIL, 0, 0 );
@@ -135,7 +128,7 @@ void D3D11PFX_SMAA::RenderPostFX( ID3D11ShaderResourceView* renderTargetSRV ) {
 	/** First pass - Edge detection */
 	engine->GetContext()->OMSetRenderTargets( 1, EdgesTex->GetRenderTargetView().GetAddressOf(), OldDSV.Get() );
 
-	SMAAShader->GetVariableByName( "colorTexGamma" )->AsShaderResource()->SetResource( renderTargetSRV );
+	SMAAShader->GetVariableByName( "colorTexGamma" )->AsShaderResource()->SetResource( renderTargetSRV.Get() );
 
 	LumaEdgeDetection->GetPassByIndex( 0 )->Apply( 0, engine->GetContext().Get() );
 	FxRenderer->DrawFullScreenQuad();
@@ -155,7 +148,7 @@ void D3D11PFX_SMAA::RenderPostFX( ID3D11ShaderResourceView* renderTargetSRV ) {
 	FxRenderer->DrawFullScreenQuad();
 
 	/** Copy back to main RTV */
-	/*DXUTGetD3D11DeviceContext()->OMSetRenderTargets(1, &OldRTV, nullptr);
+	/*DXUTGetD3D11DeviceContext()->OMSetRenderTargets(1, OldRTV.GetAddressOf(), nullptr);
 	CopyShader->SetBackBufferVar(BlendTex->GetShaderResView());
 	CmplxScreenQuad.SetShader(CopyShader);
 	CmplxScreenQuad.Render(6);
@@ -168,7 +161,7 @@ void D3D11PFX_SMAA::RenderPostFX( ID3D11ShaderResourceView* renderTargetSRV ) {
 	engine->GetContext()->OMSetRenderTargets( 1, TempRTV.GetRenderTargetView().GetAddressOf(), OldDSV.Get() );
 
 
-	SMAAShader->GetVariableByName( "colorTex" )->AsShaderResource()->SetResource( renderTargetSRV );
+	SMAAShader->GetVariableByName( "colorTex" )->AsShaderResource()->SetResource( renderTargetSRV.Get() );
 	SMAAShader->GetVariableByName( "blendTex" )->AsShaderResource()->SetResource( BlendTex->GetShaderResView().Get() );
 
 	NeighborhoodBlending->GetPassByIndex( 0 )->Apply( 0, engine->GetContext().Get() );
@@ -178,7 +171,7 @@ void D3D11PFX_SMAA::RenderPostFX( ID3D11ShaderResourceView* renderTargetSRV ) {
 
 	/** Copy back to main RTV */
 	engine->GetContext()->OMSetRenderTargets( 1, OldRTV.GetAddressOf(), nullptr );
-	/*engine->GetContext()->OMSetRenderTargets(1, &OldRTV, nullptr);
+	/*engine->GetContext()->OMSetRenderTargets(1, OldRTV.GetAddressOf(), nullptr);
 	engine->DrawSRVToBackbuffer(TempRTV->GetShaderResView());
 	goto end;*/
 
@@ -199,16 +192,15 @@ void D3D11PFX_SMAA::RenderPostFX( ID3D11ShaderResourceView* renderTargetSRV ) {
 		sharpenPS->GetConstantBuffer()[0]->UpdateBuffer( &gcb );
 		sharpenPS->GetConstantBuffer()[0]->BindToPixelShader( 0 );
 
-		FxRenderer->CopyTextureToRTV( TempRTV.GetShaderResView().Get(), OldRTV.Get(), INT2( 0, 0 ), true );
+        FxRenderer->CopyTextureToRTV( TempRTV.GetShaderResView(), OldRTV, INT2( 0, 0 ), true );
 	} else {
-		FxRenderer->CopyTextureToRTV( TempRTV.GetShaderResView().Get(), OldRTV.Get() );
+        FxRenderer->CopyTextureToRTV( TempRTV.GetShaderResView(), OldRTV );
 	}
 
 	engine->GetContext()->PSSetShaderResources( 0, 3, NoSRV );
-
 	engine->GetContext()->OMSetRenderTargets( 1, OldRTV.GetAddressOf(), OldDSV.Get() );
 
-	engine->SetDefaultStates( true );
+    engine->SetDefaultStates( true );
 }
 
 /** Called on resize */
@@ -270,17 +262,14 @@ void D3D11PFX_SMAA::OnResize( const INT2& size ) {
 	D3D_SHADER_MACRO Null = { nullptr, nullptr };
 	Makros.push_back( Null );
 
-	LE( D3DX11CreateEffectFromFile_RES( "system\\GD3D11\\shaders\\SMAA.fx", &Makros[0], "fx_5_0", D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, engine->GetDevice().Get(), nullptr, &SMAAShader, nullptr ) );
-
-	SAFE_RELEASE( AreaTextureSRV );
-	SAFE_RELEASE( SearchTextureSRV );
+	LE( D3DX11CreateEffectFromFile_RES( "system\\GD3D11\\shaders\\SMAA.fx", &Makros[0], "fx_5_0", D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, engine->GetDevice().Get(), nullptr, SMAAShader.ReleaseAndGetAddressOf(), nullptr ) );
 
 	// Load the textures
 
-	hr = CreateDDSTextureFromFile( engine->GetDevice().Get(), L"system\\GD3D11\\Textures\\SMAA_AreaTexDX10.dds", nullptr, AreaTextureSRV.GetAddressOf() );
+	hr = CreateDDSTextureFromFile( engine->GetDevice().Get(), L"system\\GD3D11\\Textures\\SMAA_AreaTexDX10.dds", nullptr, AreaTextureSRV.ReleaseAndGetAddressOf() );
 	LE( hr );
 
-	hr = CreateDDSTextureFromFile( engine->GetDevice().Get(), L"system\\GD3D11\\Textures\\SMAA_SearchTex.dds", nullptr, SearchTextureSRV.GetAddressOf() );
+	hr = CreateDDSTextureFromFile( engine->GetDevice().Get(), L"system\\GD3D11\\Textures\\SMAA_SearchTex.dds", nullptr, SearchTextureSRV.ReleaseAndGetAddressOf() );
 	LE( hr );
 
 	SMAAShader->GetVariableByName( "areaTex" )->AsShaderResource()->SetResource( AreaTextureSRV.Get() );

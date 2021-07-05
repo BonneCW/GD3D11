@@ -9,12 +9,12 @@ D3D11TextureArray::~D3D11TextureArray() {}
 
 /** Adds a texture with data to the array, returns the index of texture */
 int D3D11TextureArray::AddTexture( byte* data, unsigned int dataSize ) {
-	byte* cpy = new byte[dataSize];
-	memcpy( cpy, data, dataSize );
+    byte* cpy = new byte[dataSize];
+    memcpy( cpy, data, dataSize );
 
-	DataCache.push_back( cpy );
+    DataCache.push_back( cpy );
 
-	return DataCache.size() - 1;
+    return DataCache.size() - 1;
 }
 
 /** Clears the cache */

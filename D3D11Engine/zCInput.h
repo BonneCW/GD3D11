@@ -4,16 +4,16 @@
 
 class zCInput {
 public:
-	int GetDeviceEnabled( int dev ) {
-		XCALL( GothicMemoryLocations::zCInput::GetDeviceEnabled );
-	}
+    int GetDeviceEnabled( int dev ) {
+        XCALL( GothicMemoryLocations::zCInput::GetDeviceEnabled );
+    }
 
-	void SetDeviceEnabled( int dev, int i ) {
-		XCALL( GothicMemoryLocations::zCInput::SetDeviceEnabled );
-	}
+    void SetDeviceEnabled( int dev, int i ) {
+        XCALL( GothicMemoryLocations::zCInput::SetDeviceEnabled );
+    }
 
-	inline static zCInput* GetInput() {
-		return *(zCInput**)GothicMemoryLocations::GlobalObjects::zCInput;
-	};
+    inline static zCInput* GetInput() {
+        return *(zCInput**)GothicMemoryLocations::GlobalObjects::zCInput;
+    };
 
 };

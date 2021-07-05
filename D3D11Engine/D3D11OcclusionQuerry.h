@@ -6,37 +6,37 @@ struct BspInfo;
 struct MeshInfo;
 class D3D11OcclusionQuerry {
 public:
-	D3D11OcclusionQuerry();
-	~D3D11OcclusionQuerry();
+    D3D11OcclusionQuerry();
+    ~D3D11OcclusionQuerry();
 
-	/** Advances the frame counter of this */
-	void AdvanceFrameCounter();
+    /** Advances the frame counter of this */
+    void AdvanceFrameCounter();
 
-	/** Begins the occlusion-checks */
-	void BeginOcclusionPass();
+    /** Begins the occlusion-checks */
+    void BeginOcclusionPass();
 
-	/** Checks the BSP-Tree for visibility */
-	void DoOcclusionForBSP( BspInfo* root );
+    /** Checks the BSP-Tree for visibility */
+    void DoOcclusionForBSP( BspInfo* root );
 
-	/** Ends the occlusion-checks */
-	void EndOcclusionPass();
+    /** Ends the occlusion-checks */
+    void EndOcclusionPass();
 
-	/** Creates a new predication-object and returns its ID */
-	unsigned int AddPredicationObject();
+    /** Creates a new predication-object and returns its ID */
+    unsigned int AddPredicationObject();
 
-	/** Creates the occlusion-node-mesh for the specific bsp-node */
-	void CreateOcclusionNodeMeshFor( BspInfo* node );
+    /** Creates the occlusion-node-mesh for the specific bsp-node */
+    void CreateOcclusionNodeMeshFor( BspInfo* node );
 private:
 
-	/** Marks the entire subtree visible */
-	void MarkTreeVisible( BspInfo* root, bool visible );
+    /** Marks the entire subtree visible */
+    void MarkTreeVisible( BspInfo* root, bool visible );
 
-	void DebugVisualizeNodeMesh( MeshInfo* m, const DirectX::XMFLOAT4& color );
+    void DebugVisualizeNodeMesh( MeshInfo* m, const DirectX::XMFLOAT4& color );
 
-	/** Simple box predicate */
-	std::vector<ID3D11Predicate*> Predicates;
+    /** Simple box predicate */
+    std::vector<ID3D11Predicate*> Predicates;
 
-	/** Current frame */
-	unsigned int FrameID;
+    /** Current frame */
+    unsigned int FrameID;
 };
 

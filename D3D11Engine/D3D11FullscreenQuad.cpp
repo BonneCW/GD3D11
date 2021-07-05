@@ -12,7 +12,7 @@ D3D11FullscreenQuad::~D3D11FullscreenQuad() {
 
 }
 
-HRESULT D3D11FullscreenQuad::CreateQuad( ID3D11Device* device ) {
+HRESULT D3D11FullscreenQuad::CreateQuad( Microsoft::WRL::ComPtr<ID3D11Device1> device ) {
     SimpleVertexStruct* vx = new SimpleVertexStruct[6];
     UINT CurVertex = 0;
 

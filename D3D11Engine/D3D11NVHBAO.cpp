@@ -34,7 +34,7 @@ XRESULT D3D11NVHBAO::Init() {
 }
 
 /** Renders the HBAO-Effect onto the given RTV */
-XRESULT D3D11NVHBAO::Render( ID3D11RenderTargetView* pOutputColorRTV ) {
+XRESULT D3D11NVHBAO::Render( Microsoft::WRL::ComPtr<ID3D11RenderTargetView> pOutputColorRTV ) {
     D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
 
     D3D11_VIEWPORT vp;
@@ -62,7 +62,7 @@ XRESULT D3D11NVHBAO::Render( ID3D11RenderTargetView* pOutputColorRTV ) {
 
     GFSDK_SSAO_Output_D3D11 Output;
     Output.Blend.Mode = GFSDK_SSAO_BlendMode( settings.BlendMode );
-    Output.pRenderTargetView = pOutputColorRTV;
+    Output.pRenderTargetView = pOutputColorRTV.Get();
 
     GFSDK_SSAO_Status status;
     status = AOContext->RenderAO( engine->GetContext().Get(), Input, Params, Output );

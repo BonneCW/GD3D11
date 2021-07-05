@@ -4,22 +4,22 @@
 
 class GMeshSimple {
 public:
-	GMeshSimple();
-	virtual ~GMeshSimple();
+    GMeshSimple();
+    virtual ~GMeshSimple();
 
-	/** Load a mesh from file */
-	XRESULT LoadMesh( const std::string& file );
+    /** Load a mesh from file */
+    XRESULT LoadMesh( const std::string& file );
 
-	/** Draws all buffers this holds */
-	void DrawMesh();
+    /** Draws all buffers this holds */
+    void DrawMesh();
 
-	/** Draws a batch of instances */
-	void DrawBatch( D3D11VertexBuffer* instances, int numInstances, int instanceDataStride );
+    /** Draws a batch of instances */
+    void DrawBatch( D3D11VertexBuffer* instances, int numInstances, int instanceDataStride );
 
 private:
-	D3D11VertexBuffer* VertexBuffer;
-	D3D11VertexBuffer* IndexBuffer;
-	unsigned int NumVertices;
-	unsigned int NumIndices;
+    D3D11VertexBuffer* VertexBuffer;
+    D3D11VertexBuffer* IndexBuffer;
+    unsigned int NumVertices;
+    unsigned int NumIndices;
 };
 

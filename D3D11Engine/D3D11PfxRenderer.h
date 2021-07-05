@@ -37,7 +37,7 @@ public:
     XRESULT RenderGodRays();
 
     /** Copies the given texture to the given RTV */
-    XRESULT CopyTextureToRTV( ID3D11ShaderResourceView* texture, ID3D11RenderTargetView* rtv, INT2 targetResolution = INT2( 0, 0 ), bool useCustomPS = false, INT2 offset = INT2( 0, 0 ) );
+    XRESULT CopyTextureToRTV( const Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>& texture, const Microsoft::WRL::ComPtr<ID3D11RenderTargetView>& rtv, INT2 targetResolution = INT2( 0, 0 ), bool useCustomPS = false, INT2 offset = INT2( 0, 0 ) );
 
     /** Unbinds texturesamplers from the pixel-shader */
     XRESULT UnbindPSResources( int num );
@@ -46,7 +46,7 @@ public:
     XRESULT DrawFullScreenQuad();
 
     /** Draws the HBAO-Effect to the given buffer */
-    XRESULT DrawHBAO( ID3D11RenderTargetView* rtv );
+    XRESULT DrawHBAO( const Microsoft::WRL::ComPtr<ID3D11RenderTargetView>& rtv );
 
     /** Accessors */
     RenderToTextureBuffer& GetTempBuffer() { return *TempBuffer; }

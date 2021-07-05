@@ -107,6 +107,10 @@ XRESULT BaseAntTweakBar::Init() {
     TwAddVarRW( Bar_General, "Tesselation", TW_TYPE_BOOLCPP, &Engine::GAPI->GetRendererState().RendererSettings.EnableTesselation, nullptr );
 
     TwAddVarRW( Bar_General, "HDR", TW_TYPE_BOOLCPP, &Engine::GAPI->GetRendererState().RendererSettings.EnableHDR, nullptr );
+    TwEnumVal hdrToneMapValues[] = { {0, "ToneMap_jafEq4"}, {1, "Uncharted2Tonemap"}, {2, "ACESFilmTonemap"}, {3, "PerceptualQuantizerTonemap"}, {4, "ToneMap_Simple"}, {5, "ACESFittedTonemap"} };
+    TwType hdrToneMapType = TwDefineEnum( "HDR_TONEMAP", hdrToneMapValues, 6 );
+    TwAddVarRW( Bar_General, "HDR ToneMap", hdrToneMapType, &Engine::GAPI->GetRendererState().RendererSettings.HDRToneMap, nullptr );
+
     TwAddVarRW( Bar_General, "SMAA", TW_TYPE_BOOLCPP, &Engine::GAPI->GetRendererState().RendererSettings.EnableSMAA, nullptr );
     TwAddVarRW( Bar_General, "Sharpen", TW_TYPE_FLOAT, &Engine::GAPI->GetRendererState().RendererSettings.SharpenFactor, nullptr );
     TwDefine( " General/Sharpen  step=0.01 min=0" );
@@ -443,7 +447,8 @@ void BaseAntTweakBar::InitTextureSettingsBar() {
 
     std::string enumDef = "";
 
-    const std::set<zCTexture*>& frameTextures = Engine::GraphicsEngine->GetFrameTextures();
+    static std::set<zCTexture*> emptyTextures;
+    const std::set<zCTexture*>& frameTextures = emptyTextures;
     if ( !frameTextures.size() ) {
         return;
     }

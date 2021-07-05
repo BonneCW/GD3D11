@@ -3,7 +3,7 @@
 
 
 D3D11PFX_Effect::D3D11PFX_Effect( D3D11PfxRenderer* rnd ) {
-	FxRenderer = rnd;
+    FxRenderer = rnd;
 }
 
 

@@ -7,11 +7,11 @@
 
 class zCModelTexAniState {
 public:
-	void UpdateTexList() {
-		XCALL( GothicMemoryLocations::zCModelTexAniState::UpdateTexList );
-	}
+    void UpdateTexList() {
+        XCALL( GothicMemoryLocations::zCModelTexAniState::UpdateTexList );
+    }
 
-	int	NumNodeTex;
-	zCTexture** NodeTexList;
-	int	ActAniFrames[8];
+    int	NumNodeTex;
+    zCTexture** NodeTexList;
+    int	ActAniFrames[8];
 };

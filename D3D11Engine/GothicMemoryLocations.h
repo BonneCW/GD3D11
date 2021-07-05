@@ -8,30 +8,30 @@
 
 #define THISPTR_OFFSET(x) (((char *)this) + (x))
 
-template<typename TOriginal, typename T>
-static void XHook( TOriginal& original, unsigned int adr, T& hookFn ) {
-	original = (TOriginal)DetourFunction( (BYTE*)adr, (BYTE*)hookFn );
-}
-
-template<typename T>
-static void XHook( unsigned int adr, T& hookFn ) {
-	DetourFunction( (BYTE*)adr, (BYTE*)hookFn );
-}
-
-template<typename T, size_t n >
-static void PatchAddr( unsigned int adr, const T(&v)[n]) {
-	DWORD dwProtect;
-	VirtualProtect( (void*)adr, n - 1, PAGE_EXECUTE_READWRITE, &dwProtect );
-	memcpy( (unsigned char *)adr, v, n - 1 );
-	VirtualProtect( (void*)adr, n - 1, dwProtect, &dwProtect );
-}
-
 // -- call macro from GothicX (thx, Zerxes!)
 #define XCALL(uAddr)                    \
         __asm { mov esp, ebp    }       \
         __asm { pop ebp                 }       \
         __asm { mov eax, uAddr  }       \
         __asm { jmp eax                 }
+
+template<typename TOriginal, typename T>
+static void XHook( TOriginal& original, unsigned int adr, T& hookFn ) {
+    original = (TOriginal)DetourFunction( (BYTE*)adr, (BYTE*)hookFn );
+}
+
+template<typename T>
+static void XHook( unsigned int adr, T& hookFn ) {
+    DetourFunction( (BYTE*)adr, (BYTE*)hookFn );
+}
+
+template<typename T, size_t n >
+static void PatchAddr( unsigned int adr, const T( &v )[n] ) {
+    DWORD dwProtect;
+    VirtualProtect( (void*)adr, n - 1, PAGE_EXECUTE_READWRITE, &dwProtect );
+    memcpy( (unsigned char*)adr, v, n - 1 );
+    VirtualProtect( (void*)adr, n - 1, dwProtect, &dwProtect );
+}
 
 #define INST_NOP 0x90
 #define REPLACE_OP(addr, op) {unsigned char* a = (unsigned char*)addr; *a = op;}
@@ -44,7 +44,11 @@ static void PatchAddr( unsigned int adr, const T(&v)[n]) {
 #define REPLACE_RANGE(start, end_incl, op) {for(int i=start; i<=end_incl;i++){REPLACE_OP(i, op);}}
 
 #ifdef BUILD_GOTHIC_1_08k
+#ifdef BUILD_1_12F
+#include "GothicMemoryLocations1_12f.h"
+#else
 #include "GothicMemoryLocations1_08k.h"
+#endif
 #endif
 
 #ifdef BUILD_GOTHIC_2_6_fix

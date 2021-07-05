@@ -9,9 +9,9 @@
 
 #pragma pack (push, 1)
 struct zTWeightEntry {
-	float Weight;
-	DirectX::XMFLOAT3 VertexPosition;
-	unsigned char NodeIndex;
+    float Weight;
+    DirectX::XMFLOAT3 VertexPosition;
+    unsigned char NodeIndex;
 };
 #pragma pack (pop)
 
@@ -19,17 +19,17 @@ class zCOBBox3D;
 class zCMeshSoftSkin : public zCProgMeshProto {
 public:
 
-	/*zCArray<int>* GetNodeIndexList()
-	{
-		return (zCArray<int> *)THISPTR_OFFSET(GothicMemoryLocations::zCMeshSoftSkin::Offset_NodeIndexList);
-	}*/
+    /*zCArray<int>* GetNodeIndexList()
+    {
+        return (zCArray<int> *)THISPTR_OFFSET(GothicMemoryLocations::zCMeshSoftSkin::Offset_NodeIndexList);
+    }*/
 
-	struct zTNodeWedgeNormal {
-		DirectX::XMFLOAT3 Normal;
-		int				NodeIndex;
-	};
+    struct zTNodeWedgeNormal {
+        DirectX::XMFLOAT3 Normal;
+        int				NodeIndex;
+    };
 
-	char* GetVertWeightStream() {
-		return *(char**)THISPTR_OFFSET( GothicMemoryLocations::zCMeshSoftSkin::Offset_VertWeightStream );
-	};
+    char* GetVertWeightStream() {
+        return *(char**)THISPTR_OFFSET( GothicMemoryLocations::zCMeshSoftSkin::Offset_VertWeightStream );
+    };
 };

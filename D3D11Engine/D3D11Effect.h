@@ -9,34 +9,34 @@ class D3D11VertexBuffer;
 struct RenderToDepthStencilBuffer;
 class D3D11Effect {
 public:
-	D3D11Effect();
-	~D3D11Effect();
+    D3D11Effect();
+    ~D3D11Effect();
 
-	/** Draws GPU-Based rain */
-	XRESULT DrawRain();
+    /** Draws GPU-Based rain */
+    XRESULT DrawRain();
 
-	/** Renders the rain-shadowmap */
-	XRESULT DrawRainShadowmap();
+    /** Renders the rain-shadowmap */
+    XRESULT DrawRainShadowmap();
 
-	/** Returns the current rain-shadowmap camera replacement */
-	CameraReplacement& GetRainShadowmapCameraRepl() { return RainShadowmapCameraRepl; }
+    /** Returns the current rain-shadowmap camera replacement */
+    CameraReplacement& GetRainShadowmapCameraRepl() { return RainShadowmapCameraRepl; }
 
-	/** Returns the rain shadowmap */
-	RenderToDepthStencilBuffer* GetRainShadowmap() { return RainShadowmap.get(); }
+    /** Returns the rain shadowmap */
+    RenderToDepthStencilBuffer* GetRainShadowmap() { return RainShadowmap.get(); }
 protected:
 
-	/** Fills a vector of random raindrop data */
-	void FillRandomRaindropData( std::vector<ParticleInstanceInfo>& data );
+    /** Fills a vector of random raindrop data */
+    void FillRandomRaindropData( std::vector<ParticleInstanceInfo>& data );
 
-	/** Rain */
-	D3D11VertexBuffer* RainBufferInitial;
-	D3D11VertexBuffer* RainBufferDrawFrom;
-	D3D11VertexBuffer* RainBufferStreamTo;
+    /** Rain */
+    D3D11VertexBuffer* RainBufferInitial;
+    D3D11VertexBuffer* RainBufferDrawFrom;
+    D3D11VertexBuffer* RainBufferStreamTo;
 
-	Microsoft::WRL::ComPtr<ID3D11Texture2D> RainTextureArray;
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> RainTextureArraySRV;
-	std::unique_ptr<RenderToDepthStencilBuffer> RainShadowmap;
-	CameraReplacement RainShadowmapCameraRepl;
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> RainTextureArray;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> RainTextureArraySRV;
+    std::unique_ptr<RenderToDepthStencilBuffer> RainShadowmap;
+    CameraReplacement RainShadowmapCameraRepl;
 
 };
 

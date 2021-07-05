@@ -6,51 +6,51 @@
 #include "GothicAPI.h"
 
 struct zCMeshData {
-	int				numPoly;
-	int				numVert;
-	int             numFeat;
+    int				numPoly;
+    int				numVert;
+    int             numFeat;
 
-	zCVertex** vertList;
-	zCPolygon** polyList;
-	zCVertFeature** featList;
+    zCVertex** vertList;
+    zCPolygon** polyList;
+    zCVertFeature** featList;
 
-	zCVertex* vertArray;
-	zCPolygon* polyArray;
-	zCVertFeature* featArray;
+    zCVertex* vertArray;
+    zCPolygon* polyArray;
+    zCVertFeature* featArray;
 };
 
 class zCMesh {
 public:
-	zCPolygon** GetPolygons() {
-		return *(zCPolygon***)THISPTR_OFFSET( GothicMemoryLocations::zCMesh::Offset_Polygons );
-	}
+    zCPolygon** GetPolygons() {
+        return *(zCPolygon***)THISPTR_OFFSET( GothicMemoryLocations::zCMesh::Offset_Polygons );
+    }
 
-	int GetNumPolygons() {
-		return *(int*)THISPTR_OFFSET( GothicMemoryLocations::zCMesh::Offset_NumPolygons );
-	}
+    int GetNumPolygons() {
+        return *(int*)THISPTR_OFFSET( GothicMemoryLocations::zCMesh::Offset_NumPolygons );
+    }
 
-	/*zCPolygon* GetPolyArray()
-	{
-		return *(zCPolygon **)THISPTR_OFFSET(GothicMemoryLocations::zCMesh::Offset_PolyArray);
-	}
+    /*zCPolygon* GetPolyArray()
+    {
+        return *(zCPolygon **)THISPTR_OFFSET(GothicMemoryLocations::zCMesh::Offset_PolyArray);
+    }
 
-	zCPolygon* SharePoly(int i)
-	{
-		if (GetPolyArray())
-			return GetPolyArray() + i;
-		else
-			return GetPolygons()[i];
-	}
+    zCPolygon* SharePoly(int i)
+    {
+        if (GetPolyArray())
+            return GetPolyArray() + i;
+        else
+            return GetPolygons()[i];
+    }
 
-	void CreateListsFromArrays()
-	{
-		XCALL(GothicMemoryLocations::zCMesh::CreateListsFromArrays);
-	}
+    void CreateListsFromArrays()
+    {
+        XCALL(GothicMemoryLocations::zCMesh::CreateListsFromArrays);
+    }
 
 
 
-	zCMeshData* GetData()
-	{
-		return (zCMeshData*)THISPTR_OFFSET(GothicMemoryLocations::zCMesh::Offset_NumPolygons);
-	}*/
+    zCMeshData* GetData()
+    {
+        return (zCMeshData*)THISPTR_OFFSET(GothicMemoryLocations::zCMesh::Offset_NumPolygons);
+    }*/
 };

@@ -10,46 +10,46 @@ class SV_Checkbox;
 class D2DSettingsDialog;
 
 struct FovOverrideCheckedChangedState {
-	D2DSettingsDialog* SettingsDialog;
-	SV_Label* horizFOVLabel;
-	SV_Slider* horizFOVSlider;
-	SV_Label* vertFOVLabel;
-	SV_Slider* vertFOVSlider;
+    D2DSettingsDialog* SettingsDialog;
+    SV_Label* horizFOVLabel;
+    SV_Slider* horizFOVSlider;
+    SV_Label* vertFOVLabel;
+    SV_Slider* vertFOVSlider;
 };
 
 class D2DSettingsDialog : public D2DDialog {
 public:
-	D2DSettingsDialog( D2DView* view, D2DSubView* parent );
-	~D2DSettingsDialog();
+    D2DSettingsDialog( D2DView* view, D2DSubView* parent );
+    ~D2DSettingsDialog();
 
-	/** Initializes the controls of this view */
-	virtual XRESULT InitControls();
+    /** Initializes the controls of this view */
+    virtual XRESULT InitControls();
 
-	/** Checks if a change needs to reload the shaders */
-	bool NeedsApply();
+    /** Checks if a change needs to reload the shaders */
+    bool NeedsApply();
 
-	/** Sets if this control is hidden */
-	virtual void SetHidden( bool hidden );
+    /** Sets if this control is hidden */
+    virtual void SetHidden( bool hidden );
 
-	/** Called when the settings got re-opened */
-	void OnOpenedSettings();
+    /** Called when the settings got re-opened */
+    void OnOpenedSettings();
 
 protected:
-	/** Tab in main tab-control was switched */
-	static void ShadowQualitySliderChanged( SV_Slider* sender, void* userdata );
-	static void ResolutionSliderChanged( SV_Slider* sender, void* userdata );
-	static void FpsLimitSliderChanged( SV_Slider* sender, void* userdata );
-	/** Close button */
-	static void CloseButtonPressed( SV_Button* sender, void* userdata );
+    /** Tab in main tab-control was switched */
+    static void ShadowQualitySliderChanged( SV_Slider* sender, void* userdata );
+    static void ResolutionSliderChanged( SV_Slider* sender, void* userdata );
+    static void FpsLimitSliderChanged( SV_Slider* sender, void* userdata );
+    /** Close button */
+    static void CloseButtonPressed( SV_Button* sender, void* userdata );
 
-	/** Apply button */
-	static void ApplyButtonPressed( SV_Button* sender, void* userdata );
-	static void FovOverrideCheckedChanged( SV_Checkbox* sender, void* userdata );
-	/** Initial renderer settings, used to determine a change */
-	GothicRendererSettings InitialSettings;
+    /** Apply button */
+    static void ApplyButtonPressed( SV_Button* sender, void* userdata );
+    static void FovOverrideCheckedChanged( SV_Checkbox* sender, void* userdata );
+    /** Initial renderer settings, used to determine a change */
+    GothicRendererSettings InitialSettings;
 
-	/** Current resolution setting */
-	int ResolutionSetting;
-	std::vector<DisplayModeInfo> Resolutions;
-	FovOverrideCheckedChangedState* CheckedChangedState;
+    /** Current resolution setting */
+    int ResolutionSetting;
+    std::vector<DisplayModeInfo> Resolutions;
+    FovOverrideCheckedChangedState* CheckedChangedState;
 };

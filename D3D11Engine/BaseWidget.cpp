@@ -309,7 +309,7 @@ void BaseWidget::CreateArrowCube( DirectX::XMFLOAT3* Offset, float Extends, cons
     EditorLinePrimitive::EncodeColor( &vx[i++], Color );
 
     // Loop through all vertices and apply the offset and the extends
-    XMVECTOR xmOffset = XMLoadFloat3( Offset );
+    FXMVECTOR xmOffset = XMLoadFloat3( Offset );
     for ( i = 0; i < 36; i++ ) {
         XMStoreFloat3( vx[i].Position.toXMFLOAT3(), (XMLoadFloat3( vx[i].Position.toXMFLOAT3() ) * Extends) + xmOffset );
     }

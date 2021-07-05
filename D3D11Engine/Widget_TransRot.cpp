@@ -103,7 +103,7 @@ void Widget_TransRot::ApplyTransforms() {
 		XMStoreFloat3( &Position, (*it)->Vob->GetPositionWorldXM() );
 	}
 
-	XMVECTOR pos = XMLoadFloat3( &Position );
+	FXMVECTOR pos = XMLoadFloat3( &Position );
 	for ( int i = 0; i < 3; i++ ) {
 		Arrows[i]->SetLocation( pos );
 		Circles[i]->SetLocation( pos );
@@ -142,7 +142,7 @@ void Widget_TransRot::RenderWidget() {
 	}
 
 	//return;
-	static XMVECTOR scale = XMVECTORF32{ 100, 100, 100, 0 };
+	static XMVECTORF32 scale = { 100, 100, 100, 0 };
 	for ( int i = 0; i < 3; i++ ) {
 		Arrows[i]->RenderPrimitive();
 		Arrows[i]->SetScale( scale );
@@ -176,8 +176,8 @@ void Widget_TransRot::OnWindowMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARA
 void Widget_TransRot::OnMButtonClick( int button ) {}
 
 void Widget_TransRot::DoHoverTest( HWND hw ) {
-	XMVECTOR Dir = Engine::GAPI->UnprojectCursorXM();
-	XMVECTOR Pos = Engine::GAPI->GetCameraPositionXM();
+	FXMVECTOR Dir = Engine::GAPI->UnprojectCursorXM();
+	FXMVECTOR Pos = Engine::GAPI->GetCameraPositionXM();
 
 	// Check the trans widget
 	float Width = 0.15f;

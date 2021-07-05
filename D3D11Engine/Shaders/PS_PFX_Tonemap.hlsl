@@ -39,7 +39,19 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	//float fLumAvg = TX_Lum.SampleLevel(SS_Linear, float2(0.5f, 0.5f), 9).r;
 	//HDRColor *= HDR_MiddleGray/(fLumAvg + 0.001f);
 	
-	float3 toneMapped = ToneMap(HDRColor, TX_Lum, SS_Linear);
+#if USE_TONEMAP == 0
+		float3 toneMapped = ToneMap_jafEq4(HDRColor, TX_Lum, SS_Linear);
+#elif USE_TONEMAP == 1
+		float3 toneMapped = Uncharted2Tonemap(HDRColor, TX_Lum, SS_Linear);
+#elif USE_TONEMAP == 2
+		float3 toneMapped = ACESFilmTonemap(HDRColor, TX_Lum, SS_Linear);
+#elif USE_TONEMAP == 3
+		float3 toneMapped = PerceptualQuantizerTonemap(HDRColor, TX_Lum, SS_Linear);
+#elif USE_TONEMAP == 4
+		float3 toneMapped = ToneMap_Simple(HDRColor, TX_Lum, SS_Linear);
+#elif USE_TONEMAP == 5
+		float3 toneMapped = ACESFittedTonemap(HDRColor, TX_Lum, SS_Linear);
+#endif
 	
 	toneMapped -= HDR_Threshold;
 	toneMapped = max(float3(0,0,0), toneMapped);

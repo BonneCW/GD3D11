@@ -33,13 +33,13 @@ XRESULT D3D11PFX_DistanceBlur::Render( RenderToTextureBuffer* fxbuffer ) {
 
 	// Copy scene
 	engine->GetContext()->ClearRenderTargetView( FxRenderer->GetTempBuffer().GetRenderTargetView().Get(), (float*)&float4( 0, 0, 0, 0 ) );
-	FxRenderer->CopyTextureToRTV( engine->GetGBuffer0().GetShaderResView().Get(), FxRenderer->GetTempBuffer().GetRenderTargetView().Get(), Engine::GraphicsEngine->GetResolution() );
+    FxRenderer->CopyTextureToRTV( engine->GetGBuffer0().GetShaderResView(), FxRenderer->GetTempBuffer().GetRenderTargetView(), Engine::GraphicsEngine->GetResolution() );
 
 	engine->GetContext()->OMSetRenderTargets( 1, oldRTV.GetAddressOf(), nullptr );
 
 	// Bind textures
-	FxRenderer->GetTempBuffer().BindToPixelShader( engine->GetContext(), 0 );
-	engine->GetDepthBuffer()->BindToPixelShader( engine->GetContext(), 1 );
+	FxRenderer->GetTempBuffer().BindToPixelShader( engine->GetContext().Get(), 0 );
+	engine->GetDepthBuffer()->BindToPixelShader( engine->GetContext().Get(), 1 );
 
 	// Blur/Copy
 	ps->Apply();

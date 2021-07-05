@@ -6,36 +6,36 @@ class D3D11VertexBuffer;
 
 class D3D11GShader {
 public:
-	D3D11GShader();
-	~D3D11GShader();
+    D3D11GShader();
+    ~D3D11GShader();
 
 
-	/** Loads shader */
-	XRESULT LoadShader( const char* geometryShader, const std::vector<D3D_SHADER_MACRO>& makros = std::vector<D3D_SHADER_MACRO>(), bool createStreamOutFromVS = false, int soLayout = 0 );
+    /** Loads shader */
+    XRESULT LoadShader( const char* geometryShader, const std::vector<D3D_SHADER_MACRO>& makros = std::vector<D3D_SHADER_MACRO>(), bool createStreamOutFromVS = false, int soLayout = 0 );
 
-	/** Applys the shader */
-	XRESULT Apply();
+    /** Applys the shader */
+    XRESULT Apply();
 
-	/** Returns a reference to the constantBuffer vector*/
-	std::vector<D3D11ConstantBuffer*>& GetConstantBuffer();
+    /** Returns a reference to the constantBuffer vector*/
+    std::vector<D3D11ConstantBuffer*>& GetConstantBuffer();
 
-	/** Returns the shader */
-	ID3D11GeometryShader* GetShader() { return GeometryShader; }
+    /** Returns the shader */
+    Microsoft::WRL::ComPtr<ID3D11GeometryShader> GetShader() { return GeometryShader.Get(); }
 
-	/** Returns this textures ID */
-	UINT16 GetID() { return ID; };
+    /** Returns this textures ID */
+    UINT16 GetID() { return ID; };
 
 private:
 
-	/** Compiles the shader from file and outputs error messages if needed */
-	HRESULT CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, const std::vector<D3D_SHADER_MACRO>& makros );
+    /** Compiles the shader from file and outputs error messages if needed */
+    HRESULT CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, const std::vector<D3D_SHADER_MACRO>& makros );
 
-	ID3D11GeometryShader* GeometryShader;
-	std::vector<D3D11ConstantBuffer*> ConstantBuffers;
+    Microsoft::WRL::ComPtr<ID3D11GeometryShader> GeometryShader;
+    std::vector<D3D11ConstantBuffer*> ConstantBuffers;
 
-	std::string File;
+    std::string File;
 
-	/** ID of this shader */
-	UINT16 ID;
+    /** ID of this shader */
+    UINT16 ID;
 };
 

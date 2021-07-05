@@ -5,48 +5,48 @@
 #pragma pack (push, 1)	
 #ifdef BUILD_GOTHIC_2_6_fix
 struct PolyFlags {
-	unsigned char PortalPoly : 2;
-	unsigned char Occluder : 1;
-	unsigned char SectorPoly : 1;
-	unsigned char MustRelight : 1;
-	unsigned char PortalIndoorOutdoor : 1;
-	unsigned char GhostOccluder : 1;
-	unsigned char NoDynLightNear : 1;
-	VERTEX_INDEX SectorIndex : 16;
+    unsigned char PortalPoly : 2;
+    unsigned char Occluder : 1;
+    unsigned char SectorPoly : 1;
+    unsigned char MustRelight : 1;
+    unsigned char PortalIndoorOutdoor : 1;
+    unsigned char GhostOccluder : 1;
+    unsigned char NoDynLightNear : 1;
+    VERTEX_INDEX SectorIndex : 16;
 };
 
 #elif defined(BUILD_GOTHIC_1_08k)
 struct PolyFlags {
-	unsigned char PortalPoly : 2;
-	unsigned char Occluder : 1;
-	unsigned char SectorPoly : 1;
-	unsigned char LodFlag : 1;
-	unsigned char PortalIndoorOutdoor : 1;
-	unsigned char GhostOccluder : 1;
-	unsigned char NormalMainAxis : 2;
-	VERTEX_INDEX SectorIndex : 16;
+    unsigned char PortalPoly : 2;
+    unsigned char Occluder : 1;
+    unsigned char SectorPoly : 1;
+    unsigned char LodFlag : 1;
+    unsigned char PortalIndoorOutdoor : 1;
+    unsigned char GhostOccluder : 1;
+    unsigned char NormalMainAxis : 2;
+    VERTEX_INDEX SectorIndex : 16;
 };
 #endif
 #pragma pack (pop)
 
 class zCVertex {
 public:
-	/*#ifdef BUILD_GOTHIC_1_08k
-		int id;
-	#endif*/
+    /*#ifdef BUILD_GOTHIC_1_08k
+        int id;
+    #endif*/
 
-	float3 Position;
+    float3 Position;
 
-	int TransformedIndex;
-	int MyIndex;
+    int TransformedIndex;
+    int MyIndex;
 };
 
 class zCVertFeature {
 public:
-	float3 normal;
-	DWORD lightStatic;
-	DWORD lightDynamic;
-	float2 texCoord;
+    float3 normal;
+    DWORD lightStatic;
+    DWORD lightDynamic;
+    float2 texCoord;
 };
 
 
@@ -55,73 +55,73 @@ class zCMaterial;
 class zCLightmap;
 class zCPolygon {
 public:
-	~zCPolygon() {
-		// Clean our vertices
-		for ( int i = 0; i < GetNumPolyVertices(); i++ ) {
-			delete getVertices()[i];
-			getVertices()[i] = nullptr;
-		}
+    ~zCPolygon() {
+        // Clean our vertices
+        for ( int i = 0; i < GetNumPolyVertices(); i++ ) {
+            delete getVertices()[i];
+            getVertices()[i] = nullptr;
+        }
 
-		Destructor();
-	}
+        Destructor();
+    }
 
-	void Destructor() {
+    void Destructor() {
 #ifndef BUILD_GOTHIC_2_6_fix
-		XCALL( GothicMemoryLocations::zCPolygon::Destructor );
+        XCALL( GothicMemoryLocations::zCPolygon::Destructor );
 #endif
-	}
+    }
 
-	void Constructor() {
+    void Constructor() {
 #ifndef BUILD_GOTHIC_2_6_fix
-		XCALL( GothicMemoryLocations::zCPolygon::Constructor );
+        XCALL( GothicMemoryLocations::zCPolygon::Constructor );
 #endif
-	}
+    }
 
-	void AllocVertPointers( int num ) {
+    void AllocVertPointers( int num ) {
 #ifndef BUILD_GOTHIC_2_6_fix
-		XCALL( GothicMemoryLocations::zCPolygon::AllocVerts );
+        XCALL( GothicMemoryLocations::zCPolygon::AllocVerts );
 #endif
-	}
+    }
 
-	void CalcNormal() {
+    void CalcNormal() {
 #ifndef BUILD_GOTHIC_2_6_fix
-		XCALL( GothicMemoryLocations::zCPolygon::CalcNormal );
+        XCALL( GothicMemoryLocations::zCPolygon::CalcNormal );
 #endif
-	}
+    }
 
-	void AllocVertData() {
-		for ( int i = 0; i < GetNumPolyVertices(); i++ ) {
-			getVertices()[i] = new zCVertex;
-		}
-	}
+    void AllocVertData() {
+        for ( int i = 0; i < GetNumPolyVertices(); i++ ) {
+            getVertices()[i] = new zCVertex;
+        }
+    }
 
-	zCVertex** getVertices() const {
-		return *(zCVertex***)(((char*)this) + GothicMemoryLocations::zCPolygon::Offset_VerticesArray);
-	}
+    zCVertex** getVertices() const {
+        return *(zCVertex***)(((char*)this) + GothicMemoryLocations::zCPolygon::Offset_VerticesArray);
+    }
 
-	zCVertFeature** getFeatures() const {
-		return *(zCVertFeature***)(((char*)this) + GothicMemoryLocations::zCPolygon::Offset_FeaturesArray);
-	}
+    zCVertFeature** getFeatures() const {
+        return *(zCVertFeature***)(((char*)this) + GothicMemoryLocations::zCPolygon::Offset_FeaturesArray);
+    }
 
-	unsigned char GetNumPolyVertices() const {
-		return *(unsigned char*)THISPTR_OFFSET( GothicMemoryLocations::zCPolygon::Offset_NumPolyVertices );
-	}
+    unsigned char GetNumPolyVertices() const {
+        return *(unsigned char*)THISPTR_OFFSET( GothicMemoryLocations::zCPolygon::Offset_NumPolyVertices );
+    }
 
-	PolyFlags* GetPolyFlags() const {
-		return (PolyFlags*)THISPTR_OFFSET( GothicMemoryLocations::zCPolygon::Offset_PolyFlags );
-	}
+    PolyFlags* GetPolyFlags() const {
+        return (PolyFlags*)THISPTR_OFFSET( GothicMemoryLocations::zCPolygon::Offset_PolyFlags );
+    }
 
-	zCMaterial* GetMaterial() const {
-		return *(zCMaterial**)(((char*)this) + GothicMemoryLocations::zCPolygon::Offset_Material);
-	}
+    zCMaterial* GetMaterial() const {
+        return *(zCMaterial**)(((char*)this) + GothicMemoryLocations::zCPolygon::Offset_Material);
+    }
 
-	void SetMaterial( zCMaterial* material ) {
-		*(zCMaterial**)(((char*)this) + GothicMemoryLocations::zCPolygon::Offset_Material) = material;
-	}
+    void SetMaterial( zCMaterial* material ) {
+        *(zCMaterial**)(((char*)this) + GothicMemoryLocations::zCPolygon::Offset_Material) = material;
+    }
 
-	zCLightmap* GetLightmap() const {
-		return *(zCLightmap**)(((char*)this) + GothicMemoryLocations::zCPolygon::Offset_Lightmap);
-	}
+    zCLightmap* GetLightmap() const {
+        return *(zCLightmap**)(((char*)this) + GothicMemoryLocations::zCPolygon::Offset_Lightmap);
+    }
 
-	char data[56];
+    char data[56];
 };

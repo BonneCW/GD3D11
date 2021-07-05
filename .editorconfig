@@ -1,7 +1,7 @@
 # Visual Studio generated .editorconfig file with C++ settings.
 root = true
 
-[*.{c++,cc,cpp,cppm,cxx,h,h++,hh,hpp,hxx,inl,ipp,ixx,tlh,tli}]
+[*.{cpp,h,hpp}]
 end_of_line = crlf
 insert_final_newline = true
 indent_style = space
