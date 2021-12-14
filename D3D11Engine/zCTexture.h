@@ -18,9 +18,6 @@ namespace zCTextureCacheHack {
 
 class zCTexture {
 public:
-    zCTexture();
-    ~zCTexture();
-
     /** Hooks the functions of this Class */
     static void Hook() {
         //XHook(HookedFunctions::OriginalFunctions.original_zCTex_D3DXTEX_BuildSurfaces, GothicMemoryLocations::zCTexture::XTEX_BuildSurfaces, zCTexture::hooked_XTEX_BuildSurfaces);
@@ -82,15 +79,12 @@ public:
     void Bind( int slot = 0 ) {
         Engine::GAPI->SetBoundTexture( slot, this );
 
-        _Bind( 0, slot );
-    }
-
-    void _Bind( bool unkwn, int stage = 0 ) {
-        XCALL( GothicMemoryLocations::zCTexture::zCTex_D3DInsertTexture );
+        reinterpret_cast<void(__fastcall*)( zCTexture*, int, bool, int )>
+            ( GothicMemoryLocations::zCTexture::zCTex_D3DInsertTexture )( this, 0, false, slot );
     }
 
     int LoadResourceData() {
-        XCALL( GothicMemoryLocations::zCTexture::LoadResourceData );
+        return reinterpret_cast<int( __fastcall* )( zCTexture* )>( GothicMemoryLocations::zCTexture::LoadResourceData )( this );
     }
 
     zTResourceCacheState GetCacheState() {
@@ -100,12 +94,12 @@ public:
     }
 
     zTResourceCacheState CacheIn( float priority ) {
-        if ( GetCacheState() == zRES_CACHED_IN ) {
+        zTResourceCacheState cacheState = GetCacheState();
+        if ( cacheState == zRES_CACHED_IN ) {
             TouchTimeStamp();
-        } else if ( GetCacheState() == zRES_CACHED_OUT || zCTextureCacheHack::ForceCacheIn ) {
-
-            /*TouchTimeStampLocal();
-            zCTextureCacheHack::NumNotCachedTexturesInFrame++;
+        } else/* if ( cacheState == zRES_CACHED_OUT || zCTextureCacheHack::ForceCacheIn )*/ {
+            TouchTimeStampLocal();
+            /*zCTextureCacheHack::NumNotCachedTexturesInFrame++;
 
             if (zCTextureCacheHack::NumNotCachedTexturesInFrame >= zCTextureCacheHack::MAX_NOT_CACHED_TEXTURES_IN_FRAME)
             {
@@ -121,7 +115,6 @@ public:
             }
 #endif
             Engine::GAPI->SetBoundTexture( 7, this ); // Index 7 is reserved for cacheIn
-            //TouchTimeStampLocal();
 
             // Cache the texture, overwrite priority if wanted.
             zCResourceManager::GetResourceManager()->CacheIn( this, zCTextureCacheHack::ForceCacheIn ? -1 : priority );
@@ -139,15 +132,16 @@ public:
     }
 
     void PrecacheTexAniFrames( float priority ) {
-        XCALL( GothicMemoryLocations::zCTexture::PrecacheTexAniFrames );
+        reinterpret_cast<void( __fastcall* )( zCTexture*, int, float )>
+            ( GothicMemoryLocations::zCTexture::PrecacheTexAniFrames )( this, 0, priority );
     }
 
     void TouchTimeStamp() {
-        XCALL( GothicMemoryLocations::zCTexture::zCResourceTouchTimeStamp );
+        reinterpret_cast<void( __fastcall* )( zCTexture* )>( GothicMemoryLocations::zCTexture::zCResourceTouchTimeStamp )( this );
     }
 
     void TouchTimeStampLocal() {
-        XCALL( GothicMemoryLocations::zCTexture::zCResourceTouchTimeStampLocal );
+        reinterpret_cast<void( __fastcall* )( zCTexture* )>( GothicMemoryLocations::zCTexture::zCResourceTouchTimeStampLocal )( this );
     }
 
     bool HasAlphaChannel() {
@@ -157,19 +151,12 @@ public:
 
     /*void Release()
     {
-        XCALL(GothicMemoryLocations::zCObject::Release);
+        reinterpret_cast<void( __fastcall* )( zCTexture* )>( GothicMemoryLocations::zCObject::Release )( this );
     }*/
-
-    /*#ifdef BUILD_GOTHIC_1_08k
-        zCTexture * GetAniTexture()
-        {
-            XCALL(GothicMemoryLocations::zCTexture::GetAniTexture);
-        }
-    #endif*/
 
 private:
     const zSTRING& __GetName() {
-        XCALL( GothicMemoryLocations::zCObject::GetObjectName );
+        return reinterpret_cast<zSTRING&(__fastcall*)( zCTexture* )>( GothicMemoryLocations::zCObject::GetObjectName )( this );
     }
 };
 

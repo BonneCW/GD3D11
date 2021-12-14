@@ -14,4 +14,4 @@ REM RMDIR /s /q D3D11Engine\Release_G1\
 "%MSBUILD%" Direct3D7Wrapper.sln /p:Configuration=Release
 "%MSBUILD%" Direct3D7Wrapper.sln /p:Configuration=Release_G1
 
-
+"%MSBUILD%" Direct3D7Wrapper.sln /p:Configuration=Spacer_NET

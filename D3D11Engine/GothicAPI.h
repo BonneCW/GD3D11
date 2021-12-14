@@ -205,6 +205,15 @@ public:
     /** Persists the per mod & per world renderersettings */
     void SaveRendererWorldSettings( const GothicRendererSettings& s );
 
+    /** Called to update the multi thread resource manager state */
+    void UpdateMTResourceManager();
+
+    /** Called to update the compress backbuffer state */
+    void UpdateCompressBackBuffer();
+
+    /** Called to update the texture quality */
+    void UpdateTextureMaxSize();
+
     /** Called to update the world, before rendering */
     void OnWorldUpdate();
 
@@ -248,14 +257,15 @@ public:
     void DrawWorldMeshNaive();
 
     /** Draws a skeletal mesh-vob */
-    void DrawSkeletalMeshVob( SkeletalVobInfo* vi, float distance );
+    void DrawSkeletalMeshVob( SkeletalVobInfo* vi, float distance, bool updateState = true );
     void DrawSkeletalGhosts();
+    void DrawSkeletalVN();
 
     /** Draws the inventory */
     void DrawInventory( zCWorld* world, zCCamera& camera );
 
     /** Draws a morphmesh */
-    void DrawMorphMesh( zCMorphMesh* msh, float fatness );
+    void DrawMorphMesh( zCMorphMesh* msh, std::map<zCMaterial*, std::vector<MeshInfo*>>& meshes );
 
     /** Locks the resource CriticalSection */
     void EnterResourceCriticalSection();
@@ -311,6 +321,12 @@ public:
 
     /** Debugging */
     void DrawTriangle( float3 pos );
+
+    /** Add particle effect */
+    void AddParticleEffect( zCVob* vob );
+
+    /** Destroy particle effect */
+    void DestroyParticleEffect( zCVob* vob );
 
     /** Removes the given quadmark */
     void RemoveQuadMark( zCQuadMark* mark );
@@ -406,6 +422,9 @@ public:
     /** Returns true, if the game was paused */
     bool IsGamePaused();
 
+    /** Returns total time */
+    float GetTotalTime();
+
     /** Returns the current frame time */
     float GetFrameTimeSec();
 
@@ -447,9 +466,6 @@ public:
 
     /** Returns our bsp-root-node */
     BspInfo* GetNewRootNode();
-
-    /** Disables a problematic method which causes the game to conflict with other applications on startup */
-    static void DisableErrorMessageBroadcast();
 
     /** Sets/Gets the far-plane */
     void SetFarPlane( float value );
@@ -570,10 +586,6 @@ public:
     /** Saves vegetation to a file */
     XRESULT LoadVegetation( const std::string& file );
 
-    /** Sets/Gets the pending movie frame */
-    void SetPendingMovieFrame( D3D11Texture* frame );
-    D3D11Texture* GetPendingMovieFrame();
-
     /** Returns the main-thread id */
     DWORD GetMainThreadID();
 
@@ -586,23 +598,35 @@ public:
     /** Returns the wetness of the scene. Lasts longer than RainFXWeight */
     float GetSceneWetness();
 
+    /** Loads the FixBink value from SystemPack.ini */
+    void LoadFixBinkValue();
+
+    /** Saves the window resolution to Gothic.ini */
+    void SaveWindowResolution();
+
     /** Saves the users settings from the menu */
     XRESULT SaveMenuSettings( const std::string& file );
 
     /** Loads the users settings from the menu */
     XRESULT LoadMenuSettings( const std::string& file );
 
-    /** Clears the array of this frame loaded textures */
-    void ClearFrameLoadedTextures();
+    /** Adds a staging texture to the list of the staging textures for this frame */
+    void AddStagingTexture( UINT mip, ID3D11Texture2D* stagingTexture, ID3D11Texture2D* texture );
+
+    /** Gets a list of the staging textures for this frame */
+    std::list<std::pair<std::pair<UINT, ID3D11Texture2D*>, ID3D11Texture2D*>>& GetStagingTextures() {return FrameStagingTextures;}
+
+    /** Adds a mip map generation deferred command */
+    void AddMipMapGeneration( D3D11Texture* texture );
+
+    /** Gets a list of the mip map generation commands for this frame */
+    std::list<D3D11Texture*>& GetMipMapGeneration() {return FrameMipMapGenerations;}
 
     /** Adds a texture to the list of the loaded textures for this frame */
     void AddFrameLoadedTexture( MyDirectDrawSurface7* srf );
 
     /** Sets loaded textures of this frame ready */
     void SetFrameProcessedTexturesReady();
-
-    /** Copys the frame loaded textures to the processed list */
-    void MoveLoadedTexturesToProcessedList();
 
     /** Returns if the given vob is registered in the world */
     SkeletalVobInfo* GetSkeletalVobByVob( zCVob* vob );
@@ -672,6 +696,9 @@ private:
     /** Goes through the given zCTree and registeres all found vobs */
     void TraverseVobTree( zCTree<zCVob>* tree );
 
+    /** Goes through the given zCTree and calls handler for each found vob */
+    void TraverseVobTree( zCTree<zCVob>* tree , std::function<void( zCVob* )> handler);
+
     /** Saved Graphics state */
     GothicRendererState RendererState;
 
@@ -692,11 +719,15 @@ private:
     std::list<SkeletalVobInfo*> SkeletalMeshVobs;
     std::list<SkeletalVobInfo*> AnimatedSkeletalVobs;
     std::vector<std::pair<float, SkeletalVobInfo*>> GhostSkeletalVobs;
+    std::vector<SkeletalVobInfo*> VNSkeletalVobs;
 
     /** List of Vobs having a zCParticleFX-Visual */
-    std::list<zCVob*> ParticleEffectVobs;
-    std::list<zCVob*> DecalVobs;
+    std::vector<zCVob*> ParticleEffectVobs;
+    std::vector<zCVob*> DecalVobs;
     std::unordered_map<zCVob*, std::string> tempParticleNames;
+
+    /** List of Meshes derived from a zCParticleFX-Visual */
+    std::unordered_map<zCVob*, MeshVisualInfo*> ParticleEffectProgMeshes;
 
     /** Poly strip Visuals */
     std::set<zCPolyStrip*> PolyStripVisuals;
@@ -776,15 +807,13 @@ private:
     /** Current camera, stored to find out about camera switches */
     zCCamera* CurrentCamera;
 
-    /** Currently pending movie frame */
-    D3D11Texture* PendingMovieFrame;
-
     /** The id of the main thread */
     DWORD MainThreadID;
 
     /** Textures loaded this frame */
-    std::vector<MyDirectDrawSurface7*> FrameLoadedTextures;
-    std::vector<MyDirectDrawSurface7*> FrameProcessedTextures;
+    std::list<std::pair<std::pair<UINT, ID3D11Texture2D*>, ID3D11Texture2D*>> FrameStagingTextures;
+    std::list<D3D11Texture*> FrameMipMapGenerations;
+    std::list<MyDirectDrawSurface7*> FrameLoadedTextures;
 
     /** Quad marks loaded in the world */
     stdext::unordered_map<zCQuadMark*, QuadMarkInfo> QuadMarks;

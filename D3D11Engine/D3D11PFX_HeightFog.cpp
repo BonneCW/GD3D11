@@ -103,10 +103,6 @@ XRESULT D3D11PFX_HeightFog::Render( RenderToTextureBuffer* fxbuffer ) {
 	hfPS->GetConstantBuffer()[0]->UpdateBuffer( &cb );
 	hfPS->GetConstantBuffer()[0]->BindToPixelShader( 0 );
 
-	PFXVS_ConstantBuffer vcb = {};
-	vs->GetConstantBuffer()[0]->UpdateBuffer( &vcb );
-	vs->GetConstantBuffer()[0]->BindToVertexShader( 0 );
-
 	GSky* sky = Engine::GAPI->GetSky();
 	hfPS->GetConstantBuffer()[1]->UpdateBuffer( &sky->GetAtmosphereCB() );
 	hfPS->GetConstantBuffer()[1]->BindToPixelShader( 1 );
@@ -116,6 +112,9 @@ XRESULT D3D11PFX_HeightFog::Render( RenderToTextureBuffer* fxbuffer ) {
 	// Bind depthbuffer
 	engine->GetDepthBuffer()->BindToPixelShader( engine->GetContext().Get(), 1 );
 
+    engine->SetDefaultStates();
+    Engine::GAPI->GetRendererState().RasterizerState.CullMode = GothicRasterizerStateInfo::CM_CULL_NONE;
+    Engine::GAPI->GetRendererState().RasterizerState.SetDirty();
 	Engine::GAPI->GetRendererState().BlendState.SetDefault();
 	//Engine::GAPI->GetRendererState().BlendState.SetAdditiveBlending();
 	Engine::GAPI->GetRendererState().BlendState.BlendEnabled = true;

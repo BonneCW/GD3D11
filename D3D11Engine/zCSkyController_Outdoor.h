@@ -107,7 +107,8 @@ public:
 
     /** Updates the rain-weight and sound-effects */
     void ProcessRainFX() {
-        XCALL( GothicMemoryLocations::zCSkyController_Outdoor::ProcessRainFX );
+        reinterpret_cast<void( __fastcall* )( zCSkyController_Outdoor* )>
+            ( GothicMemoryLocations::zCSkyController_Outdoor::ProcessRainFX )( this );
     }
 
     /** Returns the rain-fx weight */
@@ -152,7 +153,8 @@ public:
     }
 
     int GetUnderwaterFX() {
-        XCALL( GothicMemoryLocations::zCSkyController_Outdoor::GetUnderwaterFX );
+        return reinterpret_cast<int( __fastcall* )( zCSkyController_Outdoor* )>
+            ( GothicMemoryLocations::zCSkyController_Outdoor::GetUnderwaterFX )( this );
     }
 
     DirectX::XMFLOAT3 GetOverrideColor() {
@@ -182,7 +184,12 @@ public:
 
         //float angle = GetMasterTime() * XM_2PI; // Get mastertime into rad, 0 and 12 are now at the horizon, 18 is in the sky
         //angle += XM_PIDIV2; // 12 is now in the sky, 18 horizon
-        float angle = ((GetMasterTime() * timeScale - 0.3f) * 1.25f + 0.5f) * XM_2PI;
+        float angle;
+        if ( timeScale <= -1 ) {
+            angle = 4.71375f;
+        } else {
+            angle = ((GetMasterTime() * timeScale - 0.3f) * 1.25f + 0.5f) * XM_2PI;
+        }
 
         constexpr XMVECTORF32 sunPos = { -60, 0, 100, 0 };
         XMFLOAT3 rotAxis = XMFLOAT3( 1, 0, 0 );
@@ -195,7 +202,8 @@ public:
     }
 
     void SetCameraLocationHint( int hint ) {
-        XCALL( GothicMemoryLocations::zCSkyController_Outdoor::SetCameraLocationHint );
+        reinterpret_cast<void( __fastcall* )( zCSkyController_Outdoor*, int, int )>
+            ( GothicMemoryLocations::zCSkyController_Outdoor::SetCameraLocationHint )( this, 0, hint );
     }
 
     /*zCSkyLayer* GetSkyLayers(int i)
@@ -226,7 +234,8 @@ public:
 
     /*void Init()
     {
-        XCALL(GothicMemoryLocations::zCSkyController_Outdoor::Init);
+        reinterpret_cast<void( __fastcall* )( zCSkyController_Outdoor* )>
+            ( GothicMemoryLocations::zCSkyController_Outdoor::Init )( this );
     }
 
     bool GetInitDone()
@@ -241,7 +250,8 @@ public:
 
     void Interpolate()
     {
-        XCALL(GothicMemoryLocations::zCSkyController_Outdoor::Interpolate);
+        reinterpret_cast<void( __fastcall* )( zCSkyController_Outdoor* )>
+            ( GothicMemoryLocations::zCSkyController_Outdoor::Interpolate )( this );
     }
 
     static zCSkyController_Outdoor* GetActiveSkyController()

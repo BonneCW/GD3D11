@@ -30,7 +30,7 @@ void SV_Label::Draw( const D2D1_RECT_F& clientRectAbs, float deltaTime ) {
             MainView->GetBrush()->SetColor( D2D1::ColorF( 0, 0, 0, 0.7f ) );
 
             if ( HorizAlignment == DWRITE_TEXT_ALIGNMENT_LEADING ) {
-                MainView->GetRenderTarget()->FillRoundedRectangle( D2D1::RoundedRect( D2D1::RectF( ViewRect.left - 1, ViewRect.top, ViewRect.left + D2DView::GetLabelTextWidth( CaptionLayout, Caption ) + 1, ViewRect.top + D2DView::GetTextHeight( CaptionLayout, Caption ) + 3 ), 2, 2 ), MainView->GetBrush() );
+                MainView->GetRenderTarget()->FillRoundedRectangle( D2D1::RoundedRect( D2D1::RectF( ViewRect.left - 1, ViewRect.top, ViewRect.left + D2DView::GetLabelTextWidth( CaptionLayout, Caption.length() ) + 1, ViewRect.top + D2DView::GetTextHeight( CaptionLayout, Caption.length() ) + 3 ), 2, 2 ), MainView->GetBrush() );
             } else {
                 MainView->GetRenderTarget()->FillRoundedRectangle( D2D1::RoundedRect( ViewRect, 2, 2 ), MainView->GetBrush() );
             }
@@ -44,12 +44,12 @@ void SV_Label::Draw( const D2D1_RECT_F& clientRectAbs, float deltaTime ) {
 }
 
 /** Sets this buttons caption */
-void SV_Label::SetCaption( const std::string& caption ) {
+void SV_Label::SetCaption( const std::wstring& caption ) {
     Caption = caption;
 
     SAFE_RELEASE( CaptionLayout );
     MainView->GetWriteFactory()->CreateTextLayout(
-        Toolbox::ToWideChar( caption ).c_str(),      // The string to be laid out and formatted.
+        caption.c_str(),      // The string to be laid out and formatted.
         caption.length(),  // The length of the string.
         MainView->GetDefaultTextFormat(),  // The text format to apply to the string (contains font information, etc).
         ViewRect.right - ViewRect.left,         // The width of the layout box.
@@ -69,7 +69,7 @@ void SV_Label::SetCaption( const std::string& caption ) {
         SetVertAlignment( VertAlignment );
         SetHorizAlignment( HorizAlignment );
     } else {
-        LogWarn() << "Failed to create TextLayout for caption '" << caption << "'";
+        LogWarn() << "Failed to create TextLayout for caption '" << Toolbox::ToMultiByte( caption) << "'";
     }
 }
 

@@ -67,7 +67,7 @@ void SV_TabControl::Draw( const D2D1_RECT_F& clientRectAbs, float deltaTime ) {
             continue;
         }
 
-        float width = D2DView::GetLabelTextWidth( it->second.CaptionLayout, it->first );
+        float width = D2DView::GetLabelTextWidth( it->second.CaptionLayout, it->first.length() );
 
         D2D1_RECT_F tabRect = D2D1::RectF( x + ViewRect.left, ViewRect.top, x + ViewRect.left + width + 10.0f, ViewRect.top + SV_TABCONTROL_HEADER_SIZE_Y );
 
@@ -151,7 +151,7 @@ bool SV_TabControl::OnWindowMessage( HWND hWnd, unsigned int msg, WPARAM wParam,
                 continue;
             }
 
-            float width = D2DView::GetLabelTextWidth( it->second.CaptionLayout, it->first );
+            float width = D2DView::GetLabelTextWidth( it->second.CaptionLayout, it->first.length() );
 
             D2D1_RECT_F tabRect = D2D1::RectF( x + ViewRect.left, ViewRect.top, x + ViewRect.left + width + 10.0f, ViewRect.top + SV_TABCONTROL_HEADER_SIZE_Y );
             if ( PointInsideRect( D2D1::Point2F( (float)p.x, (float)p.y ), tabRect ) ) {

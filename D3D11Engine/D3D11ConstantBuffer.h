@@ -7,6 +7,7 @@ public:
 
     /** Updates the buffer */
     void UpdateBuffer( const void* data );
+    void UpdateBuffer( const void* data, UINT size );
 
     /** Binds the buffer */
     void BindToVertexShader( int slot );

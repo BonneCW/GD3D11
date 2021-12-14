@@ -132,8 +132,14 @@ XRESULT BaseAntTweakBar::Init() {
     TwAddVarRW( Bar_General, "AllowWorldMeshTesselation", TW_TYPE_BOOLCPP, &Engine::GAPI->GetRendererState().RendererSettings.AllowWorldMeshTesselation, nullptr );
     TwAddVarRW( Bar_General, "TesselationFrustumCulling", TW_TYPE_BOOLCPP, &Engine::GAPI->GetRendererState().RendererSettings.TesselationFrustumCulling, nullptr );
     TwAddVarRW( Bar_General, "AtmosphericScattering", TW_TYPE_BOOLCPP, &Engine::GAPI->GetRendererState().RendererSettings.AtmosphericScattering, nullptr );
+    TwAddVarRW( Bar_General, "SkeletalVertexNormals", TW_TYPE_BOOLCPP, &Engine::GAPI->GetRendererState().RendererSettings.ShowSkeletalVertexNormals, nullptr );
 
-    TwType t = TwDefineEnumFromString( "ShadowmapSizeEnum", "512, 1024, 2048, 4096, 8192, 16384" );
+    TwType t;
+    if ( FeatureLevel10Compatibility ) {
+        t = TwDefineEnumFromString( "ShadowmapSizeEnum", "512, 1024, 2048, 4096, 8192" );
+    } else {
+        t = TwDefineEnumFromString( "ShadowmapSizeEnum", "512, 1024, 2048, 4096, 8192, 16384" );
+    }
     TwAddVarRW( Bar_General, "ShadowmapSize", t, &Engine::GAPI->GetRendererState().RendererSettings.ShadowMapSize, nullptr );
     TwAddVarRW( Bar_General, "WorldShadowRangeScale", TW_TYPE_FLOAT, &Engine::GAPI->GetRendererState().RendererSettings.WorldShadowRangeScale, nullptr );
     TwDefine( " General/WorldShadowRangeScale  step=0.01 min=0" );

@@ -16,8 +16,9 @@ enum oCNPCFlags : int
 
 class oCNPC : public zCVob {
 public:
-    oCNPC();
-    ~oCNPC();
+    static const zCClassDef* GetStaticClassDef() {
+        return reinterpret_cast<const zCClassDef*>(GothicMemoryLocations::zCClassDef::oCNpc);
+    }
 
     /** Hooks the functions of this Class */
     static void Hook() {
@@ -68,18 +69,20 @@ public:
     }
 
     void ResetPos( const DirectX::XMFLOAT3& pos ) {
-        XCALL( GothicMemoryLocations::oCNPC::ResetPos );
+        reinterpret_cast<void( __fastcall* )( oCNPC*, int, const DirectX::XMFLOAT3& )>( GothicMemoryLocations::oCNPC::ResetPos )( this, 0, pos );
     }
 
     int IsAPlayer() {
         return (this == oCGame::GetPlayer());
     }
     zSTRING GetName( int i = 0 ) {
-        XCALL( GothicMemoryLocations::oCNPC::GetName );
+        zSTRING str;
+        reinterpret_cast<void( __fastcall* )( oCNPC*, int, zSTRING&, int )>( GothicMemoryLocations::oCNPC::GetName )( this, 0, str, i );
+        return str;
     }
 #ifndef BUILD_SPACER
     bool HasFlag( oCNPCFlags flag ) {
-        XCALL( GothicMemoryLocations::oCNPC::HasFlag );
+        return reinterpret_cast<bool( __fastcall* )( oCNPC*, int, oCNPCFlags )>( GothicMemoryLocations::oCNPC::HasFlag )( this, 0, flag );
     }
 #else
     bool HasFlag( oCNPCFlags ) {

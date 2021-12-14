@@ -10,6 +10,7 @@
 #include <future>
 #include <list>
 #include <map>
+#include <array>
 #include <mmsystem.h>
 #include <set>
 #include <signal.h>
@@ -26,9 +27,10 @@
 #define stdext std
 #endif
 
-#define VERSION_NUMBER "17.7-dev19-fix3"
+#define VERSION_NUMBER "17.7-dev34"
 __declspec(selectany) const char* VERSION_NUMBER_STR = VERSION_NUMBER;
 
+extern bool FeatureLevel10Compatibility;
 extern bool GMPModeActive;
 
 /** D3D7-Call logging */
@@ -41,10 +43,27 @@ extern bool GMPModeActive;
 #define SAFE_DELETE(x) delete x; x = nullptr;
 //#define V(x) x
 
+/** zCObject Managing */
+void zCObject_AddRef( void* o );
+void zCObject_Release( void* o );
+
 /** Writes a string of the D3D7-Call log */
 void DebugWrite_i( LPCSTR lpDebugMessage, void* thisptr );
 
 /** Computes the size in bytes of the given FVF */
 int ComputeFVFSize( DWORD fvf );
 
+inline unsigned short quantizeHalfFloat( float v )
+{
+    union { float f; unsigned int ui; } u = { v };
+    unsigned int ui = u.ui;
 
+    int s = (ui >> 16) & 0x8000;
+    int em = ui & 0x7fffffff;
+
+    int h = (em - (112 << 23) + (1 << 12)) >> 13;
+    h = (em < (113 << 23)) ? 0 : h;
+    h = (em >= (143 << 23)) ? 0x7c00 : h;
+    h = (em > ( 255 << 23 )) ? 0x7e00 : h;
+    return (unsigned short)(s | h);
+}

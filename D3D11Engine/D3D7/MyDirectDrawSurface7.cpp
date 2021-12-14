@@ -18,8 +18,6 @@ MyDirectDrawSurface7::MyDirectDrawSurface7() {
     GothicTexture = nullptr;
     IsReady = false;
     TextureType = ETextureType::TX_UNDEF;
-
-    QueuedMipMaps = 0;
     LockType = 0;
 
     // Check for test-bind mode to figure out what zCTexture-Object we are associated with
@@ -32,6 +30,11 @@ MyDirectDrawSurface7::MyDirectDrawSurface7() {
 
 MyDirectDrawSurface7::~MyDirectDrawSurface7() {
     Engine::GAPI->RemoveSurface( this );
+
+    // Release mip-map chain first
+    for ( LPDIRECTDRAWSURFACE7 mipmap : attachedSurfaces ) {
+        mipmap->Release();
+    }
 
     // Sometimes gothic doesn't unlock a surface or this is a movie-buffer
     delete[] LockedData;
@@ -327,7 +330,10 @@ HRESULT MyDirectDrawSurface7::Lock( LPRECT lpDestRect, LPDDSURFACEDESC2 lpDDSurf
         Engine::GraphicsEngine->GetBackbufferData( &data, pixelSize );
 
         lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount = 32;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0x000000ff;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0x000000FF;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x0000FF00;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x00FF0000;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwRGBAlphaBitMask = 0x00000000;
 
         // Gothic transforms this into a 256x256 texture anyways
         lpDDSurfaceDesc->lPitch = 256 * pixelSize;
@@ -363,8 +369,12 @@ HRESULT MyDirectDrawSurface7::Lock( LPRECT lpDestRect, LPDDSURFACEDESC2 lpDDSurf
         // Handle movie frame,
         // don't deallocate the memory after unlock, since only the changing parts in videos will get updated
         if ( !LockedData )
-            LockedData = new unsigned char[EngineTexture->GetSizeInBytes( 0 ) / divisor];
+            LockedData = new unsigned char[EngineTexture->GetSizeInBytes( 0 )];
 
+        // First movie frame - reset data
+        if ( Engine::GAPI->GetRendererState().RendererInfo.FirstVideoFrame ) {
+            memset( LockedData, 0, EngineTexture->GetSizeInBytes( 0 ) );
+        }
     } else {
         // Allocate some temporary data
         delete[] LockedData;
@@ -377,6 +387,8 @@ HRESULT MyDirectDrawSurface7::Lock( LPRECT lpDestRect, LPDDSURFACEDESC2 lpDDSurf
     return S_OK;
 }
 
+#pragma warning(push)
+#pragma warning(disable: 6386)
 HRESULT MyDirectDrawSurface7::Unlock( LPRECT lpRect ) {
     DebugWriteTex( "IDirectDrawSurface7(%p)::Unlock()" );
 
@@ -424,64 +436,81 @@ HRESULT MyDirectDrawSurface7::Unlock( LPRECT lpRect ) {
 
         if ( Engine::GAPI->GetMainThreadID() != GetCurrentThreadId() ) {
             EngineTexture->UpdateDataDeferred( dst, 0 );
+            EngineTexture->GenerateMipMapsDeferred();
             Engine::GAPI->AddFrameLoadedTexture( this );
         } else {
             EngineTexture->UpdateData( dst, 0 );
-            Engine::GAPI->AddFrameLoadedTexture( this );
+            EngineTexture->GenerateMipMaps();
             SetReady( true ); // No need to load other stuff to get this ready
         }
 
         delete[] dst;
-
-        EngineTexture->GenerateMipMaps();
-
-        // We don't actuall load mipmaps for this type, so set this
-        // so that it says the texture is fully loaded
-        QueuedMipMaps = OriginalSurfaceDesc.dwMipMapCount - 1;
-
     } else {
         if ( bpp == 24 ) {
+            // First movie frame - clear backbuffers
+            if ( Engine::GAPI->GetRendererState().RendererInfo.FirstVideoFrame ) {
+                Engine::GraphicsEngine->Clear( float4( 0.0f, 0.0f, 0.0f, 0.0f ) );
+                Engine::GAPI->GetRendererState().RendererInfo.FirstVideoFrame = 0;
+            }
+
+            if ( Engine::GAPI->GetRendererState().RendererInfo.FixBink ) {
+                // SSE2 BGRA -> RGBA conversion
+                __m128i mask = _mm_setr_epi8( -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0 );
+                int32_t textureDataSize = static_cast<int32_t>(EngineTexture->GetSizeInBytes( 0 )) - 32;
+                int32_t i = 0;
+                for ( ; i <= textureDataSize; i += 32 ) {
+                    __m128i data0 = _mm_loadu_si128( reinterpret_cast<const __m128i*>(&LockedData[i]) );
+                    __m128i data1 = _mm_loadu_si128( reinterpret_cast<const __m128i*>(&LockedData[i + 16]) );
+                    __m128i gaComponents0 = _mm_andnot_si128( mask, data0 );
+                    __m128i brComponents0 = _mm_and_si128( data0, mask );
+                    __m128i gaComponents1 = _mm_andnot_si128( mask, data1 );
+                    __m128i brComponents1 = _mm_and_si128( data1, mask );
+                    __m128i brSwapped0 = _mm_shufflehi_epi16( _mm_shufflelo_epi16( brComponents0, _MM_SHUFFLE( 2, 3, 0, 1 ) ), _MM_SHUFFLE( 2, 3, 0, 1 ) );
+                    __m128i brSwapped1 = _mm_shufflehi_epi16( _mm_shufflelo_epi16( brComponents1, _MM_SHUFFLE( 2, 3, 0, 1 ) ), _MM_SHUFFLE( 2, 3, 0, 1 ) );
+                    _mm_storeu_si128( reinterpret_cast<__m128i*>(&LockedData[i]), _mm_or_si128( gaComponents0, brSwapped0 ) );
+                    _mm_storeu_si128( reinterpret_cast<__m128i*>(&LockedData[i + 16]), _mm_or_si128( gaComponents1, brSwapped1 ) );
+                }
+                textureDataSize += 32;
+                for ( ; i < textureDataSize; i += 4 ) {
+                    unsigned char R = LockedData[i + 0];
+                    unsigned char G = LockedData[i + 2];
+                    LockedData[i + 0] = G;
+                    LockedData[i + 2] = R;
+                }
+            }
+
             // This is a movie frame, draw it to the sceen
             EngineTexture->UpdateData( LockedData, 0 );
-
             EngineTexture->BindToPixelShader( 0 );
+
             Engine::GAPI->GetRendererState().BlendState.SetDefault();
             Engine::GAPI->GetRendererState().BlendState.SetDirty();
 
-            INT2 vidRes = Engine::GAPI->GetRendererState().RendererInfo.PlayingMovieResolution;
+            if ( Engine::GAPI->GetRendererState().RendererInfo.FixBink ) {
+                Engine::GraphicsEngine->DrawQuad( INT2( 0, 0 ), Engine::GraphicsEngine->GetResolution() );
+            } else {
+                INT2 vidRes = Engine::GAPI->GetRendererState().RendererInfo.PlayingMovieResolution;
+                if ( vidRes.x == 0 || vidRes.y == 0 )
+                    vidRes = Engine::GraphicsEngine->GetResolution();
 
-            // Catch unset resolution 
-            if ( vidRes.x == 0 || vidRes.y == 0 )
-                vidRes = Engine::GraphicsEngine->GetResolution();
-            const INT2 engineRes = Engine::GraphicsEngine->GetResolution();
-            /*FXMVECTOR mid = XMVectorSet( engineRes.x / 2, engineRes.y / 2, 0, 0 ); //never used
-            DirectX::XMFLOAT2 tl;
-            XMStoreFloat2( &tl, mid - XMVectorSet( vidRes.x, vidRes.y, 0, 0 ) * 0.5f );
-            DirectX::XMFLOAT2 br;
-            XMStoreFloat2( &br, mid + XMVectorSet( vidRes.x, vidRes.y, 0, 0 ) * 0.5f );*/
+                const INT2 engineRes = Engine::GraphicsEngine->GetResolution();
 
-            // Compute how much we would have to scale the video on both axis
-            float scaleX = engineRes.x / (float)vidRes.x;
-            float scaleY = engineRes.y / (float)vidRes.y;
+                // Compute how much we would have to scale the video on both axis
+                float scaleX = engineRes.x / (float)vidRes.x;
+                float scaleY = engineRes.y / (float)vidRes.y;
 
-            // select the smaller one
-            float scale = std::min( scaleX, scaleY ) * 0.75f;
+                // select the smaller one
+                float scale = std::min( scaleX, scaleY ) * 0.75f;
 
+                // I am honestly not sure how this is correct, but after an hour of fiddeling this works fine. You probably don't want to touch it.
+                float tlx = -engineRes.x * scale + (float)engineRes.x;
+                float tly = -engineRes.y * scale + (float)engineRes.y;
 
-            // I am honestly not sure how this is correct, but after an hour of fiddeling this works fine. You probably don't want to touch it.
-            float tlx = -engineRes.x * scale + (float)engineRes.x;
-            float tly = -engineRes.y * scale + (float)engineRes.y;
+                float brx = engineRes.x * scale;
+                float bry = engineRes.y * scale;
 
-            float brx = engineRes.x * scale;
-            float bry = engineRes.y * scale;
-
-#if defined(BUILD_GOTHIC_2_6_fix) || defined(BUILD_GOTHIC_1_08k)
-            Engine::GraphicsEngine->DrawQuad( INT2( tlx, tly ),
-                INT2( brx - tlx, bry - tly ) );
-#else
-            Engine::GraphicsEngine->DrawQuad( INT2( 0, 0 ),
-                Engine::GraphicsEngine->GetResolution() );
-#endif
+                Engine::GraphicsEngine->DrawQuad( INT2( tlx, tly ), INT2( brx - tlx, bry - tly ) );
+            }
         } else {
             // No conversion needed
             if ( Engine::GAPI->GetMainThreadID() != GetCurrentThreadId() ) {
@@ -489,7 +518,6 @@ HRESULT MyDirectDrawSurface7::Unlock( LPRECT lpRect ) {
                 Engine::GAPI->AddFrameLoadedTexture( this );
             } else {
                 EngineTexture->UpdateData( LockedData, 0 );
-                Engine::GAPI->AddFrameLoadedTexture( this );
                 SetReady( true ); // No need to load other stuff to get this ready
             }
         }
@@ -503,7 +531,7 @@ HRESULT MyDirectDrawSurface7::Unlock( LPRECT lpRect ) {
 
     return S_OK;
 }
-
+#pragma warning(pop)
 
 HRESULT MyDirectDrawSurface7::ReleaseDC( HDC hDC ) {
     DebugWriteTex( "IDirectDrawSurface7(%p)::ReleaseDC()" );
@@ -691,14 +719,4 @@ HRESULT MyDirectDrawSurface7::GetLOD( LPDWORD dwLOD ) {
 /** Returns the name of this surface */
 const std::string& MyDirectDrawSurface7::GetTextureName() {
     return TextureName;
-}
-
-/** Returns whether the mip-maps were put into the command queue or not */
-bool MyDirectDrawSurface7::MipMapsInQueue() {
-    return OriginalSurfaceDesc.dwMipMapCount == QueuedMipMaps + 1;
-}
-
-/** Adds one to the queued mipmap count */
-void MyDirectDrawSurface7::IncreaseQueuedMipMapCount() {
-    QueuedMipMaps++;
 }

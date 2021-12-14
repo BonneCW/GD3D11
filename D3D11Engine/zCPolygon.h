@@ -67,25 +67,25 @@ public:
 
     void Destructor() {
 #ifndef BUILD_GOTHIC_2_6_fix
-        XCALL( GothicMemoryLocations::zCPolygon::Destructor );
+        reinterpret_cast<void( __fastcall* )( zCPolygon* )>( GothicMemoryLocations::zCPolygon::Destructor )( this );
 #endif
     }
 
     void Constructor() {
 #ifndef BUILD_GOTHIC_2_6_fix
-        XCALL( GothicMemoryLocations::zCPolygon::Constructor );
+        reinterpret_cast<void( __fastcall* )( zCPolygon* )>( GothicMemoryLocations::zCPolygon::Constructor )( this );
 #endif
     }
 
     void AllocVertPointers( int num ) {
 #ifndef BUILD_GOTHIC_2_6_fix
-        XCALL( GothicMemoryLocations::zCPolygon::AllocVerts );
+        reinterpret_cast<void( __fastcall* )( zCPolygon*, int, int )>( GothicMemoryLocations::zCPolygon::AllocVerts )( this, 0, num );
 #endif
     }
 
     void CalcNormal() {
 #ifndef BUILD_GOTHIC_2_6_fix
-        XCALL( GothicMemoryLocations::zCPolygon::CalcNormal );
+        reinterpret_cast<void( __fastcall* )( zCPolygon* )>( GothicMemoryLocations::zCPolygon::CalcNormal )( this );
 #endif
     }
 
@@ -119,8 +119,18 @@ public:
         *(zCMaterial**)(((char*)this) + GothicMemoryLocations::zCPolygon::Offset_Material) = material;
     }
 
+    float3 GetLightStatAtPos(float3& position) {
+        float3 colorStat;
+        reinterpret_cast<void( __fastcall* )( zCPolygon*, DWORD, float3&, float3& )>( GothicMemoryLocations::zCPolygon::GetLightStatAtPos )( this, 0, colorStat, position );
+        return colorStat;
+    }
+
     zCLightmap* GetLightmap() const {
         return *(zCLightmap**)(((char*)this) + GothicMemoryLocations::zCPolygon::Offset_Lightmap);
+    }
+
+    void SetLightmap( zCLightmap* lightmap ) {
+        *(zCLightmap**)(((char*)this) + GothicMemoryLocations::zCPolygon::Offset_Lightmap) = lightmap;
     }
 
     char data[56];

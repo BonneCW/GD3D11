@@ -26,9 +26,6 @@ public:
     /** Binds the shadowmap to the pixelshader */
     void OnRenderLight();
 
-    /** Debug-draws the cubemap to the screen */
-    void DebugDrawCubeMap();
-
     /** Returns if this light needs an update */
     bool NeedsUpdate();
 

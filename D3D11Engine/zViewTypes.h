@@ -127,18 +127,20 @@ public:
 
     void _zCView::CheckAutoScroll() {
         // TODO: G1 addresses!
-        XCALL( 0x007A5F60 );
+        reinterpret_cast<void( __fastcall* )( _zCView* )>( 0x007A5F60 )( this );
     }
     void _zCView::CheckTimedText() {
         // TODO: G1 addresses!
-        XCALL( 0x007A7C50 );
+        reinterpret_cast<void( __fastcall* )( _zCView* )>( 0x007A7C50 )( this );
     }
 
     void _zCView::PrintChars( int x, int y, const zSTRING& str ) {
-        XCALL( GothicMemoryLocations::zCView::PrintChars );
+        reinterpret_cast<void( __fastcall* )( _zCView*, int, int, int, const zSTRING& )>
+            ( GothicMemoryLocations::zCView::PrintChars )( this, 0, x, y, str );
     }
     zCViewText* _zCView::CreateText( int x, int y, const zSTRING& str ) {
-        XCALL( GothicMemoryLocations::zCView::CreateText );
+        return reinterpret_cast<zCViewText*( __fastcall* )( _zCView*, int, int, int, const zSTRING& )>
+            ( GothicMemoryLocations::zCView::CreateText )( this, 0, x, y, str );
     }
 };
 
@@ -209,7 +211,7 @@ public:
 private:
     int zCMenuItem::GetIsDisabledInternal() {
         // TODO: G1 Addresses
-        XCALL( 0x004E1DE0 );
+        return reinterpret_cast<int( __fastcall* )( zCMenuItem* )>( 0x004E1DE0 )( this );
     }
 };
 

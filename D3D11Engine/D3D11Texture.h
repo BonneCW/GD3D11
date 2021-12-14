@@ -24,7 +24,7 @@ public:
     XRESULT UpdateData( void* data, int mip = 0 );
 
     /** Updates the Texture-Object using the deferred context (For loading in an other thread) */
-    XRESULT UpdateDataDeferred( void* data, int mip, bool noLock = false );
+    XRESULT UpdateDataDeferred( void* data, int mip );
 
     /** Returns the RowPitch-Bytes */
     UINT GetRowPitchBytes( int mip );
@@ -55,6 +55,7 @@ public:
 
     /** Generates mipmaps for this texture (may be slow!) */
     XRESULT GenerateMipMaps();
+    XRESULT GenerateMipMapsDeferred();
 
     /** Returns this textures ID */
     UINT16 GetID() { return ID; };

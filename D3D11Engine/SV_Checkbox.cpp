@@ -70,12 +70,12 @@ bool SV_Checkbox::GetChecked() const {
 }
 
 /** Sets this buttons caption */
-void SV_Checkbox::SetCaption( const std::string& caption ) {
+void SV_Checkbox::SetCaption( const std::wstring& caption ) {
     Caption = caption;
 
     SAFE_RELEASE( CaptionLayout );
     MainView->GetWriteFactory()->CreateTextLayout(
-        Toolbox::ToWideChar( caption ).c_str(),      // The string to be laid out and formatted.
+        caption.c_str(),      // The string to be laid out and formatted.
         caption.length(),  // The length of the string.
         MainView->GetDefaultTextFormat(),  // The text format to apply to the string (contains font information, etc).
         ViewRect.right - ViewRect.left,         // The width of the layout box.
@@ -87,7 +87,7 @@ void SV_Checkbox::SetCaption( const std::string& caption ) {
         CaptionLayout->SetTextAlignment( DWRITE_TEXT_ALIGNMENT_LEADING );
         CaptionLayout->SetParagraphAlignment( DWRITE_PARAGRAPH_ALIGNMENT_CENTER );
     } else {
-        LogWarn() << "Failed to create TextLayout for caption '" << caption << "'";
+        LogWarn() << "Failed to create TextLayout for caption '" << Toolbox::ToMultiByte( caption ) << "'";
     }
 }
 

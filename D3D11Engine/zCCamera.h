@@ -27,7 +27,6 @@ public:
     }
 
     const DirectX::XMFLOAT4X4& GetTransformDX( const ETransformType type ) {
-#ifdef BUILD_GOTHIC_2_6_fix
         switch ( type ) {
         case ETransformType::TT_WORLD:			return trafoWorld;		break;
         case ETransformType::TT_VIEW:			return trafoView;		break;
@@ -36,14 +35,11 @@ public:
         case ETransformType::TT_VIEW_INV:		return trafoViewInv;	break;
         default:						        return camMatrix;		break;
         };
-#else
-        // TODO: Check if zCCamera is same with G1
-        XCALL( GothicMemoryLocations::zCCamera::GetTransform );
-#endif
     }
 
     void SetTransform( const ETransformType type, const DirectX::XMFLOAT4X4& mat ) {
-        XCALL( GothicMemoryLocations::zCCamera::SetTransform );
+        reinterpret_cast<void( __fastcall* )( zCCamera*, int, const ETransformType, const DirectX::XMFLOAT4X4& )>
+            ( GothicMemoryLocations::zCCamera::SetTransform )( this, 0, type, mat );
     }
 
     void SetTransformXM( const ETransformType type, const DirectX::XMMATRIX& mat ) {
@@ -52,19 +48,21 @@ public:
     }
 
     void Activate() {
-        XCALL( GothicMemoryLocations::zCCamera::Activate );
+        reinterpret_cast<void( __fastcall* )( zCCamera* )>( GothicMemoryLocations::zCCamera::Activate )( this );
     }
 
     void SetFOV( float azi, float elev ) {
-        XCALL( GothicMemoryLocations::zCCamera::SetFOV );
+        reinterpret_cast<void( __fastcall* )( zCCamera*, int, float, float )>
+           ( GothicMemoryLocations::zCCamera::SetFOV )( this, 0, azi, elev );
     }
 
     void GetFOV( float& fovH, float& fovV ) {
-        XCALL( GothicMemoryLocations::zCCamera::GetFOV_f2 );
+        reinterpret_cast<void( __fastcall* )( zCCamera*, int, float&, float& )>
+            ( GothicMemoryLocations::zCCamera::GetFOV_f2 )( this, 0, fovH, fovV );
     }
 
     void UpdateViewport() {
-        XCALL( GothicMemoryLocations::zCCamera::UpdateViewport );
+        reinterpret_cast<void( __fastcall* )( zCCamera* )>( GothicMemoryLocations::zCCamera::UpdateViewport )( this );
     }
 
     zTCam_ClipType BBox3DInFrustum( const zTBBox3D& box ) {
@@ -74,7 +72,8 @@ public:
     }
 
     zTCam_ClipType BBox3DInFrustum( const zTBBox3D& box, int& clipFlags ) {
-        XCALL( GothicMemoryLocations::zCCamera::BBox3DInFrustum );
+        return reinterpret_cast<zTCam_ClipType( __fastcall* )( zCCamera*, int, const zTBBox3D&, int& )>
+            ( GothicMemoryLocations::zCCamera::BBox3DInFrustum )( this, 0, box, clipFlags );
     }
 
     float GetFarPlane() {
@@ -86,12 +85,50 @@ public:
     }
 
     void SetFarPlane( float value ) {
-        XCALL( GothicMemoryLocations::zCCamera::SetFarPlane );
+        reinterpret_cast<void( __fastcall* )( zCCamera*, int, float )>
+            ( GothicMemoryLocations::zCCamera::SetFarPlane )( this, 0, value );
     }
 
-    /*void GetCameraPosition(DirectX::XMFLOAT3 & v)
+    bool HasScreenFadeEnabled() {
+        return (*(int*)((char*)this + GothicMemoryLocations::zCCamera::Offset_ScreenFadeEnabled)) != 0;
+    }
+
+    void ResetScreenFadeEnabled() {
+        *(int*)((char*)this + GothicMemoryLocations::zCCamera::Offset_ScreenFadeEnabled) = 0;
+    }
+
+    bool HasCinemaScopeEnabled() {
+        return (*(int*)((char*)this + GothicMemoryLocations::zCCamera::Offset_CinemaScopeEnabled)) != 0;
+    }
+
+    void ResetCinemaScopeEnabled() {
+        *(int*)((char*)this + GothicMemoryLocations::zCCamera::Offset_CinemaScopeEnabled) = 0;
+    }
+
+    zColor GetScreenFadeColor() {
+        return *(zColor*)((char*)this + GothicMemoryLocations::zCCamera::Offset_ScreenFadeColor);
+    }
+
+    zColor GetCinemaScopeColor() {
+        return *(zColor*)((char*)this + GothicMemoryLocations::zCCamera::Offset_CinemaScopeColor);
+    }
+
+    int GetScreenFadeBlendFunc() {
+#ifdef BUILD_GOTHIC_2_6_fix
+        return static_cast<int>(*(BYTE*)((char*)this + GothicMemoryLocations::zCCamera::Offset_ScreenFadeBlendFunc));
+#else
+        return zRND_ALPHA_FUNC_BLEND;
+#endif
+    }
+
+    DWORD GetPolyMaterial() {
+        return *(DWORD*)((char*)this + GothicMemoryLocations::zCCamera::Offset_PolyMaterial);
+    }
+
+    /*void GetCameraPosition(DirectX::XMFLOAT3& v)
     {
-        XCALL(GADDR::zCCamera_GetCameraPosition);
+        reinterpret_cast<void( __fastcall* )( zCCamera*, int, DirectX::XMFLOAT3& )>
+            ( GADDR::zCCamera_GetCameraPosition )( this, 0, v );
     }*/
 
     /*static void SetFreeLook(bool freeLook)

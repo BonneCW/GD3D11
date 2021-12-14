@@ -11,6 +11,7 @@ class MyDirectDrawSurface7;
 class FakeDirectDrawSurface7 : public IDirectDrawSurface7 {
 public:
 	FakeDirectDrawSurface7();
+    ~FakeDirectDrawSurface7();
 
 	/*** IUnknown methods ***/
 	HRESULT __stdcall QueryInterface( REFIID riid, LPVOID* ppvObj );

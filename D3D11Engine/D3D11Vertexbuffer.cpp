@@ -51,7 +51,7 @@ XRESULT D3D11VertexBuffer::Init( void* initData, unsigned int sizeInBytes, EBind
     InitData.SysMemPitch = 0;
     InitData.SysMemSlicePitch = 0;
 
-    LE( engine->GetDevice()->CreateBuffer( &bufferDesc, &InitData, VertexBuffer.GetAddressOf() ) );
+    LE( engine->GetDevice()->CreateBuffer( &bufferDesc, &InitData, VertexBuffer.ReleaseAndGetAddressOf() ) );
     if ( !VertexBuffer.Get() ) {
         delete[] data;
         return XR_SUCCESS;
@@ -63,7 +63,7 @@ XRESULT D3D11VertexBuffer::Init( void* initData, unsigned int sizeInBytes, EBind
         srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
         srvDesc.Buffer.ElementWidth = sizeInBytes / structuredByteSize;
 
-        engine->GetDevice()->CreateShaderResourceView( VertexBuffer.Get(), &srvDesc, ShaderResourceView.GetAddressOf() );
+        engine->GetDevice()->CreateShaderResourceView( VertexBuffer.Get(), &srvDesc, ShaderResourceView.ReleaseAndGetAddressOf() );
     }
 
     SetDebugName( VertexBuffer.Get(), fileName );

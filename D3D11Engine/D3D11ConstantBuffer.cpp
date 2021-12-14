@@ -52,8 +52,20 @@ void D3D11ConstantBuffer::UpdateBuffer( const void* data ) {
 
         BufferDirty = true;
     }
+}
 
+void D3D11ConstantBuffer::UpdateBuffer( const void* data, UINT size ) {
+    D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
+    D3D11_MAPPED_SUBRESOURCE res;
+    if ( XR_SUCCESS == engine->GetContext()->Map( Buffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &res ) ) {
+        // Copy data
+        memcpy( res.pData, data, size );
+
+        engine->GetContext()->Unmap( Buffer.Get(), 0 );
+
+        BufferDirty = true;
+    }
 }
 
 /** Binds the buffer */

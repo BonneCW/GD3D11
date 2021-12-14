@@ -2,6 +2,17 @@
 
 #include <d3d9.h>
 
+void zCObject_AddRef( void* o ) {
+    DWORD object = reinterpret_cast<DWORD>( o );
+    ++( *reinterpret_cast<DWORD*>( object + 0x04 ) );
+}
+
+void zCObject_Release( void* o ) {
+    DWORD object = reinterpret_cast<DWORD>( o );
+    if ( --( *reinterpret_cast<DWORD*>( object + 0x04 ) ) <= 0 )
+        reinterpret_cast<void( __thiscall* )( DWORD, DWORD )>( *reinterpret_cast<DWORD*>( *reinterpret_cast<DWORD*>( object ) + 0x0C ) )( object, 1 );
+}
+
 void DebugWrite_i( LPCSTR lpDebugMessage, void* thisptr ) {
 	//LogInfo() << "D3D7-CALL (" << thisptr << "): " << lpDebugMessage;
 

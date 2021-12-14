@@ -11,9 +11,12 @@
 #include "VersionCheck.h"
 #include "InstructionSet.h"
 
+#include <shlwapi.h>
+
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "Imagehlp.lib") // Used in VersionCheck.cpp to get Gothic.exe Checksum.
+#pragma comment(lib, "shlwapi.lib")
 
 //#pragma pack(1)
 
@@ -24,12 +27,17 @@ extern "C" {
 }
 
 static HINSTANCE hLThis = 0;
-static HINSTANCE hDDRAW = 0;
 
 static HRESULT( WINAPI* DirectDrawCreateEx_t )(GUID FAR* lpGuid, LPVOID* lplpDD, REFIID  iid, IUnknown FAR* pUnkOuter);
 typedef void (WINAPI* DirectDrawSimple)();
 typedef HRESULT( WINAPI* DirectDrawCreateEx_type )(GUID FAR*, LPVOID*, REFIID, IUnknown FAR*);
 
+#if defined(BUILD_GOTHIC_2_6_fix)
+using WinMainFunc = decltype(&WinMain);
+WinMainFunc originalWinMain;
+#endif
+
+bool FeatureLevel10Compatibility = false;
 bool GMPModeActive = false;
 
 void SignalHandler( int signal ) {
@@ -143,21 +151,31 @@ __declspec(naked) void FakeGetSurfaceFromDC() { _asm { jmp[ddraw.GetSurfaceFromD
 __declspec(naked) void FakeRegisterSpecialCase() { _asm { jmp[ddraw.RegisterSpecialCase] } }
 __declspec(naked) void FakeReleaseDDThreadLock() { _asm { jmp[ddraw.ReleaseDDThreadLock] } }
 
+void SetupWorkingDirectory() {
+    // Set current working directory to the one with executable
+    char executablePath[MAX_PATH];
+    GetModuleFileNameA( GetModuleHandleA( nullptr ), executablePath, sizeof( executablePath ) );
+    PathRemoveFileSpecA( executablePath );
+    SetCurrentDirectoryA( executablePath );
+}
+
 void EnableCrashingOnCrashes() {
     typedef BOOL( WINAPI* tGetPolicy )(LPDWORD lpFlags);
     typedef BOOL( WINAPI* tSetPolicy )(DWORD dwFlags);
     const DWORD EXCEPTION_SWALLOWING = 0x1;
 
     HMODULE kernel32 = LoadLibraryA( "kernel32.dll" );
-    tGetPolicy pGetPolicy = (tGetPolicy)GetProcAddress( kernel32,
-        "GetProcessUserModeExceptionPolicy" );
-    tSetPolicy pSetPolicy = (tSetPolicy)GetProcAddress( kernel32,
-        "SetProcessUserModeExceptionPolicy" );
-    if ( pGetPolicy && pSetPolicy ) {
-        DWORD dwFlags;
-        if ( pGetPolicy( &dwFlags ) ) {
-            // Turn off the filter
-            pSetPolicy( dwFlags & ~EXCEPTION_SWALLOWING );
+    if ( kernel32 ) {
+        tGetPolicy pGetPolicy = (tGetPolicy)GetProcAddress( kernel32,
+            "GetProcessUserModeExceptionPolicy" );
+        tSetPolicy pSetPolicy = (tSetPolicy)GetProcAddress( kernel32,
+            "SetProcessUserModeExceptionPolicy" );
+        if ( pGetPolicy && pSetPolicy ) {
+            DWORD dwFlags;
+            if ( pGetPolicy( &dwFlags ) ) {
+                // Turn off the filter
+                pSetPolicy( dwFlags & ~EXCEPTION_SWALLOWING );
+            }
         }
     }
 }
@@ -181,6 +199,21 @@ void CheckPlatformSupport() {
 #endif
 }
 
+#if defined(BUILD_GOTHIC_2_6_fix)
+int WINAPI hooked_WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd ) {
+    if ( GetModuleHandleA( "gmp.dll" ) ) {
+        GMPModeActive = true;
+        LogInfo() << "GMP Mode Enabled";
+    }
+    // Remove automatic volume change of sounds regarding whether the camera is indoor or outdoor
+    // TODO: Implement!
+    if ( !GMPModeActive ) {
+        XHook( GothicMemoryLocations::zCActiveSnd::AutoCalcObstruction, HookedFunctionInfo::hooked_zCActiveSndAutoCalcObstruction );
+    }
+    return originalWinMain( hInstance, hPrevInstance, lpCmdLine, nShowCmd );
+}
+#endif
+
 BOOL WINAPI DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
     if ( reason == DLL_PROCESS_ATTACH ) {
         //DebugWrite_i("DDRAW Proxy DLL starting.\n", 0);
@@ -188,8 +221,12 @@ BOOL WINAPI DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
 
         Engine::PassThrough = false;
 
-        //_CrtSetDbgFlag (_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+#if defined(BUILD_GOTHIC_2_6_fix)
+        XHook( originalWinMain, GothicMemoryLocations::Functions::WinMain, hooked_WinMain );
+#endif
 
+        //_CrtSetDbgFlag (_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+        SetupWorkingDirectory();
         if ( !Engine::PassThrough ) {
             Log::Clear();
             LogInfo() << "Starting DDRAW Proxy DLL.";
@@ -198,25 +235,16 @@ BOOL WINAPI DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
                 LogInfo() << "COM initialized";
             }
 
-            if ( Toolbox::FileExists( "gmp.dll" ) || Toolbox::FileExists( "..\\gmp\\gmp.dll" ) ) {
-                GMPModeActive = true;
-                LogInfo() << "GMP Mode Enabled";
-            } else {
-                GMPModeActive = false;
-            }
-
             // Check for right version
             VersionCheck::CheckExecutable();
             CheckPlatformSupport();
-            HookedFunctions::OriginalFunctions.InitHooks();
 
             Engine::GAPI = nullptr;
             Engine::GraphicsEngine = nullptr;
 
             // Create GothicAPI here to make all hooks work
             Engine::CreateGothicAPI();
-
-            GothicAPI::DisableErrorMessageBroadcast();
+            HookedFunctions::OriginalFunctions.InitHooks();
 
             EnableCrashingOnCrashes();
             //SetUnhandledExceptionFilter(MyUnhandledExceptionFilter);
@@ -259,7 +287,7 @@ BOOL WINAPI DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
         Engine::OnShutDown();
 
         CoUninitialize();
-        FreeLibrary( hDDRAW );
+        FreeLibrary( ddraw.dll );
 
         LogInfo() << "DDRAW Proxy DLL signing off.\n";
     }

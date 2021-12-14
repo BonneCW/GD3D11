@@ -103,12 +103,6 @@ public:
     /** Returns true if this surface is used to render a movie to */
     bool IsMovieSurface() { return LockedData != nullptr; }
 
-    /** Adds one to the queued mipmap count */
-    void IncreaseQueuedMipMapCount();
-
-    /** Returns whether the mip-maps were put into the command queue or not */
-    bool MipMapsInQueue();
-
     /** Returns the type of this texture */
     ETextureType GetTextureType() { return TextureType; };
 private:
@@ -140,7 +134,4 @@ private:
 
     /** zCTexture this is associated with */
     zCTexture* GothicTexture;
-
-    /** Number of mipmaps in GPU queue */
-    unsigned int QueuedMipMaps;
 };

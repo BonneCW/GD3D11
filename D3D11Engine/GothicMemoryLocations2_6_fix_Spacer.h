@@ -296,7 +296,7 @@ struct GothicMemoryLocations {
 
     struct zCProgMeshProto {
         static const unsigned int Offset_PositionList = 0x34;
-        static const unsigned int Offset_NormalsList = 0x38;
+        static const unsigned int Offset_NormalsList = 0x3C;
         static const unsigned int Offset_Submeshes = 0xA4;
         static const unsigned int Offset_NumSubmeshes = 0xA8;
     };
@@ -388,8 +388,9 @@ struct GothicMemoryLocations {
     };
 
     struct zSTRING {
-        static const unsigned int ToChar = 0x00411CA0;
+        static const unsigned int ToChar = 0x08;
         static const unsigned int ConstructorCharPtr = 0x004010C0;
+        static const unsigned int DestructorCharPtr = 0x00401160;
     };
 
 
@@ -436,10 +437,11 @@ struct GothicMemoryLocations {
         static const unsigned int CacheIn = 0x00767EF0;
         static const unsigned int CacheOut = 0x00768200;
         static const unsigned int PurgeCaches = 0x007678E0;
+        static const unsigned int RefreshTexMaxSize = 0x0077FBA0;
+        static const unsigned int SetThreadingEnabled = 0x00767AE0;
     };
 
     struct oCWorld {
-        //static const unsigned int InsertVobInWorld = 0x006D7120;
         static const unsigned int EnableVob = 0x005D9920;
         static const unsigned int DisableVob = 0x005D9A40;
         static const unsigned int RemoveFromLists = 0x005D9F70;
@@ -447,7 +449,6 @@ struct GothicMemoryLocations {
 
     struct zCWorld {
         static const unsigned int Render = 0x007AC5F0;
-        static const unsigned int InsertVobInWorld = 0x005D9910;
         static const unsigned int VobAddedToWorld = 0x007AF6C0;
         //static const unsigned int Call_Render_zCBspTreeRender = 0x00621830;
         static const unsigned int Offset_GlobalVobTree = 0x24;
@@ -458,5 +459,10 @@ struct GothicMemoryLocations {
         static const unsigned int DisposeWorld = 0x007AEC20;
         static const unsigned int DisposeVobs = 0x007AE850;
         static const unsigned int Offset_BspTree = 0x1AC;
+    };
+
+    struct zCClassDef {
+        static const unsigned int oCNpc = 0x009A7978;
+        static const unsigned int zCTexture = 0x00B18D18;
     };
 };

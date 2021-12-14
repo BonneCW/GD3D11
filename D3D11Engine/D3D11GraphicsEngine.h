@@ -56,6 +56,15 @@ public:
     /** Called when the game created its window */
     virtual XRESULT SetWindow( HWND hWnd ) override;
 
+    /** Reset BackBuffer */
+    void OnResetBackBuffer();
+
+    /** Get BackBuffer Format */
+    DXGI_FORMAT GetBackBufferFormat();
+
+    /** Get Window Mode */
+    int GetWindowMode();
+
     /** Called on window resize/resolution change */
     virtual XRESULT OnResize( INT2 newSize ) override;
 
@@ -79,6 +88,9 @@ public:
 
     /** Creates a constantbuffer object (Not registered inside) */
     virtual XRESULT CreateConstantBuffer( D3D11ConstantBuffer** outCB, void* data, int size );
+
+    /** Fetches a list of available display modes */
+    XRESULT FetchDisplayModeList();
 
     /** Returns a list of available display modes */
     virtual XRESULT GetDisplayModeList( std::vector<DisplayModeInfo>* modeList, bool includeSuperSampling = false );
@@ -114,6 +126,14 @@ public:
     /** Puts the current world matrix into a CB and binds it to the given slot */
     void SetupPerInstanceConstantBuffer( int slot = 1 );
 
+    /**Colorspace for HDR-Monitors on Windows 10 */
+    /** HDR Support */
+    //DXGI_COLOR_SPACE_TYPE   m_colorSpace; //only used when access from other function required
+    //DXGI_COLOR_SPACE_TYPE   GetColorSpace() const noexcept { return m_colorSpace; } //only used when access from other function required
+
+    void UpdateColorSpace_SwapChain3();
+    void UpdateColorSpace_SwapChain4();
+
     enum EPNAENRenderMode {
         PNAEN_Default,
         PNAEN_Instanced,
@@ -123,8 +143,15 @@ public:
     /** Sets up everything for a PNAEN-Mesh */
     void Setup_PNAEN( EPNAENRenderMode mode = PNAEN_Default );
 
+    /** Sets up texture with normalmap and fxmap for rendering */
+    bool BindTextureNRFX( zCTexture* tex, bool bindShader );
+
     /** Draws a skeletal mesh */
-    virtual XRESULT DrawSkeletalMesh( SkeletalVobInfo* vi, const std::vector<DirectX::XMFLOAT4X4>& transforms, float fatness = 1.0f ) override;
+    XRESULT DrawSkeletalVertexNormals( SkeletalVobInfo* vi, const std::vector<DirectX::XMFLOAT4X4>& transforms, float4 color, float fatness = 1.0f );
+    virtual XRESULT DrawSkeletalMesh( SkeletalVobInfo* vi, const std::vector<DirectX::XMFLOAT4X4>& transforms, float4 color, float fatness = 1.0f ) override;
+
+    /** Draws a screen fade effects */
+    virtual XRESULT DrawScreenFade( void* camera ) override;
 
     /** Draws a vertexarray, non-indexed */
     virtual XRESULT DrawVertexArray( ExVertexStruct* vertices, unsigned int numVertices, unsigned int startVertex = 0, unsigned int stride = sizeof( ExVertexStruct ) ) override;
@@ -154,6 +181,7 @@ public:
 
     /** Draws quadmarks in a simple way */
     void DrawQuadMarks();
+    void DrawMQuadMarks();
 
     /** Draws the ocean */
     XRESULT DrawOcean( GOcean* ocean );
@@ -222,6 +250,9 @@ public:
         bool noNPCs = false,
         std::list<VobInfo*>* renderedVobs = nullptr, std::list<SkeletalVobInfo*>* renderedMobs = nullptr, std::map<MeshKey, WorldMeshInfo*, cmpMeshKey>* worldMeshCache = nullptr );
 
+    /** Update morph mesh visual */
+    void UpdateMorphMeshVisual();
+
     /** Draws the static vobs instanced */
     XRESULT DrawVOBsInstanced();
 
@@ -263,6 +294,9 @@ public:
     /** Returns the current rendering stage */
     D3D11ENGINE_RENDER_STAGE GetRenderingStage();
 
+    /** Update clipping cursor onto window */
+    void UpdateClipCursor( HWND hWnd );
+
     /** Message-Callback for the main window */
     virtual LRESULT OnWindowMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam );
 
@@ -290,11 +324,17 @@ public:
     /** Copies the depth stencil buffer to DepthStencilBufferCopy */
     void CopyDepthStencil();
 
+    /** Draws particle meshes */
+    void DrawFrameParticleMeshes( std::unordered_map<zCVob*, MeshVisualInfo*>& progMeshes );
+
     /** Draws particle effects */
     void DrawFrameParticles( std::map<zCTexture*, std::vector<ParticleInstanceInfo>>& particles, std::map<zCTexture*, ParticleRenderInfo>& info );
 
     /** Returns the UI-View */
     D2DView* GetUIView() { return UIView.get(); }
+
+    /** Returns the settings window availability */
+    bool HasSettingsWindow();
 
     /** Creates the main UI-View */
     void CreateMainUIView();
@@ -332,7 +372,6 @@ protected:
 
     /** Temp-Arrays for storing data to be put in constant buffers */
     DirectX::XMFLOAT4X4 Temp2D3DXMatrix[2];
-    DirectX::XMFLOAT4X4 TempBonesMatrix[NUM_MAX_BONES];
     float2 Temp2Float2[2];
     std::unique_ptr<D3D11VertexBuffer> DynamicInstancingBuffer;
 
@@ -351,14 +390,14 @@ protected:
     std::unique_ptr<RenderToDepthStencilBuffer> WorldShadowmap1;
     std::vector<VobInfo*> RenderedVobs;
 
+    /** Modulate Quad Marks */
+    std::vector<std::pair<zCQuadMark*, const QuadMarkInfo*>> MulQuadMarks;
+
     /** The current rendering stage */
     D3D11ENGINE_RENDER_STAGE RenderingStage;
 
     /** The editorcontrols */
     std::unique_ptr<D2DView> UIView;
-
-    /** Map of texture/index */
-    stdext::unordered_map<zCTexture*, int> TexArrayIndexByTexture;
 
     /** List of water surfaces for this frame */
     std::unordered_map<zCTexture*, std::vector<WorldMeshInfo*>> FrameWaterSurfaces;
@@ -389,12 +428,20 @@ protected:
     std::unique_ptr<D3D11VertexBuffer> TempMorphedMeshBigVertexBuffer;
     std::unique_ptr<D3D11VertexBuffer> TempHUDVertexBuffer;
 
+    /** Cached display modes */
+    std::vector<DisplayModeInfo> CachedDisplayModes;
+    DXGI_RATIONAL CachedRefreshRate;
+
+    /** Low latency object handle */
+    HANDLE frameLatencyWaitableObject;
+
     /** If true, we will save a screenshot after the next frame */
     bool SaveScreenshotNextFrame;
 
     bool m_flipWithTearing;
     bool m_swapchainflip;
     bool m_lowlatency;
+    bool m_HDR;
     int m_previousFpsLimit;
     bool m_isWindowActive;
 };

@@ -47,6 +47,8 @@ void EditorLinePrimitive::DeleteContent() {
 }
 
 /** Creates a grid of lines */
+#pragma warning(push)
+#pragma warning(disable: 6386)
 HRESULT EditorLinePrimitive::CreateLineGrid( int LinesX, int LinesY, XMFLOAT2* Middle, const float4& Color ) {
     HRESULT hr;
     LineVertex* vx = new LineVertex[(LinesX + 1) * (LinesY + 1) * 4];
@@ -80,12 +82,12 @@ HRESULT EditorLinePrimitive::CreateLineGrid( int LinesX, int LinesY, XMFLOAT2* M
         CurVertex++;
     }
 
-
     LE( CreatePrimitive( vx, (LinesX + 1) * (LinesY + 1) * 4 ) );
 
     delete[] vx;
     return hr;
 }
+#pragma warning(pop)
 
 /** Creates a box of lines */
 HRESULT EditorLinePrimitive::CreateLineBoxPrimitive( float4& Color ) {
@@ -422,6 +424,8 @@ HRESULT EditorLinePrimitive::CreateCirclePrimitive( float Radius, UINT Detail, c
 }
 
 /** Creates a ball of lines.*/
+#pragma warning(push)
+#pragma warning(disable: 6386)
 HRESULT EditorLinePrimitive::CreateLineBallPrimitive( UINT Detail, const float4& Color ) {
     // Allocate enough memory for all 3 slices
     LineVertex* vx = new LineVertex[(Detail * 3)];
@@ -468,7 +472,7 @@ HRESULT EditorLinePrimitive::CreateLineBallPrimitive( UINT Detail, const float4&
 
     return hr;
 }
-
+#pragma warning(pop)
 
 /** Creates an arrow of lines */
 HRESULT EditorLinePrimitive::CreateArrowPrimitive( const float4& Color, float ArrowRadius, float ArrowOffset ) {
@@ -501,6 +505,8 @@ HRESULT EditorLinePrimitive::CreateArrowPrimitive( const float4& Color, float Ar
 }
 
 /** Creates a cone of lines */
+#pragma warning(push)
+#pragma warning(disable: 6386)
 HRESULT EditorLinePrimitive::CreateSimpleConePrimitive( float Length, float Radius, UINT Detail, const float4& Color ) {
     UINT NumVerts;
     NumVerts = Detail * 2; // Two for each connection line
@@ -535,18 +541,14 @@ HRESULT EditorLinePrimitive::CreateSimpleConePrimitive( float Length, float Radi
         vx[i].Position = float3( 0, 0, 0 );
         EncodeColor( &vx[i], Color );
         i++;
-
-
-
-
     }
 
     HRESULT hr = CreatePrimitive( vx, NumVerts );
-
     delete[] vx;
 
     return hr;
 }
+#pragma warning(pop)
 
 /** Puts the color into the Normal and TexCoord channels */
 void EditorLinePrimitive::EncodeColor( LineVertex* vx, const float4& Color ) {

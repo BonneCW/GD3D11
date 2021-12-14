@@ -9,16 +9,9 @@
 
 using namespace DirectX;
 
-D3D11GShader::D3D11GShader() {
-
-    // Insert into state-map
-    ID = D3D11ObjectIdManager::AddGShader( this );
-}
+D3D11GShader::D3D11GShader() {}
 
 D3D11GShader::~D3D11GShader() {
-    // Remove from state map
-    D3D11ObjectIdManager::EraseGShader( this );
-
     for ( unsigned int i = 0; i < ConstantBuffers.size(); i++ ) {
         delete ConstantBuffers[i];
     }
@@ -74,13 +67,11 @@ XRESULT D3D11GShader::LoadShader( const char* geometryShader, const std::vector<
     D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
     Microsoft::WRL::ComPtr<ID3DBlob> gsBlob;
-
     LogInfo() << "Compiling geometry shader: " << geometryShader;
-    File = geometryShader;
 
     if ( !createStreamOutFromVS ) {
         // Compile shaders
-        if ( FAILED( CompileShaderFromFile( geometryShader, "GSMain", "gs_5_0", gsBlob.GetAddressOf(), makros ) ) ) {
+        if ( FAILED( CompileShaderFromFile( geometryShader, "GSMain", "gs_4_0", gsBlob.GetAddressOf(), makros ) ) ) {
             return XR_FAILED;
         }
 
@@ -88,7 +79,7 @@ XRESULT D3D11GShader::LoadShader( const char* geometryShader, const std::vector<
         LE( engine->GetDevice()->CreateGeometryShader( gsBlob->GetBufferPointer(), gsBlob->GetBufferSize(), nullptr, GeometryShader.GetAddressOf() ) );
     } else {
         // Compile vertexshader
-        if ( FAILED( CompileShaderFromFile( geometryShader, "VSMain", "vs_5_0", gsBlob.GetAddressOf(), makros ) ) ) {
+        if ( FAILED( CompileShaderFromFile( geometryShader, "VSMain", "vs_4_0", gsBlob.GetAddressOf(), makros ) ) ) {
             return XR_FAILED;
         }
 
@@ -124,7 +115,8 @@ XRESULT D3D11GShader::LoadShader( const char* geometryShader, const std::vector<
         }
 
         // Create the shader from a vertexshader
-        engine->GetDevice()->CreateGeometryShaderWithStreamOutput( gsBlob->GetBufferPointer(), gsBlob->GetBufferSize(), soDec, numSoDecElements, &stride, 1, D3D11_SO_NO_RASTERIZED_STREAM, nullptr, GeometryShader.GetAddressOf() );
+        LE( engine->GetDevice()->CreateGeometryShaderWithStreamOutput( gsBlob->GetBufferPointer(), gsBlob->GetBufferSize(), soDec, numSoDecElements, &stride, 1,
+            (FeatureLevel10Compatibility ? 0 : D3D11_SO_NO_RASTERIZED_STREAM), nullptr, GeometryShader.GetAddressOf() ) );
     }
 
     SetDebugName( GeometryShader.Get(), geometryShader );

@@ -9,7 +9,7 @@ SV_NamedSlider::SV_NamedSlider( D2DView* view, D2DSubView* parent ) : D2DSubView
 
     Label = new SV_Label( view, this );
     Label->SetRect( D2D1::RectF( 0, 0, 200, 10 ) );
-    Label->SetCaption( "Default" );
+    Label->SetCaption( L"Default" );
 }
 
 SV_NamedSlider::~SV_NamedSlider() {}

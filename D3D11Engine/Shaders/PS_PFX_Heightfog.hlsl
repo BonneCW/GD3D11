@@ -33,21 +33,19 @@ Texture2D	TX_Depth : register( t1 );
 
 float3 VSPositionFromDepth(float depth, float2 vTexCoord)
 {
-    // Get the depth value for this pixel
-    float z = depth; 
-    // Get x/w and y/w from the viewport position
-    float x = vTexCoord.x * 2 - 1;
-    float y = (1 - vTexCoord.y) * 2 - 1;
-    float4 vProjectedPos = float4(x, y, z, 1.0f);
-    // Transform by the inverse projection matrix
-    float4 vPositionVS = mul(vProjectedPos, HF_InvProj); //invViewProj == invProjection here  
-    // Divide by w to get the view-space position
-    return vPositionVS.xyz / vPositionVS.w;   
+	// Get NDC clip-space position
+	float4 vProjectedPos = float4(vTexCoord * float2(2.0f, -2.0f) + float2(-1.0f, 1.0f), depth, 1.0f);
+
+	// Transform by the inverse projection matrix
+	float4 vPositionVS = mul(vProjectedPos, HF_InvProj); //invViewProj == invProjection here
+
+	// Divide by w to get the view-space position
+	return vPositionVS.xyz / vPositionVS.www;
 }
 
 float ComputeVolumetricFog(float3 cameraToWorldPos, float3 posOriginal)
 {	
-	float cVolFogHeightDensityAtViewer = exp( -HF_HeightFalloff * HF_CameraPosition.y );
+	float cVolFogHeightDensityAtViewer = exp( -HF_HeightFalloff );
 	
 	float lenOrig = length(posOriginal - HF_CameraPosition);
 	float len = length(cameraToWorldPos);

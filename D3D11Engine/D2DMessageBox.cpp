@@ -29,7 +29,7 @@ XRESULT D2DMessageBox::InitControls( ED2D_MB_TYPE type ) {
     Message->SetSize( GetSize() );
     Message->AlignUnder( Header, 5.0f );
     Message->SetRect( D2D1::RectF( 5.0f, Message->GetRect().top, ViewRect.right - 5.0f, ViewRect.bottom - 5.0f ) );
-    Message->SetCaption( "Text" );
+    Message->SetCaption( L"Text" );
 
     SetPositionCentered( D2D1::Point2F( MainView->GetRenderTarget()->GetSize().width / 2, MainView->GetRenderTarget()->GetSize().height / 2 ), D2D1::SizeF( 400, 150 ) );
 
@@ -80,7 +80,7 @@ void D2DMessageBox::SetCallback( D2DMessageBoxCallback callback, void* userdata 
 
 /** Sets the text displayed in the messagebox */
 void D2DMessageBox::SetMessage( const std::string& text ) {
-    Message->SetCaption( text );
+    Message->SetCaption( Toolbox::ToWideChar( text ) );
 }
 
 /** Sets the position and size of this sub-view */

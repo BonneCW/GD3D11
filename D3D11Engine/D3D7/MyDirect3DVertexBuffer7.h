@@ -30,6 +30,9 @@ public:
 		RefCount = 1;
 	}
 
+    ~MyDirect3DVertexBuffer7() {
+        delete VertexBuffer;
+    }
 
 	/*** IUnknown methods ***/
 	HRESULT STDMETHODCALLTYPE QueryInterface( REFIID riid, void** ppvObj ) {

@@ -64,6 +64,8 @@ void BaseWidget::OnMButtonClick( int button ) {}
 void BaseWidget::OnWindowMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam ) {}
 
 /** Widget primitives */
+#pragma warning(push)
+#pragma warning(disable: 6386)
 void BaseWidget::CreateArrowCone( int Detail, int Axis, const float4& Color, EditorLinePrimitive* Prim ) {
     UINT NumVerts;
     NumVerts = Detail * 6;
@@ -195,6 +197,7 @@ void BaseWidget::CreateArrowCone( int Detail, int Axis, const float4& Color, Edi
 
     delete[] vx;
 }
+#pragma warning(pop)
 
 void BaseWidget::CreateArrowCube( DirectX::XMFLOAT3* Offset, float Extends, const float4& Color, EditorLinePrimitive* Prim ) {
     LineVertex vx[36];

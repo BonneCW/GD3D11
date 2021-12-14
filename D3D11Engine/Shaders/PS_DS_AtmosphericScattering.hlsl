@@ -56,24 +56,22 @@ struct PS_INPUT
 
 float3 VSPositionFromDepth(float depth, float2 vTexCoord)
 {
-    // Get the depth value for this pixel
-    float z = depth; 
-    // Get x/w and y/w from the viewport position
-    float x = vTexCoord.x * 2 - 1;
-    float y = (1 - vTexCoord.y) * 2 - 1;
-    float4 vProjectedPos = float4(x, y, z, 1.0f);
-    // Transform by the inverse projection matrix
-    float4 vPositionVS = mul(vProjectedPos, SQ_InvProj); //invViewProj == invProjection here  
-    // Divide by w to get the view-space position
-    return vPositionVS.xyz / vPositionVS.w;   
+	// Get NDC clip-space position
+	float4 vProjectedPos = float4(vTexCoord * float2(2.0f, -2.0f) + float2(-1.0f, 1.0f), depth, 1.0f);
+
+	// Transform by the inverse projection matrix
+	float4 vPositionVS = mul(vProjectedPos, SQ_InvProj); //invViewProj == invProjection here
+
+	// Divide by w to get the view-space position
+	return vPositionVS.xyz / vPositionVS.www;
 }
 
 //--------------------------------------------------------------------------------------
 // Blinn-Phong Lighting Reflection Model
 //--------------------------------------------------------------------------------------
-float CalcBlinnPhongLighting(float3 N, float3 H )
+float CalcBlinnPhongLighting(float3 N, float3 H)
 {
-    return saturate(dot(N,H));
+    return saturate(dot(N, H));
 }
 
 float2 TexOffset( int u, int v )
@@ -84,44 +82,33 @@ float2 TexOffset( int u, int v )
 float IsInShadow(float3 wsPosition, Texture2D shadowmap, SamplerComparisonState samplerState)
 {
 	float4 vShadowSamplingPos = mul(float4(wsPosition, 1), mul(SQ_ShadowView, SQ_ShadowProj));
+	vShadowSamplingPos.xyz /= vShadowSamplingPos.www;
 	
-	float2 projectedTexCoords;
-	vShadowSamplingPos.xyz /= vShadowSamplingPos.w;
-    projectedTexCoords[0] = vShadowSamplingPos.x/2.0f +0.5f;
-    projectedTexCoords[1] = vShadowSamplingPos.y/-2.0f +0.5f;
-	
+	float2 projectedTexCoords = vShadowSamplingPos.xy * float2(0.5f, -0.5f) + float2(0.5f, 0.5f);
 	return shadowmap.SampleCmpLevelZero(samplerState, projectedTexCoords.xy, vShadowSamplingPos.z);
 }
 
 float IsWet(float3 wsPosition, Texture2D shadowmap, SamplerComparisonState samplerState, matrix viewProj)
 {
 	float4 vShadowSamplingPos = mul(float4(wsPosition, 1), mul(SQ_RainView, SQ_RainProj));
+	vShadowSamplingPos.xyz /= vShadowSamplingPos.www;
 	
-	float2 projectedTexCoords;
-	vShadowSamplingPos.xyz /= vShadowSamplingPos.w;
-    projectedTexCoords[0] = vShadowSamplingPos.x/2.0f +0.5f;
-    projectedTexCoords[1] = vShadowSamplingPos.y/-2.0f +0.5f;
-	
+	float2 projectedTexCoords = vShadowSamplingPos.xy * float2(0.5f, -0.5f) + float2(0.5f, 0.5f);
 	float bias = 0.001f;
 	return shadowmap.SampleCmpLevelZero( samplerState, projectedTexCoords.xy, vShadowSamplingPos.z - bias);
 }
-
-
 
 float ComputeShadowValue(float2 uv, float3 wsPosition, Texture2D shadowmap, SamplerComparisonState samplerState, float distance, float vertLighting, matrix viewProj, float bias = 0.01f, float softnessScale = 1.0f)
 {
 	// Reconstruct VS World ShadowViewPosition from depth
 	float4 vShadowSamplingPos = mul(float4(wsPosition, 1), viewProj);
+	vShadowSamplingPos.xyz /= vShadowSamplingPos.www;
 	
-	float2 projectedTexCoords;
-	vShadowSamplingPos.xyz /= vShadowSamplingPos.w;
-    projectedTexCoords[0] = vShadowSamplingPos.x/2.0f +0.5f;
-    projectedTexCoords[1] = vShadowSamplingPos.y/-2.0f +0.5f;
-	
+	float2 projectedTexCoords = vShadowSamplingPos.xy * float2(0.5f, -0.5f) + float2(0.5f, 0.5f);	
 	float shadow = 1.0f;
 	if( !(projectedTexCoords.x > 1 || projectedTexCoords.y > 1 ||
 		projectedTexCoords.x < 0 || projectedTexCoords.y < 0))
-	{	
+	{
 #if SHD_FILTER_16TAP_PCF
 		//return shadowmap.SampleCmpLevelZero( samplerState, projectedTexCoords.xy, vShadowSamplingPos.z - 0.00001f);
 		//return shadowmap.Sample(SS_Linear, projectedTexCoords).r > vShadowSamplingPos.z ? 1 : 0;
@@ -151,9 +138,9 @@ float ComputeShadowValue(float2 uv, float3 wsPosition, Texture2D shadowmap, Samp
 		
 	 
 		//perform PCF filtering on a 4 x 4 texel neighborhood
-		for (y = -1.5; y <= 1.5; y += 1.0)
+		[unroll] for (y = -1.5; y <= 1.5; y += 1.0)
 		{
-			for (x = -1.5; x <= 1.5; x += 1.0)
+			[unroll] for (x = -1.5; x <= 1.5; x += 1.0)
 			{
 				sum += shadowmap.SampleCmpLevelZero( samplerState, projectedTexCoords.xy + TexOffset(x,y) * scale, vShadowSamplingPos.z - bias);
 			}
@@ -165,8 +152,6 @@ float ComputeShadowValue(float2 uv, float3 wsPosition, Texture2D shadowmap, Samp
 #else
 		shadow = shadowmap.SampleCmpLevelZero( samplerState, projectedTexCoords.xy, vShadowSamplingPos.z - bias);
 #endif
-	
-		
 	}
 	
 	float border;
@@ -226,7 +211,7 @@ void ApplyRainNormalDeformation(inout float3 vsNormal, float3 wsPosition, inout 
 	weights = pow(weights, 4.0f);
 		
 	const float distWeight = 0.9f;
-		
+	
 	// Sample the distortion-texture for all 3 axis
 	for(int i=0;i<3;i++)
 	{		
@@ -303,8 +288,6 @@ void ApplySceneWettness(float3 wsPosition, float3 vsPosition, float3 vsDir, inou
 	// Scale the total amount of spec-lighting by the wetness factor and whether the scene is currently drying out or it's still raining
 	specAdd = reflection * pixelWettnes * lerp(0.08f, 0.10f, AC_RainFXWeight);
 	diffuse = lerp(diffuse, wetPixel, pixelWettnes);
-	
-
 }
 
 //--------------------------------------------------------------------------------------
@@ -322,14 +305,12 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	// Get the second GBuffer
 	float4 gb2 = TX_Nrm_SI_SP.Sample(SS_Linear, uv);
 	
-	// Decode the view-space normal back
-	float3 normal = DecodeNormal(gb2.xy);
-	
-	normal = normalize(normal);
-	
 	// If we dont have a normal, just return the diffuse color
-	if(abs(gb2.x + gb2.y) < 0.01f)
+	if(abs(gb2.x + gb2.y) < 0.001f)
 		return float4(diffuse.rgb, 1);
+	
+	// Decode the view-space normal back
+	float3 normal = normalize(DecodeNormal(gb2.xy));
 	
 	// Get specular parameters
 	float specIntensity = gb2.z;
@@ -345,8 +326,9 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	//return float4(mul(float4(wsPosition, 1), mul(SQ_ShadowView, SQ_ShadowProj)).xyz, 1);
 	
 	// Get shadowing
-	float shadow = ComputeShadowValue(uv, wsPosition, TX_Shadowmap, SS_Comp, vsPosition.z, vertLighting, mul(SQ_ShadowView, SQ_ShadowProj), lerp(0.00005f, 0.0001f, vsPosition.z / 1000));
-	
+	float shadow = 0.0f;
+	if(AC_LightPos.y > 0) // only get shadow value if it isn't night-time otherwise report that the whole scene is in shadow
+		shadow = ComputeShadowValue(uv, wsPosition, TX_Shadowmap, SS_Comp, vsPosition.z, vertLighting, mul(SQ_ShadowView, SQ_ShadowProj), lerp(0.00005f, 0.0001f, vsPosition.z / 1000));
 #else
 	float shadow = vertLighting;
 #endif

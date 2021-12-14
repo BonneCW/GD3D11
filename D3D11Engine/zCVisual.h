@@ -74,7 +74,7 @@ public:
 
 private:
     zSTRING& __GetObjectName() {
-        XCALL( GothicMemoryLocations::zCObject::GetObjectName );
+        return reinterpret_cast<zSTRING&( __fastcall* )( zCVisual* )>( GothicMemoryLocations::zCObject::GetObjectName )( this );
     }
 
     const zSTRING* __GetFileExtension( int i ) {

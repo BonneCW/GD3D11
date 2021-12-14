@@ -1,7 +1,6 @@
 #pragma once
 #include "pch.h"
 
-class D3D11FullscreenQuad;
 struct RenderToTextureBuffer;
 class D3D11PFX_Blur;
 class D3D11PFX_HeightFog;
@@ -68,9 +67,6 @@ private:
     std::unique_ptr<D3D11PFX_HDR> FX_HDR;
     std::unique_ptr<D3D11PFX_SMAA> FX_SMAA;
     std::unique_ptr<D3D11PFX_GodRays> FX_GodRays;
-
-    /** Fullscreen quad */
-    std::unique_ptr<D3D11FullscreenQuad> ScreenQuad;
 
     /** Nivida HBAO+ */
     std::unique_ptr<D3D11NVHBAO> NvHBAO;

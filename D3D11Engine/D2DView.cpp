@@ -165,20 +165,21 @@ HRESULT D2DView::InitResources() {
         &pGradientStops
     );
 
+    if ( pGradientStops ) {
+        RenderTarget->CreateLinearGradientBrush(
+            D2D1::LinearGradientBrushProperties(
+                D2D1::Point2F( 100, 0 ),
+                D2D1::Point2F( 100, 200 )
+            ),
+            D2D1::BrushProperties(),
+            pGradientStops,
+            &LinearBrush
+        );
 
-    RenderTarget->CreateLinearGradientBrush(
-        D2D1::LinearGradientBrushProperties(
-            D2D1::Point2F( 100, 0 ),
-            D2D1::Point2F( 100, 200 )
-        ),
-        D2D1::BrushProperties(),
-        pGradientStops,
-        &LinearBrush
-    );
+        RenderTarget->CreateRadialGradientBrush( D2D1::RadialGradientBrushProperties( D2D1::Point2F( 0, 0 ), D2D1::Point2F( 0, 0 ), 1, 1 ), pGradientStops, &RadialBrush );
 
-    RenderTarget->CreateRadialGradientBrush( D2D1::RadialGradientBrushProperties( D2D1::Point2F( 0, 0 ), D2D1::Point2F( 0, 0 ), 1, 1 ), pGradientStops, &RadialBrush );
-
-    SAFE_RELEASE( pGradientStops );
+        SAFE_RELEASE( pGradientStops );
+    }
 
     D2D1_GRADIENT_STOP GUISstops[3];
     GUISstops[0].color = D2D1::ColorF( GUI_Color1.r, GUI_Color1.g, GUI_Color1.b, GUI_Color1.a );
@@ -190,8 +191,6 @@ HRESULT D2DView::InitResources() {
     GUISstops[2].color = D2D1::ColorF( GUI_Color3.r, GUI_Color3.g, GUI_Color3.b, GUI_Color3.a );
     GUISstops[2].position = 1.0f;
 
-
-
     ID2D1GradientStopCollection* pGUI_S_GradientStops;
     RenderTarget->CreateGradientStopCollection(
         GUISstops,
@@ -199,18 +198,19 @@ HRESULT D2DView::InitResources() {
         &pGUI_S_GradientStops
     );
 
+    if ( pGUI_S_GradientStops ) {
+        RenderTarget->CreateLinearGradientBrush(
+            D2D1::LinearGradientBrushProperties(
+                D2D1::Point2F( 100, 0 ),
+                D2D1::Point2F( 100, 200 )
+            ),
+            D2D1::BrushProperties(),
+            pGUI_S_GradientStops,
+            &GUIStyleLinearBrush
+        );
 
-    RenderTarget->CreateLinearGradientBrush(
-        D2D1::LinearGradientBrushProperties(
-            D2D1::Point2F( 100, 0 ),
-            D2D1::Point2F( 100, 200 )
-        ),
-        D2D1::BrushProperties(),
-        pGUI_S_GradientStops,
-        &GUIStyleLinearBrush
-    );
-
-    SAFE_RELEASE( pGUI_S_GradientStops );
+        SAFE_RELEASE( pGUI_S_GradientStops );
+    }
 
     D2D1_GRADIENT_STOP Reflectstops[4];
     Reflectstops[0].color = D2D1::ColorF( ReflectColor1.r, ReflectColor1.g, ReflectColor1.b, ReflectColor1.a );
@@ -225,8 +225,6 @@ HRESULT D2DView::InitResources() {
     Reflectstops[3].color = D2D1::ColorF( ReflectColor2.r, ReflectColor2.g, ReflectColor2.b, ReflectColor2.a );
     Reflectstops[3].position = 1.0f;
 
-
-
     ID2D1GradientStopCollection* pReflectGradientStops;
     RenderTarget->CreateGradientStopCollection(
         Reflectstops,
@@ -234,18 +232,19 @@ HRESULT D2DView::InitResources() {
         &pReflectGradientStops
     );
 
+    if ( pReflectGradientStops ) {
+        RenderTarget->CreateLinearGradientBrush(
+            D2D1::LinearGradientBrushProperties(
+                D2D1::Point2F( 100, 0 ),
+                D2D1::Point2F( 100, 200 )
+            ),
+            D2D1::BrushProperties(),
+            pReflectGradientStops,
+            &LinearReflectBrush
+        );
 
-    RenderTarget->CreateLinearGradientBrush(
-        D2D1::LinearGradientBrushProperties(
-            D2D1::Point2F( 100, 0 ),
-            D2D1::Point2F( 100, 200 )
-        ),
-        D2D1::BrushProperties(),
-        pReflectGradientStops,
-        &LinearReflectBrush
-    );
-
-    SAFE_RELEASE( pReflectGradientStops );
+        SAFE_RELEASE( pReflectGradientStops );
+    }
 
     Reflectstops[0].color = D2D1::ColorF( ReflectColor2.r, ReflectColor2.g, ReflectColor2.b, ReflectColor2.a );
     Reflectstops[0].position = 0.0f;
@@ -265,18 +264,19 @@ HRESULT D2DView::InitResources() {
         &pReflectGradientStops
     );
 
-    RenderTarget->CreateLinearGradientBrush(
-        D2D1::LinearGradientBrushProperties(
-            D2D1::Point2F( 100, 0 ),
-            D2D1::Point2F( 100, 200 )
-        ),
-        D2D1::BrushProperties(),
-        pReflectGradientStops,
-        &LinearReflectBrushHigh
-    );
+    if ( pReflectGradientStops ) {
+        RenderTarget->CreateLinearGradientBrush(
+            D2D1::LinearGradientBrushProperties(
+                D2D1::Point2F( 100, 0 ),
+                D2D1::Point2F( 100, 200 )
+            ),
+            D2D1::BrushProperties(),
+            pReflectGradientStops,
+            &LinearReflectBrushHigh
+        );
 
-    SAFE_RELEASE( pReflectGradientStops );
-
+        SAFE_RELEASE( pReflectGradientStops );
+    }
 
     D2D1_GRADIENT_STOP bgrstops[2];
     bgrstops[0].color = DefBackgroundColor1;
@@ -291,18 +291,19 @@ HRESULT D2DView::InitResources() {
         &pGradientStops
     );
 
+    if ( pGradientStops ) {
+        RenderTarget->CreateLinearGradientBrush(
+            D2D1::LinearGradientBrushProperties(
+                D2D1::Point2F( 100, 0 ),
+                D2D1::Point2F( 100, 200 )
+            ),
+            D2D1::BrushProperties(),
+            pGradientStops,
+            &BackgroundBrush
+        );
 
-    RenderTarget->CreateLinearGradientBrush(
-        D2D1::LinearGradientBrushProperties(
-            D2D1::Point2F( 100, 0 ),
-            D2D1::Point2F( 100, 200 )
-        ),
-        D2D1::BrushProperties(),
-        pGradientStops,
-        &BackgroundBrush
-    );
-
-    SAFE_RELEASE( pGradientStops );
+        SAFE_RELEASE( pGradientStops );
+    }
 
     DWriteCreateFactory( DWRITE_FACTORY_TYPE_SHARED, __uuidof(WriteFactory), (IUnknown**)(&WriteFactory) );
 
@@ -329,7 +330,6 @@ HRESULT D2DView::InitResources() {
         16,
         L"",
         &TextFormatBig );
-
 
     MainSubView = new D2DSubView( this, nullptr );
     MainSubView->SetRect( D2D1::RectF( 0, 0, RenderTarget->GetSize().width, RenderTarget->GetSize().height ) );
@@ -380,6 +380,9 @@ XRESULT D2DView::Resize( const INT2& initialResolution, ID3D11Texture2D* rendert
         return XR_FAILED;
     }
     Factory->CreateDxgiSurfaceRenderTarget( dxgiBackbuffer.Get(), props, &RenderTarget );
+    if ( !RenderTarget ) {
+        return XR_FAILED;
+    }
 
     MainSubView->SetRect( D2D1::RectF( 0, 0, RenderTarget->GetSize().width, RenderTarget->GetSize().height ) );
     EditorView->SetRect( D2D1::RectF( 0, 0, RenderTarget->GetSize().width, RenderTarget->GetSize().height ) );
@@ -521,19 +524,19 @@ bool D2DView::OnWindowMessage( HWND hWnd, unsigned int msg, WPARAM wParam, LPARA
     return MainSubView->OnWindowMessage( hWnd, msg, wParam, lParam, D2D1::RectF( 0, 0, RenderTarget->GetSize().width, RenderTarget->GetSize().height ) );
 }
 
-float D2DView::GetLabelTextWidth( IDWriteTextLayout* layout, const std::string& text ) {
-    DWRITE_CLUSTER_METRICS* m = new DWRITE_CLUSTER_METRICS[text.length()];
+float D2DView::GetLabelTextWidth( IDWriteTextLayout* layout, size_t length ) {
+    DWRITE_CLUSTER_METRICS* m = new DWRITE_CLUSTER_METRICS[length];
     UINT32 lc;
 
     if ( !layout ) {
         return 0.0f;
     }
 
-    layout->GetClusterMetrics( m, text.length(), &lc );
+    layout->GetClusterMetrics( m, length, &lc );
 
     float width = 0.0f;
 
-    for ( size_t i = 0; i < text.length(); i++ ) {
+    for ( size_t i = 0; i < length; i++ ) {
         width += m[i].width;
     }
     delete[] m;
@@ -541,10 +544,10 @@ float D2DView::GetLabelTextWidth( IDWriteTextLayout* layout, const std::string& 
     return width;
 }
 
-float D2DView::GetTextHeight( IDWriteTextLayout* layout, const std::string& text ) {
+float D2DView::GetTextHeight( IDWriteTextLayout* layout, size_t length ) {
     unsigned int i = 0;
     float y = 0;
-    for ( i = 0; i < text.size(); i++ ) {
+    for ( i = 0; i < length; i++ ) {
         float ty;
 
         layout->GetFontSize( i, &ty );

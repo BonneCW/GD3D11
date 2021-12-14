@@ -195,7 +195,8 @@ public:
 
     /** Creates an array of matrices for the bone transforms */
     void __fastcall RenderNodeList( zTRenderContext& renderContext, zCArray<DirectX::XMFLOAT4X4*>& boneTransforms, zCRenderLightContainer& lightContainer, int lightingMode = 0 ) {
-        XCALL( GothicMemoryLocations::zCModel::RenderNodeList );
+        reinterpret_cast<void( __fastcall* )( zCModel*, zTRenderContext&, zCArray<DirectX::XMFLOAT4X4*>&, zCRenderLightContainer&, int )>
+            ( GothicMemoryLocations::zCModel::RenderNodeList )( this, renderContext, boneTransforms, lightContainer, lightingMode );
     }
 
     /** Returns the current amount of active animations */
@@ -248,35 +249,15 @@ public:
     }
 
     DirectX::XMFLOAT3 GetModelScale() {
-#ifdef BUILD_GOTHIC_1_08k
-        return DirectX::XMFLOAT3( 1, 1, 1 );
-#endif
-
         return *(DirectX::XMFLOAT3*)THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_ModelScale );
     }
 
     DirectX::XMVECTOR GetModelScaleXM() {
-#ifdef BUILD_GOTHIC_1_08k
-        return XMVectorSplatOne();
-#endif
-
         return DirectX::XMLoadFloat3( (DirectX::XMFLOAT3*)THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_ModelScale ) );
     }
 
     float GetModelFatness() {
-#ifdef BUILD_GOTHIC_1_08k
-        return 0.0f;
-#endif
-        float fatness = *(float*)THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_ModelFatness );
-        // fix fatness value
-        if ( fatness >= 2.0f )
-            fatness = 0.50f;
-        else if ( fatness == 1.0f )
-            fatness = 0.0f;
-        else if ( fatness <= -1.0f )
-            fatness = -0.25f;
-
-        return fatness;
+        return *(float*)THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_ModelFatness );
     }
 
     int GetDrawHandVisualsOnly() {
@@ -285,6 +266,17 @@ public:
 #else
         return 0; // First person not implemented in G1
 #endif
+    }
+
+    int GetMainPrototypeReferences() {
+        zCArray<zCModelPrototype*>* prototypes = GetModelProtoList();
+        if ( prototypes->NumInArray > 0 ) {
+            zCModelPrototype* prototype = prototypes->Array[0];
+            if ( prototype ) {
+                return *reinterpret_cast<int*>(reinterpret_cast<DWORD>(prototype) + 0x08); // Get reference counter
+            }
+        }
+        return 2; // Allow leakage because it is only container for 3DS models(mob) - better than crash
     }
 
     zCArray<zCModelNodeInst*>* GetNodeList() {
@@ -309,17 +301,18 @@ public:
 
     /* Updates the world matrices of the attached VOBs */
     void UpdateAttachedVobs() {
-        XCALL( GothicMemoryLocations::zCModel::UpdateAttachedVobs );
+        reinterpret_cast<void( __fastcall* )( zCModel* )>( GothicMemoryLocations::zCModel::UpdateAttachedVobs )( this );
     }
 
     /** Fills a vector of (viewspace) bone-transformation matrices for this frame */
     void GetBoneTransforms( std::vector<DirectX::XMFLOAT4X4>* transforms, zCVob* vob = nullptr ) {
-        if ( !GetNodeList() )
+        zCArray<zCModelNodeInst*>* nodeList = GetNodeList();
+        if ( !nodeList )
             return;
 
-        transforms->reserve( GetNodeList()->NumInArray );
-        for ( int i = 0; i < GetNodeList()->NumInArray; i++ ) {
-            zCModelNodeInst* node = GetNodeList()->Array[i];
+        transforms->reserve( nodeList->NumInArray );
+        for ( int i = 0; i < nodeList->NumInArray; i++ ) {
+            zCModelNodeInst* node = nodeList->Array[i];
             zCModelNodeInst* parent = node->ParentNode;
 
             // Calculate transform for this node
@@ -342,7 +335,9 @@ public:
     }
 
     zSTRING GetModelName() {
-        XCALL( GothicMemoryLocations::zCModel::GetVisualName );
+        zSTRING str;
+        reinterpret_cast<void(__fastcall*)( zCModel*, int, zSTRING& )>( GothicMemoryLocations::zCModel::GetVisualName )( this, 0, str );
+        return str;
     }
 
 private:

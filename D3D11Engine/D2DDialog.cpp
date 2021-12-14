@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "D2DDialog.h"
 
 #include "D2DView.h"
@@ -16,7 +17,7 @@ D2DDialog::D2DDialog( D2DView* view, D2DSubView* parent ) : D2DSubView( view, pa
 
     Header = new SV_Label( view, MainPanel );
     Header->SetPositionAndSize( D2D1::Point2F( 0, 0 ), D2D1::SizeF( GetSize().width, DIALOG_HEADER_SIZE ) );
-    Header->SetCaption( "Dialog" );
+    Header->SetCaption( L"Dialog" );
     Header->SetDrawBackground( true );
     Header->SetHorizAlignment( DWRITE_TEXT_ALIGNMENT_CENTER );
     Header->SetVertAlignment( DWRITE_PARAGRAPH_ALIGNMENT_CENTER );
@@ -106,7 +107,7 @@ void D2DDialog::SetRect( const D2D1_RECT_F& rect ) {
 
 /** Sets the header-text */
 void D2DDialog::SetHeaderText( const std::string& text ) {
-    Header->SetCaption( text );
+    Header->SetCaption( Toolbox::ToWideChar( text ) );
 }
 
 /** Sets this dialog into the center of the screen, with the given size */

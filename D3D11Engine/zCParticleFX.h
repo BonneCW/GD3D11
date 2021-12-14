@@ -16,6 +16,7 @@ enum EZParticleAlignment {
 class zSTRING;
 class zCPolyStrip;
 class zCMesh;
+class zCProgMeshProto;
 
 struct zTParticle {
     zTParticle* Next;
@@ -60,9 +61,15 @@ public:
         return *(int*)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisAlignment );
     }
 
+    int GetVisShpRender() {
+        return *(int*)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisShpRender );
+    }
+
+    int GetVisShpType() {
+        return *(int*)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisShpType );
+    }
+
 #ifndef BUILD_GOTHIC_1_08k
-
-
     int GetVisTexAniIsLooping() {
         return *(int*)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisTexAniIsLooping );
     }
@@ -75,8 +82,17 @@ public:
         return *(float*)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_AlphaDist );
     }
 
+    zCMesh* GetVisShpMesh() {
+        return *(zCMesh**)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisShpMesh );
+    }
 
+    zCProgMeshProto* GetVisShpProgMesh() {
+        return *(zCProgMeshProto**)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisShpProgMesh );
+    }
 
+    zCModel* GetVisShpModel() {
+        return *(zCModel**)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisShpModel );
+    }
 #else
     int GetVisTexAniIsLooping() {
         return 0;
@@ -89,13 +105,26 @@ public:
     float GetVisAlphaStart() {
         return 0;
     }
+
+    zCMesh* GetVisShpMesh() {
+        return *(zCMesh**)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisShpMesh );
+    }
+
+    zCProgMeshProto* GetVisShpProgMesh() {
+        return nullptr;
+    }
+
+    zCModel* GetVisShpModel() {
+        return nullptr;
+    }
 #endif
 };
 
 class zCStaticPfxList {
 public:
     void TouchPfx( zCParticleFX* pfx ) {
-        XCALL( GothicMemoryLocations::zCStaticPfxList::TouchPFX );
+        reinterpret_cast<void( __fastcall* )( zCStaticPfxList*, int, zCParticleFX* )>
+            ( GothicMemoryLocations::zCStaticPfxList::TouchPFX )( this, 0, pfx );
     }
 
     zCParticleFX* PfxListHead;
@@ -105,9 +134,6 @@ public:
 
 class zCParticleFX {
 public:
-    zCParticleFX();
-    ~zCParticleFX();
-
     /** Hooks the functions of this Class */
     static void Hook() {
         XHook( HookedFunctions::OriginalFunctions.original_zCParticleFXDestructor, GothicMemoryLocations::zCParticleFX::Destructor, zCParticleFX::Hooked_Destructor );
@@ -166,11 +192,11 @@ public:
     }
 
     int UpdateParticleFX() {
-        XCALL( GothicMemoryLocations::zCParticleFX::UpdateParticleFX );
+        return reinterpret_cast<int( __fastcall* )( zCParticleFX* )>( GothicMemoryLocations::zCParticleFX::UpdateParticleFX )( this );
     }
 
     void CheckDependentEmitter() {
-        XCALL( GothicMemoryLocations::zCParticleFX::CheckDependentEmitter );
+        reinterpret_cast<void( __fastcall* )( zCParticleFX* )>( GothicMemoryLocations::zCParticleFX::CheckDependentEmitter )( this );
     }
 
     /*bool IsRemoved()
@@ -196,19 +222,21 @@ public:
     }
 
     void CreateParticlesUpdateDependencies() {
-        XCALL( GothicMemoryLocations::zCParticleFX::CreateParticlesUpdateDependencies );
+        reinterpret_cast<void( __fastcall* )( zCParticleFX* )>( GothicMemoryLocations::zCParticleFX::CreateParticlesUpdateDependencies )( this );
     }
 
     void UpdateParticle( zTParticle* p ) {
-        XCALL( GothicMemoryLocations::zCParticleFX::UpdateParticle );
+        reinterpret_cast<void( __fastcall* )( zCParticleFX*, int, zTParticle* )>
+            ( GothicMemoryLocations::zCParticleFX::UpdateParticle )( this, 0, p );
     }
 
     void SetVisualUsedBy( zCVob* vob ) {
-        XCALL( GothicMemoryLocations::zCParticleFX::SetVisualUsedBy );
+        reinterpret_cast<void( __fastcall* )( zCParticleFX*, int, zCVob* )>
+            ( GothicMemoryLocations::zCParticleFX::SetVisualUsedBy )( this, 0, vob );
     }
 
     int GetVisualDied() {
-        XCALL( GothicMemoryLocations::zCParticleFX::GetVisualDied );
+        return reinterpret_cast<int( __fastcall* )( zCParticleFX* )>( GothicMemoryLocations::zCParticleFX::GetVisualDied )( this );
     }
 };
 

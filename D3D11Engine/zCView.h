@@ -9,18 +9,15 @@
 class zCViewDraw {
 public:
     static void Hook() {
-        XHook( HookedFunctions::OriginalFunctions.original_zCViewDrawGetScreen, GothicMemoryLocations::zCViewDraw::GetScreen, GetScreen );
+        //XHook( HookedFunctions::OriginalFunctions.original_zCViewDrawGetScreen, GothicMemoryLocations::zCViewDraw::GetScreen, GetScreen );
     }
     
     static zCViewDraw& GetScreen() {
-        hook_infunc
-            zCViewDraw& viewDraw = HookedFunctions::OriginalFunctions.original_zCViewDrawGetScreen();
-            return viewDraw;
-        hook_outfunc
+        return reinterpret_cast<zCViewDraw&( __fastcall* )( void )>( GothicMemoryLocations::zCViewDraw::GetScreen )();
     }
 
     void __fastcall SetVirtualSize(POINT& pt) {
-        XCALL( GothicMemoryLocations::zCViewDraw::SetVirtualSize );
+        reinterpret_cast<void( __fastcall* )( zCViewDraw*, POINT& )>( GothicMemoryLocations::zCViewDraw::SetVirtualSize )( this, pt );
     }
 };
 
@@ -32,11 +29,9 @@ public:
         zCViewDraw::Hook();
         DWORD dwProtect;
 
-        HookedFunctions::OriginalFunctions.original_zCViewSetMode = (zCViewSetMode)GothicMemoryLocations::zCView::SetMode;
-
         VirtualProtect( (void*)GothicMemoryLocations::zCView::SetMode, 0x1B9, PAGE_EXECUTE_READWRITE, &dwProtect ); // zCView::SetMode
 
-        // Replace the actual mode-change in zCView::SetMode. Only do the UI-Changes.
+        // Replace the actual mode-change in zCView::SetVirtualMode. Only do the UI-Changes.
         REPLACE_RANGE( GothicMemoryLocations::zCView::REPL_SetMode_ModechangeStart, GothicMemoryLocations::zCView::REPL_SetMode_ModechangeEnd - 1, INST_NOP );
 
 #if BUILD_GOTHIC_2_6_fix
@@ -47,10 +42,14 @@ public:
 #endif
     }
 
-    static void SetMode( int x, int y, int bpp, HWND* window = nullptr ) {
-        hook_infunc
-            HookedFunctions::OriginalFunctions.original_zCViewSetMode( x, y, bpp, window );
-        hook_outfunc
+    static void SetWindowMode( int x, int y, int bpp ) {
+        reinterpret_cast<void( __fastcall* )( DWORD, DWORD, int, int, int, void* )>
+            ( GothicMemoryLocations::zCView::Vid_SetMode )( *reinterpret_cast<DWORD*>(GothicMemoryLocations::GlobalObjects::zRenderer), 0, x, y, bpp, nullptr );
+    }
+
+    static void SetVirtualMode( int x, int y, int bpp ) {
+        reinterpret_cast<void(__cdecl*)( int, int, int, void* )>
+            ( GothicMemoryLocations::zCView::SetMode )( x, y, bpp, nullptr );
     }
 
 #if BUILD_GOTHIC_2_6_fix
@@ -96,7 +95,8 @@ public:
             || (thisptr == GetScreen()) ) {
             Engine::GraphicsEngine->DrawString(
                 s.ToChar(),
-                thisptr->pposx + thisptr->nax( x ), thisptr->pposy + thisptr->nay( y ),
+                static_cast<float>(thisptr->pposx + thisptr->nax( x )),
+                static_cast<float>(thisptr->pposy + thisptr->nay( y )),
                 thisptr->font, thisptr->fontColor );
         } else {
             // create a textview for later blitting
@@ -128,9 +128,8 @@ public:
             if ( text->colored ) { fontColor = text->color; }
             //else                 { fontColor = thisptr->fontColor;}
 
-            x = thisptr->pposx + thisptr->nax( text->posx );
-            // TODO: Remove additional addition if we get the correct char positioning
-            y = thisptr->pposy + thisptr->nay( text->posy );
+            x = static_cast<float>(thisptr->pposx + thisptr->nax( text->posx ));
+            y = static_cast<float>(thisptr->pposy + thisptr->nay( text->posy ));
 
             if ( !thisptr->font ) continue;
 
@@ -143,6 +142,7 @@ public:
 
     /** Prints a message to the screen */
     void PrintTimed( int posX, int posY, const zSTRING& strMessage, float time = 3000.0f, DWORD* col = nullptr ) {
-        XCALL( GothicMemoryLocations::zCView::PrintTimed );
+        reinterpret_cast<void( __fastcall* )( zCView*, int, int, int, const zSTRING&, float, DWORD* )>
+            ( GothicMemoryLocations::zCView::PrintTimed )(this, 0, posX, posY, strMessage, time, col);
     }
 };

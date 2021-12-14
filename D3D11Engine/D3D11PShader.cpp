@@ -9,16 +9,9 @@
 
 using namespace DirectX;
 
-D3D11PShader::D3D11PShader() {
-
-    // Insert into state-map
-    ID = D3D11ObjectIdManager::AddPShader( this );
-}
+D3D11PShader::D3D11PShader() {}
 
 D3D11PShader::~D3D11PShader() {
-    // Remove from state map
-    D3D11ObjectIdManager::ErasePShader( this );
-
     for ( unsigned int i = 0; i < ConstantBuffers.size(); i++ ) {
         delete ConstantBuffers[i];
     }
@@ -79,10 +72,9 @@ XRESULT D3D11PShader::LoadShader( const char* pixelShader, const std::vector<D3D
 
     if ( Engine::GAPI->GetRendererState().RendererSettings.EnableDebugLog )
         LogInfo() << "Compilling pixel shader: " << pixelShader;
-    File = pixelShader;
 
     // Compile shaders
-    if ( FAILED( CompileShaderFromFile( pixelShader, "PSMain", "ps_5_0", psBlob.GetAddressOf(), makros ) ) ) {
+    if ( FAILED( CompileShaderFromFile( pixelShader, "PSMain", "ps_4_0", psBlob.GetAddressOf(), makros ) ) ) {
         return XR_FAILED;
     }
 

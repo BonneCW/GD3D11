@@ -194,6 +194,9 @@ XRESULT D3D11Effect::DrawRain() {
     particleAdvanceVS->GetConstantBuffer()[0]->BindToVertexShader( 1 );
     particleAdvanceVS->GetConstantBuffer()[0]->BindToPixelShader( 1 );
 
+    e->SetDefaultStates();
+    e->UpdateRenderStates();
+
     // Advance particle system in VS and stream out the data
     e->GetContext()->Draw( numParticles, 0 );
 
@@ -205,8 +208,6 @@ XRESULT D3D11Effect::DrawRain() {
     std::swap( RainBufferDrawFrom, RainBufferStreamTo );
 
     // ---- Draw the rain ----
-    e->SetDefaultStates();
-
     // Set alphablending
 
     state.BlendState.SetAlphaBlending();

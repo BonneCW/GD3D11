@@ -7,6 +7,22 @@
 #include "zCPolygon.h"
 #include "zSTRING.h"
 
+enum EVobType {
+    zVOB_TYPE_NORMAL,
+    zVOB_TYPE_LIGHT,
+    zVOB_TYPE_SOUND,
+    zVOB_TYPE_LEVEL_COMPONENT,
+    zVOB_TYPE_SPOT,
+    zVOB_TYPE_CAMERA,
+    zVOB_TYPE_STARTPOINT,
+    zVOB_TYPE_WAYPOINT,
+    zVOB_TYPE_MARKER,
+    zVOB_TYPE_SEPARATOR = 127,
+    zVOB_TYPE_MOB,
+    zVOB_TYPE_ITEM,
+    zVOB_TYPE_NSC
+};
+
 enum EVisualCamAlignType {
     zVISUAL_CAM_ALIGN_NONE = 0,
     zVISUAL_CAM_ALIGN_YAW = 1,
@@ -26,27 +42,37 @@ public:
 
         XHook( HookedFunctions::OriginalFunctions.original_zCVobEndMovement, GothicMemoryLocations::zCVob::EndMovement, zCVob::Hooked_EndMovement );
     }
-
+    
     /** Called when this vob got it's world-matrix changed */
 #ifdef BUILD_GOTHIC_1_08k
     static void __fastcall Hooked_EndMovement( void* thisptr, void* unknwn ) {
         hook_infunc
 
-            HookedFunctions::OriginalFunctions.original_zCVobEndMovement( thisptr );
+        bool vobHasMoved = false;
+        if ( (*reinterpret_cast<unsigned char*>(reinterpret_cast<DWORD>(thisptr) + 0xE8) & 0x03) && reinterpret_cast<zCVob*>(thisptr)->GetHomeWorld() ) {
+            vobHasMoved = (*reinterpret_cast<unsigned char*>(*reinterpret_cast<DWORD*>(reinterpret_cast<DWORD>(thisptr) + 0xFC) + 0x88) & 0x03);
+        }
 
-        if ( Engine::GAPI )
-            Engine::GAPI->OnVobMoved( (zCVob*)thisptr );
+        HookedFunctions::OriginalFunctions.original_zCVobEndMovement( thisptr );
+
+        if ( Engine::GAPI && vobHasMoved )
+                Engine::GAPI->OnVobMoved( (zCVob*)thisptr );
 
         hook_outfunc
     }
 #else
-    static void __fastcall Hooked_EndMovement( void* thisptr, void* unknwn, int transformChanged ) // G2 has one parameter more
+    static void __fastcall Hooked_EndMovement( void* thisptr, void* unknwn, int transformChanged_hint ) // G2 has one parameter more
     {
         hook_infunc
 
-            HookedFunctions::OriginalFunctions.original_zCVobEndMovement( thisptr, transformChanged );
+        bool vobHasMoved = false;
+        if ( (*reinterpret_cast<unsigned char*>(reinterpret_cast<DWORD>(thisptr) + 0x108) & 0x03) && reinterpret_cast<zCVob*>(thisptr)->GetHomeWorld() ) {
+            vobHasMoved = (*reinterpret_cast<unsigned char*>(*reinterpret_cast<DWORD*>(reinterpret_cast<DWORD>(thisptr) + 0x11C) + 0x88) & 0x03);
+        }
 
-        if ( Engine::GAPI && transformChanged )
+        HookedFunctions::OriginalFunctions.original_zCVobEndMovement( thisptr, transformChanged_hint );
+
+        if ( Engine::GAPI && vobHasMoved && transformChanged_hint )
             Engine::GAPI->OnVobMoved( (zCVob*)thisptr );
 
         hook_outfunc
@@ -79,18 +105,21 @@ public:
         hook_outfunc
     }
 
-#ifdef BUILD_SPACER
+#if (defined BUILD_SPACER || defined BUILD_SPACER_NET)
     /** Returns the helper-visual for this class
         This actually uses a map to lookup the visual. Beware for performance-issues! */
     zCVisual* GetClassHelperVisual() {
-        XCALL( GothicMemoryLocations::zCVob::GetClassHelperVisual );
+        return reinterpret_cast<zCVisual*( __fastcall* )( zCVob* )>( GothicMemoryLocations::zCVob::GetClassHelperVisual )( this );
     }
 
     /** Returns the visual saved in this vob */
     zCVisual* GetVisual() {
         zCVisual* visual = GetMainVisual();
-
+#if BUILD_SPACER_NET
+        if ( !visual && Engine::GAPI->GetRendererState().RendererSettings.RunInSpacerNet )
+#else
         if ( !visual )
+#endif
             visual = GetClassHelperVisual();
 
         return visual;
@@ -102,15 +131,13 @@ public:
     }
 #endif
 
-#ifdef BUILD_GOTHIC_1_08k
-    void _EndMovement() {
-        XCALL( GothicMemoryLocations::zCVob::EndMovement );
-    }
-#else
     void _EndMovement( int p = 1 ) {
-        XCALL( GothicMemoryLocations::zCVob::EndMovement );
-    }
+#ifdef BUILD_GOTHIC_1_08k
+        reinterpret_cast<void( __fastcall* )( zCVob* )>( GothicMemoryLocations::zCVob::EndMovement )( this );
+#else
+        reinterpret_cast<void( __fastcall* )( zCVob*, int, int )>( GothicMemoryLocations::zCVob::EndMovement )( this, 0, p );
 #endif
+    }
 
     /** Updates the vobs transforms */
     void EndMovement() {
@@ -119,7 +146,7 @@ public:
 
     /** Returns the visual saved in this vob */
     zCVisual* GetMainVisual() {
-        XCALL( GothicMemoryLocations::zCVob::GetVisual );
+        return reinterpret_cast<zCVisual*( __fastcall* )( zCVob* )>( GothicMemoryLocations::zCVob::GetVisual )( this );
     }
 
     /** Returns the name of this vob */
@@ -133,7 +160,6 @@ public:
         return DirectX::XMFLOAT3( *(float*)THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WorldPosX ),
             *(float*)THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WorldPosY ),
             *(float*)THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WorldPosZ ) );
-        //XCALL(GothicMemoryLocations::zCVob::GetPositionWorld);
     }
 
     /** Returns the world-position of this vob */
@@ -143,19 +169,20 @@ public:
             *(float*)THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WorldPosY ),
             *(float*)THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WorldPosZ ), 0 );
         return pos;
-        //XCALL(GothicMemoryLocations::zCVob::GetPositionWorld);
     }
 
     /** Sets this vobs position */
     void SetPositionWorld( const DirectX::XMFLOAT3& v ) {
 #ifdef BUILD_SPACER
-        XCALL( GothicMemoryLocations::zCVob::SetPositionWorld );
+        reinterpret_cast<void( __fastcall* )( zCVob*, int, const DirectX::XMFLOAT3& )>
+            ( GothicMemoryLocations::zCVob::SetPositionWorld )( this, 0, v );
 #endif
     }
     /** Sets this vobs position */
     void SetPositionWorldDX( const DirectX::XMFLOAT3& v ) {
 #ifdef BUILD_SPACER
-        XCALL( GothicMemoryLocations::zCVob::SetPositionWorld );
+        reinterpret_cast<void( __fastcall* )( zCVob*, int, const DirectX::XMFLOAT3& )>
+            ( GothicMemoryLocations::zCVob::SetPositionWorld )( this, 0, v );
 #endif
     }
     /** Sets this vobs position */
@@ -166,7 +193,9 @@ public:
 
     /** Returns the local bounding box */
     zTBBox3D GetBBoxLocal() {
-        XCALL( GothicMemoryLocations::zCVob::GetBBoxLocal );
+        zTBBox3D box;
+        reinterpret_cast<void( __fastcall* )( zCVob*, int, zTBBox3D& )>( GothicMemoryLocations::zCVob::GetBBoxLocal )( this, 0, box );
+        return box;
     }
 
     /** Returns a pointer to this vobs world-matrix */
@@ -208,9 +237,11 @@ public:
 
         return (flags & GothicMemoryLocations::zCVob::MASK_SkeepingMode);
     }
-    void SetSleeping(int on) {
-        XCALL( GothicMemoryLocations::zCVob::SetSleeping );
+    void SetSleeping( int on ) {
+        reinterpret_cast<void( __fastcall* )( zCVob*, int, int )>( GothicMemoryLocations::zCVob::SetSleeping )( this, 0, on );
     }
+
+#ifndef BUILD_SPACER_NET
     /** Returns whether the visual of this vob is visible */
     bool GetShowVisual() {
         //unsigned int flags = *(unsigned int*)THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_Flags );
@@ -224,11 +255,37 @@ public:
 #endif
     }
 
+
+#else
+    bool GetShowVisual() {
+        bool showHelpers = (*(int*)GothicMemoryLocations::zCVob::s_ShowHelperVisuals) != 0;
+
+        if ( !showHelpers ) {
+            zCVisual* visual = GetMainVisual();
+
+            if ( !visual ) {
+                visual = GetClassHelperVisual();
+
+                if ( visual ) {
+                    return false;
+                }
+            }
+        }
+
+        return GetShowMainVisual() || showHelpers;
+    }
+#endif
+
     /** Returns whether to show the main visual or not. Only used for the spacer */
     bool GetShowMainVisual() {
         unsigned int flags = *(unsigned int*)THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_Flags );
 
         return (flags & GothicMemoryLocations::zCVob::MASK_ShowVisual) != 0;
+    }
+
+    /** Vob type */
+    EVobType GetVobType() {
+        return *(EVobType*)THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_Type );
     }
 
     /** Alignemt to the camera */
@@ -243,24 +300,36 @@ public:
 
         return (EVisualCamAlignType)flags;
     }
-
-    /** returns the NPC pointer from the Vob, or nullptr if not an NPC */
-    oCNPC* AsNpc() {
-        int vtbl = ((int*)this)[0];
-        if ( vtbl == GothicMemoryLocations::VobTypes::Npc ) {
-            return reinterpret_cast<oCNPC*>(this);
+    
+    /** Checks the inheritance chain and casts to T* if possible. Returns nullptr otherwise */
+    template<class T>
+    T* As() {
+        zCClassDef* classDef = ((zCObject*)this)->_GetClassDef();
+        if ( CheckInheritance( classDef, T::GetStaticClassDef() ) ) {
+            return reinterpret_cast<T*>(this);
         }
         return nullptr;
     }
 protected:
+
+    bool CheckInheritance( const zCClassDef* def, const zCClassDef* target ) {
+        while ( def ) {
+            if ( def == target ) {
+                return true;
+            }
+            def = def->baseClassDef;
+        }
+        return false;
+    }
+
     zSTRING& __GetObjectName() {
-        XCALL( GothicMemoryLocations::zCObject::GetObjectName );
+        return reinterpret_cast<zSTRING&( __fastcall* )( zCVob* )>( GothicMemoryLocations::zCObject::GetObjectName )( this );
     }
 
 
     /*void DoFrameActivity()
     {
-        XCALL(GothicMemoryLocations::zCVob::DoFrameActivity);
+        reinterpret_cast<void( __fastcall* )( zCVob* )>( GothicMemoryLocations::zCVob::DoFrameActivity )( this );
     }*/
 
 

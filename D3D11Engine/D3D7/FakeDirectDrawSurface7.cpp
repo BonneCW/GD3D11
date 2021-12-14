@@ -10,6 +10,15 @@ FakeDirectDrawSurface7::FakeDirectDrawSurface7() {
     Data = nullptr;
 }
 
+FakeDirectDrawSurface7::~FakeDirectDrawSurface7() {
+    // Release mip-map chain first
+    for ( LPDIRECTDRAWSURFACE7 mipmap : AttachedSurfaces ) {
+        mipmap->Release();
+    }
+
+    delete[] Data;
+}
+
 void FakeDirectDrawSurface7::InitFakeSurface( const DDSURFACEDESC2* desc, MyDirectDrawSurface7* Resource, int mipLevel ) {
     OriginalDesc = *desc;
     this->Resource = Resource;
@@ -33,7 +42,6 @@ ULONG FakeDirectDrawSurface7::Release() {
     RefCount--;
 
     if ( RefCount == 0 ) {
-        delete [] Data;
         delete this;
         return 0;
     }
@@ -169,12 +177,13 @@ HRESULT FakeDirectDrawSurface7::Lock( LPRECT lpDestRect, LPDDSURFACEDESC2 lpDDSu
     *lpDDSurfaceDesc = OriginalDesc;
 
     // Allocate some temporary data
+    delete [] Data;
     Data = new unsigned char[Resource->GetEngineTexture()->GetSizeInBytes( MipLevel )];
     lpDDSurfaceDesc->lpSurface = Data;
     lpDDSurfaceDesc->lPitch = Resource->GetEngineTexture()->GetRowPitchBytes( MipLevel );
 
-    int px = static_cast<int>( std::max<float>( 1.0f, floor( OriginalDesc.dwWidth / pow( 2.0f, MipLevel ) ) ) );
-    int py = static_cast<int>( std::max<float>( 1.0f, floor( OriginalDesc.dwHeight / pow( 2.0f, MipLevel ) ) ) );
+    int px = (OriginalDesc.dwWidth >> MipLevel);
+    int py = (OriginalDesc.dwHeight >> MipLevel);
 
     lpDDSurfaceDesc->dwWidth = px;
     lpDDSurfaceDesc->dwHeight = py;
@@ -193,9 +202,11 @@ HRESULT FakeDirectDrawSurface7::Unlock( LPRECT lpRect ) {
     int bpp = redBits + greenBits + blueBits + alphaBits;
 
     if ( bpp != 16 ) {
-        Resource->GetEngineTexture()->UpdateDataDeferred( Data, MipLevel );
-        Resource->IncreaseQueuedMipMapCount();
-        Engine::GAPI->AddFrameLoadedTexture( Resource );
+        if ( Engine::GAPI->GetMainThreadID() != GetCurrentThreadId() ) {
+            Resource->GetEngineTexture()->UpdateDataDeferred( Data, MipLevel );
+        } else {
+            Resource->GetEngineTexture()->UpdateData( Data, MipLevel );
+        }
     }
 
     delete [] Data;
