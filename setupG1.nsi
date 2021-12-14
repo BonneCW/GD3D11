@@ -11,8 +11,8 @@
 
 ; TODO: Version der Modifikation
 !define VER_MAJOR 17 ; Major Version
-!define VER_MINOR 7 ; Minor Version
-!define VER_PATCH 19 ; Patch-Version (1=a, ...)
+!define VER_MINOR 8 ; Minor Version
+!define VER_PATCH 0 ; Patch-Version (1=a, ...)
 !define VER_FLAGS 0 ; Sprachversion
 !define VER_FILE  "${VER_MAJOR}.${VER_MINOR}"
 !define VER_TEXT  "${VER_MAJOR}.${VER_MINOR}.${VER_PATCH}"
@@ -281,7 +281,7 @@ Function .onInit
 
   ; Kein 'unsichtbares' Setup
   SetSilent normal
-  
+
   ; $INSTDIR bereits gültig?
   IfFileExists "$INSTDIR\System\Gothic.exe" done
 
@@ -405,7 +405,7 @@ FunctionEnd
 
 ; Installer (Verzeichnisprüfung)
 
-Function .onVerifyInstDir  
+Function .onVerifyInstDir
 FunctionEnd
 
 

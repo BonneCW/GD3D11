@@ -11,8 +11,8 @@
 
 ; TODO: Version der Modifikation
 !define VER_MAJOR 17 ; Major Version
-!define VER_MINOR 7 ; Minor Version
-!define VER_PATCH 19 ; Patch-Version (1=a, ...)
+!define VER_MINOR 8 ; Minor Version
+!define VER_PATCH 0 ; Patch-Version (1=a, ...)
 !define VER_FLAGS 0 ; Sprachversion
 !define VER_FILE  "${VER_MAJOR}.${VER_MINOR}"
 !define VER_TEXT  "${VER_MAJOR}.${VER_MINOR}.${VER_PATCH}"
@@ -108,9 +108,6 @@ LangString NameInstFull ${LANG_GERMAN} "Vollständig"
 InstType $(NameInstFull)
 
 
-!include ".\setup\g2mod.nsh"
-
-
 ;-------------------------------------------------------------------------------
 ;
 ;   Init (nicht angezeigt)
@@ -176,6 +173,11 @@ Section !$(NameSecModFiles) SecModFiles
   SetOutPath "$INSTDIR\System"
   File /r  ".\Gothic2-GD3D11\*"
 SectionEnd
+
+!macro g2mod_DeleteFile FILENAME
+  IfFileExists "${FILENAME}" "" +2
+  Delete "${FILENAME}"
+!macroend
 
 
 ; Uninstaller
@@ -259,7 +261,6 @@ Section -g2mpk
   SetOverwrite on
   SetDetailsPrint none
   SetShellVarContext current
-  !insertmacro g2mod_InstallPlayerKit
 SectionEnd
 
 
@@ -280,16 +281,9 @@ Function .onInit
 
   ; Kein 'unsichtbares' Setup
   SetSilent normal
-  
+
   ; $INSTDIR bereits gültig?
   IfFileExists "$INSTDIR\System\Gothic2.exe" done
-
-  ; Sonst Add-ON Installation suchen (Registrierung)
-  Call g2mod_GetInstallLocation
-  Pop $R0
-  StrCmp $R0 "" done
-  ; Übernehmen
-  StrCpy $INSTDIR $R0
 
   done:
   Pop $R0
@@ -414,25 +408,6 @@ FunctionEnd
 Var VerifyMessageOnce
 
 Function .onVerifyInstDir
-
-  ; Version 2.6 deutsch installiert ?
-  !insertmacro g2mod_IfInstallVersion $INSTDIR "2.6.0.0" done
-  ; Basisversion 2.6 ?
-  !insertmacro g2mod_IfInstallVersionBase $INSTDIR "2.6" code
-  Goto nope
-  code:
-  ; Deutsche Version ?
-  !insertmacro g2mod_IfInstallVersionCode $INSTDIR 0 done
-
-  ; Keine 2.6-er (deutsch)...
-  nope:
-  ; Meldung nur einmalig anzeigen
-  StrCmp $VerifyMessageOnce "done" +3
-  MessageBox MB_OK|MB_ICONINFORMATION "Wählen Sie das Verzeichnis aus, in welchem sich 'Gothic II - Die Nacht des Raben' 2.6 (deutsch) befindet."
-  StrCpy $VerifyMessageOnce "done"
-  Abort
-
-  done:
 FunctionEnd
 
 

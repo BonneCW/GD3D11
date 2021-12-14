@@ -13,6 +13,8 @@ CALL :SUB_BUILD "Gothic2-GD3D11-%VERSION%" "Release"
 CD /D
 CALL :SUB_BUILD "Gothic1-GD3D11-%VERSION%" "Release_G1"
 CD /D %~dp0
+CALL :SUB_BUILD "Gothic2-GD3D11-%VERSION%_SpacerNET" "Spacer_NET"
+CD /D %~dp0
 CALL :SUB_BUILD "Gothic2-GD3D11" "Release"
 CD /D
 CALL :SUB_BUILD "Gothic1-GD3D11" "Release_G1"
