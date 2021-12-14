@@ -194,13 +194,13 @@ void SV_Slider::RenderSlider() {
                     str.pop_back();
             }
 
-            ValueLabel->SetCaption( str );
+            ValueLabel->SetCaption( Toolbox::ToWideChar( str ) );
         } else {
             unsigned int v = (unsigned int)(Value + 0.5f);
             if ( v >= DisplayValues.size() )
                 v = DisplayValues.size() - 1;
 
-            ValueLabel->SetCaption( DisplayValues[v] );
+            ValueLabel->SetCaption( Toolbox::ToWideChar( DisplayValues[v] ) );
         }
     }
 
@@ -259,13 +259,13 @@ void SV_Slider::SetValueP( float value ) {
                 str.pop_back();
         }
 
-        ValueLabel->SetCaption( str );
+        ValueLabel->SetCaption( Toolbox::ToWideChar( str ) );
     } else {
         unsigned int v = (unsigned int)(Value + 0.5f);
         if ( v >= DisplayValues.size() )
             v = DisplayValues.size() - 1;
 
-        ValueLabel->SetCaption( DisplayValues[v] );
+        ValueLabel->SetCaption( Toolbox::ToWideChar( DisplayValues[v] ) );
     }
 }
 

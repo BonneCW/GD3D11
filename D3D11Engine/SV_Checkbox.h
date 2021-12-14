@@ -24,7 +24,7 @@ public:
     bool GetChecked() const;
 
     /** Sets this buttons caption */
-    void SetCaption( const std::string& caption );
+    void SetCaption( const std::wstring& caption );
 
     /** Sets the data location to update with this checkbox */
     void SetDataToUpdate( bool* data );
@@ -44,7 +44,7 @@ protected:
     bool* DataToUpdate;
 
     /** Current Caption */
-    std::string Caption;
+    std::wstring Caption;
 
     /** Text layout */
     IDWriteTextLayout* CaptionLayout;

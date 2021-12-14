@@ -161,9 +161,14 @@ XRESULT GMesh::LoadCached( const std::string& file ) {
         // Read texture name
         unsigned char numTxNameChars;
         fread( &numTxNameChars, sizeof( numTxNameChars ), 1, f );
-        char tx[255];
-        memset( tx, 0, 255 );
-        fread( tx, numTxNameChars, 1, f );
+
+        char tx[256] = {};
+        if ( numTxNameChars > 255 ) {
+            fread( tx, 255, 1, f );
+            fseek( f, static_cast<long>(numTxNameChars - 255), SEEK_CUR );
+        } else {
+            fread( tx, numTxNameChars, 1, f );
+        }
 
         // Read num submeshes
         unsigned char numSubmeshes;

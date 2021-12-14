@@ -3,15 +3,8 @@
 //--------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------
-// Input / Output structures
+// Output structure
 //--------------------------------------------------------------------------------------
-struct VS_INPUT
-{
-	float3 vPosition	: POSITION;
-	float2 vTex1		: TEXCOORD0;
-	uint vertexID		: SV_VertexID;
-};
-
 struct VS_OUTPUT
 {
 	float2 vTexcoord		: TEXCOORD0;
@@ -22,15 +15,14 @@ struct VS_OUTPUT
 //--------------------------------------------------------------------------------------
 // Vertex Shader
 //------------------------------------------------------------------ --------------------
-VS_OUTPUT VSMain( VS_INPUT Input )
+VS_OUTPUT VSMain( uint vertexID : SV_VertexID )
 {
 	VS_OUTPUT Output;
-			
-	Output.vPosition = float4(Input.vPosition, 1);
-	Output.vTexcoord = Input.vTex1;
+	
+	Output.vTexcoord = float2((vertexID << 1) & 2, vertexID & 2);
+	Output.vPosition = float4(Output.vTexcoord * float2(2.0f, -2.0f) + float2(-1.0f, 1.0f), 0.0, 1);
 	
 	Output.vEyeRay = 0;
 	
 	return Output;
 }
-

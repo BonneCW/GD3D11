@@ -151,38 +151,43 @@ Texture2D searchTex;
 /**
  * Function wrappers
  */
-void DX10_SMAAEdgeDetectionVS(float3 position : POSITION,
+void DX10_SMAAEdgeDetectionVS(uint vertexID : SV_VertexID,
                               out float4 svPosition : SV_POSITION,
-                              inout float2 texcoord : TEXCOORD0,
+                              out float2 texcoord : TEXCOORD0,
                               out float4 offset[3] : TEXCOORD1) {
-    SMAAEdgeDetectionVS(float4(position, 1), svPosition, texcoord, offset);
+    texcoord = float2((vertexID << 1) & 2, vertexID & 2);
+    SMAAEdgeDetectionVS(float4(texcoord * float2(2.0f, -2.0f) + float2(-1.0f, 1.0f), 0.0, 1), svPosition, texcoord, offset);
 }
 
-void DX10_SMAABlendingWeightCalculationVS(float3 position : POSITION,
+void DX10_SMAABlendingWeightCalculationVS(uint vertexID : SV_VertexID,
                                           out float4 svPosition : SV_POSITION,
-                                          inout float2 texcoord : TEXCOORD0,
+                                          out float2 texcoord : TEXCOORD0,
                                           out float2 pixcoord : TEXCOORD1,
                                           out float4 offset[3] : TEXCOORD2) {
-    SMAABlendingWeightCalculationVS(float4(position, 1), svPosition, texcoord, pixcoord, offset);
+    texcoord = float2((vertexID << 1) & 2, vertexID & 2);
+    SMAABlendingWeightCalculationVS(float4(texcoord * float2(2.0f, -2.0f) + float2(-1.0f, 1.0f), 0.0, 1), svPosition, texcoord, pixcoord, offset);
 }
 
-void DX10_SMAANeighborhoodBlendingVS(float3 position : POSITION,
+void DX10_SMAANeighborhoodBlendingVS(uint vertexID : SV_VertexID,
                                      out float4 svPosition : SV_POSITION,
-                                     inout float2 texcoord : TEXCOORD0,
+                                     out float2 texcoord : TEXCOORD0,
                                      out float4 offset[2] : TEXCOORD1) {
-    SMAANeighborhoodBlendingVS(float4(position, 1), svPosition, texcoord, offset);
+    texcoord = float2((vertexID << 1) & 2, vertexID & 2);
+    SMAANeighborhoodBlendingVS(float4(texcoord * float2(2.0f, -2.0f) + float2(-1.0f, 1.0f), 0.0, 1), svPosition, texcoord, offset);
 }
 
-void DX10_SMAAResolveVS(float3 position : POSITION,
+void DX10_SMAAResolveVS(uint vertexID : SV_VertexID,
                         out float4 svPosition : SV_POSITION,
-                        inout float2 texcoord : TEXCOORD0) {
-    SMAAResolveVS(float4(position, 1), svPosition, texcoord);
+                        out float2 texcoord : TEXCOORD0) {
+    texcoord = float2((vertexID << 1) & 2, vertexID & 2);
+    SMAAResolveVS(float4(texcoord * float2(2.0f, -2.0f) + float2(-1.0f, 1.0f), 0.0, 1), svPosition, texcoord);
 }
 
-void DX10_SMAASeparateVS(float3 position : POSITION,
+void DX10_SMAASeparateVS(uint vertexID : SV_VertexID,
                          out float4 svPosition : SV_POSITION,
-                         inout float2 texcoord : TEXCOORD0) {
-    SMAASeparateVS(float4(position, 1), svPosition, texcoord);
+                         out float2 texcoord : TEXCOORD0) {
+    texcoord = float2((vertexID << 1) & 2, vertexID & 2);
+    SMAASeparateVS(float4(texcoord * float2(2.0f, -2.0f) + float2(-1.0f, 1.0f), 0.0, 1), svPosition, texcoord);
 }
 
 float4 DX10_SMAALumaEdgeDetectionPS(float4 position : SV_POSITION,

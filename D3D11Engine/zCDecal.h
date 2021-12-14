@@ -20,10 +20,7 @@ public:
     }
 
     bool GetAlphaTestEnabled() {
-#ifdef BUILD_GOTHIC_1_08k
-        return GetDecalSettings()->DecalMaterial->GetAlphaFunc() == zMAT_ALPHA_FUNC_TEST;
-#else
-        XCALL( GothicMemoryLocations::zCDecal::GetAlphaTestEnabled );
-#endif
+        int alphaFunc = GetDecalSettings()->DecalMaterial->GetAlphaFunc();
+        return alphaFunc == zMAT_ALPHA_FUNC_NONE || alphaFunc == zMAT_ALPHA_FUNC_TEST;
     }
 };

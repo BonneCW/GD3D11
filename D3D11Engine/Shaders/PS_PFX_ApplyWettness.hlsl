@@ -32,16 +32,14 @@ struct PS_INPUT
 
 float3 VSPositionFromDepth(float depth, float2 vTexCoord)
 {
-    // Get the depth value for this pixel
-    float z = depth; 
-    // Get x/w and y/w from the viewport position
-    float x = vTexCoord.x * 2 - 1;
-    float y = (1 - vTexCoord.y) * 2 - 1;
-    float4 vProjectedPos = float4(x, y, z, 1.0f);
-    // Transform by the inverse projection matrix
-    float4 vPositionVS = mul(vProjectedPos, W_InvProj); //invViewProj == invProjection here  
-    // Divide by w to get the view-space position
-    return vPositionVS.xyz / vPositionVS.w;   
+	// Get NDC clip-space position
+	float4 vProjectedPos = float4(vTexCoord * float2(2.0f, -2.0f) + float2(-1.0f, 1.0f), depth, 1.0f);
+
+	// Transform by the inverse projection matrix
+	float4 vPositionVS = mul(vProjectedPos, W_InvProj); //invViewProj == invProjection here
+
+	// Divide by w to get the view-space position
+	return vPositionVS.xyz / vPositionVS.www;
 }
 
 //--------------------------------------------------------------------------------------
@@ -57,7 +55,7 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	float3 V = normalize(-vsPosition);
 	
 	// Decode the view-space normal back
-	float3 normal = normalize(DecodeNormal(gb2.xy));	
+	float3 normal = normalize(DecodeNormal(gb2.xy));
 	
 	float fresnel = pow(1.0f - max(0.0f, dot(normal, V)), 10.0f);
 	litPixel += lerp(fresnel * litPixel * 0.5f, 0.0f, sun);

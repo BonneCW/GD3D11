@@ -12,112 +12,6 @@ class D3D11HDShader;
 class D3D11Texture;
 class D3D11GShader;
 
-namespace D3D11ObjectIDs {
-
-    /** Map to get a texture by ID */
-    __declspec(selectany) std::map<UINT16, D3D11Texture*> TextureByID;
-
-
-    __declspec(selectany) std::map<UINT8, D3D11PShader*> PShadersByID;
-
-    __declspec(selectany) std::map<UINT8, D3D11VShader*> VShadersByID;
-
-    __declspec(selectany) std::map<UINT8, D3D11HDShader*> HDShadersByID;
-
-    __declspec(selectany) std::map<UINT8, D3D11GShader*> GShadersByID;
-
-    __declspec(selectany) std::map<UINT8, D3D11DepthBufferState*> DepthStateByID;
-
-    __declspec(selectany) std::map<UINT8, D3D11BlendStateInfo*> BlendStateByID;
-
-    __declspec(selectany) std::map<UINT8, D3D11RasterizerStateInfo*> RasterizerStateByID;
-
-    __declspec(selectany) struct CounterStruct {
-        CounterStruct() {
-            memset( this, 0, sizeof( CounterStruct ) );
-        }
-
-        int PShadersCounter;
-        int TextureCounter;
-        int VShadersCounter;
-        int HDShadersCounter;
-        int GShadersCounter;
-        int DepthStateCounter;
-        int BlendStateCounter;
-        int RasterizerCounter;
-    } Counters;
-}
-
-class D3D11ObjectIdManager {
-public:
-    static UINT8 AddVShader( D3D11VShader* s ) {
-        std::unique_lock<std::mutex> lock( VShadersByIDMutex );
-        UINT8 id = 0;
-        if ( !D3D11ObjectIDs::VShadersByID.empty() ) {
-            id = D3D11ObjectIDs::Counters.VShadersCounter++;
-        }
-        D3D11ObjectIDs::VShadersByID[id] = s;
-        return id;
-    }
-    static UINT8 AddPShader( D3D11PShader* s ) {
-        std::unique_lock<std::mutex> lock( PShadersByIDMutex );
-        UINT8 id = 0;
-        if ( !D3D11ObjectIDs::PShadersByID.empty() ) {
-            id = D3D11ObjectIDs::Counters.PShadersCounter++;
-        }
-        D3D11ObjectIDs::PShadersByID[id] = s;
-        return id;
-    }
-    static UINT8 AddHDShader( D3D11HDShader* s ) {
-        std::unique_lock<std::mutex> lock( HDShadersByIDMutex );
-        UINT8 id = 0;
-        if ( !D3D11ObjectIDs::HDShadersByID.empty() ) {
-            id = D3D11ObjectIDs::Counters.HDShadersCounter++;
-        }
-        D3D11ObjectIDs::HDShadersByID[id] = s;
-        return id;
-    }
-    static UINT8 AddGShader( D3D11GShader* s ) {
-        std::unique_lock<std::mutex> lock( GShadersByIDMutex );
-        UINT8 id = 0;
-        if ( !D3D11ObjectIDs::GShadersByID.empty() ) {
-            id = D3D11ObjectIDs::Counters.GShadersCounter++;
-        }
-        D3D11ObjectIDs::GShadersByID[id] = s;
-        return id;
-    }
-
-    static void EraseVShader( D3D11VShader* s ) {
-        std::unique_lock<std::mutex> lock( VShadersByIDMutex );
-        for ( auto it = D3D11ObjectIDs::VShadersByID.begin(); it != D3D11ObjectIDs::VShadersByID.end();) {
-            if ( it->second == s ) { it = D3D11ObjectIDs::VShadersByID.erase( it ); } else { ++it; }
-        }
-    }
-    static void ErasePShader( D3D11PShader* s ) {
-        std::unique_lock<std::mutex> lock( PShadersByIDMutex );
-        for ( auto it = D3D11ObjectIDs::PShadersByID.begin(); it != D3D11ObjectIDs::PShadersByID.end();) {
-            if ( it->second == s ) { it = D3D11ObjectIDs::PShadersByID.erase( it ); } else { ++it; }
-        }
-    }
-    static void EraseHDShader( D3D11HDShader* s ) {
-        std::unique_lock<std::mutex> lock( HDShadersByIDMutex );
-        for ( auto it = D3D11ObjectIDs::HDShadersByID.begin(); it != D3D11ObjectIDs::HDShadersByID.end();) {
-            if ( it->second == s ) { it = D3D11ObjectIDs::HDShadersByID.erase( it ); } else { ++it; }
-        }
-    }
-    static void EraseGShader( D3D11GShader* s ) {
-        std::unique_lock<std::mutex> lock( GShadersByIDMutex );
-        for ( auto it = D3D11ObjectIDs::GShadersByID.begin(); it != D3D11ObjectIDs::GShadersByID.end();) {
-            if ( it->second == s ) { it = D3D11ObjectIDs::GShadersByID.erase( it ); } else { ++it; }
-        }
-    }
-private:
-    inline static std::mutex VShadersByIDMutex;
-    inline static std::mutex PShadersByIDMutex;
-    inline static std::mutex HDShadersByIDMutex;
-    inline static std::mutex GShadersByIDMutex;
-};
-
 struct RenderToTextureBuffer;
 struct RenderToDepthStencilBuffer;
 class D3D11ShaderManager;
@@ -201,11 +95,11 @@ public:
     /** Returns the Device/Context */
     const Microsoft::WRL::ComPtr<ID3D11Device1>& GetDevice() { return Device; }
     const Microsoft::WRL::ComPtr<ID3D11DeviceContext1>& GetContext() { return Context; }
-    const Microsoft::WRL::ComPtr<ID3D11DeviceContext1>& GetDeferredMediaContext1() { return DeferredContext; }
 
     /** Pixel Shader functions */
     void UnbindActivePS() { ActivePS = nullptr; }
     std::shared_ptr<D3D11PShader>& GetActivePS() { return ActivePS; }
+    std::shared_ptr<D3D11VShader>& GetActiveVS() { return ActiveVS; }
 
     /** Returns the current resolution */
     virtual INT2 GetResolution() { return Resolution; }
@@ -248,12 +142,15 @@ protected:
     Microsoft::WRL::ComPtr<ID3D11DeviceContext> Context11;
     Microsoft::WRL::ComPtr<ID3D11Device1> Device;
     Microsoft::WRL::ComPtr<ID3D11DeviceContext1> Context;
-    Microsoft::WRL::ComPtr<ID3D11DeviceContext1> DeferredContext;
 
     /** Swapchain and resources */
     Microsoft::WRL::ComPtr<IDXGISwapChain1> SwapChain;
     Microsoft::WRL::ComPtr<IDXGISwapChain2> SwapChain2;
+    Microsoft::WRL::ComPtr<IDXGISwapChain3> SwapChain3;
+    Microsoft::WRL::ComPtr<IDXGISwapChain4> SwapChain4;
     bool dxgi_1_3 = false;
+    bool dxgi_1_4 = false;
+    bool dxgi_1_5 = false;
     std::unique_ptr<RenderToTextureBuffer> Backbuffer;
     std::unique_ptr<RenderToDepthStencilBuffer> DepthStencilBuffer;
     std::unique_ptr<RenderToTextureBuffer> HDRBackBuffer;

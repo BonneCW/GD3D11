@@ -40,22 +40,12 @@ public:
         depthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
 
         ((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetDevice()->CreateDepthStencilState( &depthStencilDesc, State.ReleaseAndGetAddressOf() );
-
-        // Insert into state-map
-        int id = D3D11ObjectIDs::Counters.DepthStateCounter++;
-
-        D3D11ObjectIDs::DepthStateByID[id] = this;
     }
 
-    virtual ~D3D11DepthBufferState() {
-
-        Toolbox::EraseByElement<UINT8, D3D11DepthBufferState*>( D3D11ObjectIDs::DepthStateByID, this );
-    }
+    virtual ~D3D11DepthBufferState() {}
 
     Microsoft::WRL::ComPtr<ID3D11DepthStencilState> State;
     GothicDepthBufferStateInfo Values;
-
-
 };
 
 class D3D11BlendStateInfo : public BaseBlendStateInfo {
@@ -83,22 +73,12 @@ public:
         blendDesc.RenderTarget[0].BlendEnable = bs.BlendEnabled;
 
         ((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetDevice()->CreateBlendState( &blendDesc, State.GetAddressOf() );
-
-        // Insert into state-map
-        int id = D3D11ObjectIDs::Counters.BlendStateCounter++;
-
-        D3D11ObjectIDs::BlendStateByID[id] = this;
     }
 
-    virtual ~D3D11BlendStateInfo() {
-
-        Toolbox::EraseByElement<UINT8, D3D11BlendStateInfo*>( D3D11ObjectIDs::BlendStateByID, this );
-    }
+    virtual ~D3D11BlendStateInfo() {}
 
     Microsoft::WRL::ComPtr<ID3D11BlendState> State;
     GothicBlendStateInfo Values;
-
-
 };
 
 class D3D11RasterizerStateInfo : public BaseRasterizerStateInfo {
@@ -125,21 +105,11 @@ public:
         rasterizerDesc.AntialiasedLineEnable = true;
 
         ((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetDevice()->CreateRasterizerState( &rasterizerDesc, State.GetAddressOf() );
-
-        // Insert into state-map
-        int id = D3D11ObjectIDs::Counters.RasterizerCounter++;
-
-        D3D11ObjectIDs::RasterizerStateByID[id] = this;
     }
 
-    virtual ~D3D11RasterizerStateInfo() {
-
-        Toolbox::EraseByElement<UINT8, D3D11RasterizerStateInfo*>( D3D11ObjectIDs::RasterizerStateByID, this );
-    }
+    virtual ~D3D11RasterizerStateInfo() {}
 
     Microsoft::WRL::ComPtr<ID3D11RasterizerState> State;
     GothicRasterizerStateInfo Values;
-
-
 };
 

@@ -140,7 +140,7 @@ public:
         } else if ( _stricmp( var, "zVidResFullscreenBPP" ) == 0 ) {
             return 32;
         } else if ( _stricmp( var, "zTexMaxSize" ) == 0 ) {
-            return 16384;
+            return Engine::GAPI->GetRendererState().RendererSettings.textureMaxSize;
         } else if ( _stricmp( var, "zTexCacheOutTimeMSec" ) == 0 ) // Following values are from Marcellos L'Hiver config
         {
             return 9120000;
@@ -150,6 +150,8 @@ public:
             return 10000;
         } else if ( _stricmp( var, "zSndCacheSizeMaxBytes" ) == 0 ) {
             return 40000000;
+        } else if ( _stricmp( var, "zVidDevice" ) == 0 ) {
+            return 0;
         }
 
         return HookedFunctions::OriginalFunctions.original_zCOptionReadInt( thisptr, section, var, def );
@@ -184,6 +186,10 @@ public:
         Engine::GAPI->SetIntParamFromConfig( "var", i );
 
         return i;
+    }
+
+    void WriteString( zSTRING const& section, char const* var, zSTRING def ) {
+        reinterpret_cast<void( __thiscall* )( zCOption*, zSTRING const&, const char*, zSTRING, int )>( GothicMemoryLocations::zCOption::WriteString )( this, section, var, def, 0 );
     }
 
     static zCOption* GetOptions() { return *(zCOption**)GothicMemoryLocations::GlobalObjects::zCOption; }

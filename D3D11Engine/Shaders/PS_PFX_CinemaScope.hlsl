@@ -1,13 +1,11 @@
 //--------------------------------------------------------------------------------------
-// World/VOB-Pixelshader for G2D3D11 by Degenerated
+// Cinema Scope Buffer
 //--------------------------------------------------------------------------------------
-
-//--------------------------------------------------------------------------------------
-// Textures and Samplers
-//--------------------------------------------------------------------------------------
-SamplerState SS_Linear : register( s0 );
-SamplerState SS_samMirror : register( s1 );
-Texture2D	TX_Texture0 : register( t0 );
+cbuffer AlphaBlendInfo : register( b0 )
+{
+	float AB_Alpha;
+	float3 AB_Color;
+};
 
 //--------------------------------------------------------------------------------------
 // Input / Output structures
@@ -24,8 +22,5 @@ struct PS_INPUT
 //--------------------------------------------------------------------------------------
 float4 PSMain( PS_INPUT Input ) : SV_TARGET
 {
-	float4 color = TX_Texture0.Sample(SS_Linear, Input.vTexcoord);
-
-	return float4(color.rgb, 0);
+	return float4(AB_Color, AB_Alpha);
 }
-

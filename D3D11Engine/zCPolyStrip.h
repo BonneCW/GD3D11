@@ -42,8 +42,6 @@ struct zCPolyStripInstance {
     unsigned char localFOR : 1;
 };
 
-
-
 class zCPolyStrip : public zCObject {
 public:
     zCPolyStripInstance* GetInstanceData() {
@@ -51,14 +49,15 @@ public:
     }
 
     void SetVisibleSegments( float visibleFirst, float visibleLast ) {
-        XCALL( GothicMemoryLocations::zCPolyStrip::SetVisibleSegments );
+        reinterpret_cast<void( __fastcall* )( zCPolyStrip*, int, float, float )>
+            ( GothicMemoryLocations::zCPolyStrip::SetVisibleSegments )( this, 0, visibleFirst, visibleLast );
     }
 
     void AlighToCamera() {
-        XCALL( GothicMemoryLocations::zCPolyStrip::AlignToCamera );
+        reinterpret_cast<void( __fastcall* )( zCPolyStrip* )>( GothicMemoryLocations::zCPolyStrip::AlignToCamera )( this );
     }
 
-    void Render( void* ) {
-        XCALL( GothicMemoryLocations::zCPolyStrip::Render );
+    void Render( void* a ) {
+        reinterpret_cast<void( __fastcall* )( zCPolyStrip*, int, void* )>( GothicMemoryLocations::zCPolyStrip::Render )( this, 0, a );
     }
 };

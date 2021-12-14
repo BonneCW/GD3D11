@@ -10,17 +10,9 @@
 
 using namespace DirectX;
 
-D3D11Texture::D3D11Texture() {
-    // Insert into state-map
-    ID = D3D11ObjectIDs::Counters.TextureCounter++;
-
-    D3D11ObjectIDs::TextureByID[ID] = this;
-}
+D3D11Texture::D3D11Texture() {}
 
 D3D11Texture::~D3D11Texture() {
-    // Remove from state map
-    Toolbox::EraseByElement( D3D11ObjectIDs::TextureByID, this );
-
     Thumbnail.Reset();
     Texture.Reset();
     ShaderResourceView.Reset();
@@ -30,8 +22,6 @@ D3D11Texture::~D3D11Texture() {
 XRESULT D3D11Texture::Init( INT2 size, ETextureFormat format, UINT mipMapCount, void* data, const std::string& fileName ) {
     HRESULT hr;
     D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
-
-    //Engine::GAPI->EnterResourceCriticalSection();
 
     TextureFormat = (DXGI_FORMAT)format;
     TextureSize = size;
@@ -56,8 +46,6 @@ XRESULT D3D11Texture::Init( INT2 size, ETextureFormat format, UINT mipMapCount, 
     LE( engine->GetDevice()->CreateShaderResourceView( Texture.Get(), &descRV, ShaderResourceView.ReleaseAndGetAddressOf() ) );
     SetDebugName( ShaderResourceView.Get(), "D3D11Texture(\"" + fileName + "\")->ShaderResourceView" );
 
-    //Engine::GAPI->LeaveResourceCriticalSection();
-
     return XR_SUCCESS;
 }
 
@@ -67,8 +55,6 @@ XRESULT D3D11Texture::Init( const std::string& file ) {
     D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
     //LogInfo() << "Loading Engine-Texture: " << file;
-
-    //Engine::GAPI->EnterResourceCriticalSection();
 
     Microsoft::WRL::ComPtr<ID3D11Texture2D> res;
     LE( CreateDDSTextureFromFile( engine->GetDevice().Get(), Toolbox::ToWideChar( file.c_str() ).c_str(), (ID3D11Resource**)res.ReleaseAndGetAddressOf(), ShaderResourceView.GetAddressOf() ) );
@@ -87,8 +73,6 @@ XRESULT D3D11Texture::Init( const std::string& file ) {
     SetDebugName( res.Get(), "D3D11Texture(\"" + file + "\")->Texture" );
     SetDebugName( ShaderResourceView.Get(), "D3D11Texture(\"" + file + "\")->ShaderResourceView" );
 
-    //Engine::GAPI->LeaveResourceCriticalSection();
-
     return XR_SUCCESS;
 }
 
@@ -96,36 +80,70 @@ XRESULT D3D11Texture::Init( const std::string& file ) {
 XRESULT D3D11Texture::UpdateData( void* data, int mip ) {
     D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
-    // Enter the critical section for safety while executing the deferred command list
-    Engine::GAPI->EnterResourceCriticalSection();
-    engine->GetContext()->UpdateSubresource( Texture.Get(), mip, nullptr, data, GetRowPitchBytes( mip ), GetSizeInBytes( mip ) );
-    Engine::GAPI->LeaveResourceCriticalSection();
+    UINT TextureWidth = (TextureSize.x >> mip);
+    UINT TextureHeight = (TextureSize.y >> mip);
+
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> stagingTexture;
+    D3D11_TEXTURE2D_DESC stagingTextureDesc;
+    Texture.Get()->GetDesc( &stagingTextureDesc );
+    stagingTextureDesc.Width = TextureWidth;
+    stagingTextureDesc.Height = TextureHeight;
+    stagingTextureDesc.MipLevels = 1;
+    stagingTextureDesc.BindFlags = 0;
+    stagingTextureDesc.MiscFlags = 0;
+    stagingTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    stagingTextureDesc.Usage = D3D11_USAGE_STAGING;
+
+    D3D11_SUBRESOURCE_DATA stagingTextureData;
+    stagingTextureData.pSysMem = data;
+    stagingTextureData.SysMemPitch = GetRowPitchBytes( mip );
+    stagingTextureData.SysMemSlicePitch = 0;
+
+    HRESULT result = engine->GetDevice()->CreateTexture2D( &stagingTextureDesc, &stagingTextureData, stagingTexture.ReleaseAndGetAddressOf() );
+    if ( FAILED( result ) )
+        return XR_FAILED;
+
+    engine->GetContext()->CopySubresourceRegion( Texture.Get(), mip, 0, 0, 0, stagingTexture.Get(), 0, nullptr );
 
     return XR_SUCCESS;
 }
 
 /** Updates the Texture-Object using the deferred context (For loading in an other thread) */
-XRESULT D3D11Texture::UpdateDataDeferred( void* data, int mip, bool noLock ) {
+XRESULT D3D11Texture::UpdateDataDeferred( void* data, int mip ) {
     D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
-    // Enter the critical section for safety while executing the deferred command list
-    if ( !noLock )
-        Engine::GAPI->EnterResourceCriticalSection();
+    UINT TextureWidth = (TextureSize.x >> mip);
+    UINT TextureHeight = (TextureSize.y >> mip);
 
-    engine->GetDeferredMediaContext1()->UpdateSubresource( Texture.Get(), mip, nullptr, data, GetRowPitchBytes( mip ), GetSizeInBytes( mip ) );
+    ID3D11Texture2D* stagingTexture;
+    D3D11_TEXTURE2D_DESC stagingTextureDesc;
+    Texture.Get()->GetDesc( &stagingTextureDesc );
+    stagingTextureDesc.Width = TextureWidth;
+    stagingTextureDesc.Height = TextureHeight;
+    stagingTextureDesc.MipLevels = 1;
+    stagingTextureDesc.BindFlags = 0;
+    stagingTextureDesc.MiscFlags = 0;
+    stagingTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    stagingTextureDesc.Usage = D3D11_USAGE_STAGING;
 
-    if ( !noLock )
-        Engine::GAPI->LeaveResourceCriticalSection();
+    D3D11_SUBRESOURCE_DATA stagingTextureData;
+    stagingTextureData.pSysMem = data;
+    stagingTextureData.SysMemPitch = GetRowPitchBytes( mip );
+    stagingTextureData.SysMemSlicePitch = 0;
+
+    HRESULT result = engine->GetDevice()->CreateTexture2D( &stagingTextureDesc, &stagingTextureData, &stagingTexture );
+    if ( FAILED( result ) )
+        return XR_FAILED;
+
+    Engine::GAPI->AddStagingTexture( mip, stagingTexture, Texture.Get() );
 
     return XR_SUCCESS;
 }
 
 /** Returns the RowPitch-Bytes */
 UINT D3D11Texture::GetRowPitchBytes( int mip ) {
-    int px = static_cast<int>( std::max<float>( 1.0f, floor( TextureSize.x / pow( 2.0f, mip ) ) ) );
-    //int py = (int)std::max( 1.0, floor( TextureSize.y / pow( 2.0f, mip ) ) );
-    //int px = TextureSize.x;
-    //int py = TextureSize.y;
+    int px = (TextureSize.x >> mip);
+    //int py = (TextureSize.y >> mip);
 
     if ( TextureFormat == DXGI_FORMAT_BC1_UNORM || TextureFormat == DXGI_FORMAT_BC2_UNORM ||
         TextureFormat == DXGI_FORMAT_BC3_UNORM ) {
@@ -138,10 +156,8 @@ UINT D3D11Texture::GetRowPitchBytes( int mip ) {
 
 /** Returns the size of the texture in bytes */
 UINT D3D11Texture::GetSizeInBytes( int mip ) {
-    int px = static_cast<int>( std::max<float>( 1.0f, floor( TextureSize.x / pow( 2.0f, mip ) ) ) );
-    int py = static_cast<int>( std::max<float>( 1.0f, floor( TextureSize.y / pow( 2.0f, mip ) ) ) );
-    //int px = TextureSize.x;
-    //int py = TextureSize.y;
+    int px = (TextureSize.x >> mip);
+    int py = (TextureSize.y >> mip);
 
     if ( TextureFormat == DXGI_FORMAT_BC1_UNORM || TextureFormat == DXGI_FORMAT_BC2_UNORM ||
         TextureFormat == DXGI_FORMAT_BC3_UNORM ) {
@@ -233,20 +249,25 @@ XRESULT D3D11Texture::GenerateMipMaps() {
 
     D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
 
-    Engine::GAPI->EnterResourceCriticalSection();
+    std::unique_ptr<RenderToTextureBuffer> b = std::make_unique<RenderToTextureBuffer>( engine->GetDevice().Get(), TextureSize.x, TextureSize.y, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, MipMapCount );
 
-    RenderToTextureBuffer* b = new RenderToTextureBuffer( engine->GetDevice().Get(), TextureSize.x, TextureSize.y, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, MipMapCount );
-
-    engine->GetDeferredMediaContext1()->CopySubresourceRegion( b->GetTexture().Get(), 0, 0, 0, 0, Texture.Get(), 0, nullptr );
+    // Copy the main image
+    engine->GetContext()->CopySubresourceRegion( b->GetTexture().Get(), 0, 0, 0, 0, Texture.Get(), 0, nullptr );
 
     // Generate mips
-    engine->GetDeferredMediaContext1()->GenerateMips( b->GetShaderResView().Get() );
+    engine->GetContext()->GenerateMips( b->GetShaderResView().Get() );
 
     // Copy the full chain back
-    engine->GetDeferredMediaContext1()->CopyResource( Texture.Get(), b->GetTexture().Get() );
-    delete b;
+    engine->GetContext()->CopyResource( Texture.Get(), b->GetTexture().Get() );
 
-    Engine::GAPI->LeaveResourceCriticalSection();
+    return XR_SUCCESS;
+}
+
+XRESULT D3D11Texture::GenerateMipMapsDeferred() {
+    if ( MipMapCount == 1 )
+        return XR_SUCCESS;
+
+    Engine::GAPI->AddMipMapGeneration( this );
 
     return XR_SUCCESS;
 }

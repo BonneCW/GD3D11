@@ -16,7 +16,7 @@ public:
     virtual void SetRect( const D2D1_RECT_F& rect );
 
     /** Sets this labels caption */
-    void SetCaption( const std::string& caption );
+    void SetCaption( const std::wstring& caption );
 
     /** Sets the text size */
     void SetTextSize( float size );
@@ -35,7 +35,7 @@ public:
 
 protected:
     /** Current Caption */
-    std::string Caption;
+    std::wstring Caption;
 
     /** Draw black background? */
     bool DrawBackground;

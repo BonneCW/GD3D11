@@ -16,21 +16,14 @@ using namespace DirectX;
 
 D3D11HDShader::D3D11HDShader() {
     ConstantBuffers = std::vector<D3D11ConstantBuffer*>();
-
-    // Insert into state-map
-    ID = D3D11ObjectIdManager::AddHDShader( this );
 }
 
 
 D3D11HDShader::~D3D11HDShader() {
-    // Remove from state map
-    D3D11ObjectIdManager::EraseHDShader( this );
-
     for ( unsigned int i = 0; i < ConstantBuffers.size(); i++ ) {
         delete ConstantBuffers[i];
     }
 }
-
 
 //--------------------------------------------------------------------------------------
 // Find and compile the specified shader
@@ -79,7 +72,6 @@ XRESULT D3D11HDShader::LoadShader( const char* hullShader, const char* domainSha
 
     if ( Engine::GAPI->GetRendererState().RendererSettings.EnableDebugLog )
         LogInfo() << "Compilling hull shader: " << hullShader;
-    File = hullShader;
 
     // Compile shaders
     if ( FAILED( CompileShaderFromFile( hullShader, "HSMain", "hs_5_0", hsBlob.GetAddressOf() ) ) ) {

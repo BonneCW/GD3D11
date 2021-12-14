@@ -14,6 +14,7 @@ cbuffer Matrices_PerFrame : register( b0 )
 cbuffer Matrices_PerInstances : register( b1 )
 {
 	matrix M_World;
+	float4 PI_ModelColor;
 	float PI_ModelFatness;
 	float3 PI_Pad1;
 };
@@ -28,10 +29,10 @@ cbuffer BoneTransforms : register( b2 )
 //--------------------------------------------------------------------------------------
 struct VS_INPUT
 {
-	float3 vPosition[4]	: POSITION;
+	float4 vPosition[4]	: POSITION;
 	float3 vNormal		: NORMAL;
-	float2 vTex1		: TEXCOORD0;
-	float4 vDiffuse		: DIFFUSE;
+	float3 vBindPoseNormal		: TEXCOORD0;
+	float2 vTex1		: TEXCOORD1;
 	uint4 BoneIndices : BONEIDS;
 	float4 Weights 	: WEIGHTS;
 };
@@ -53,24 +54,28 @@ VS_OUTPUT VSMain( VS_INPUT Input )
 {
 	VS_OUTPUT Output;
 	
-	float3 position = float3(0,0,0);
-	for(int i=0;i<4;i++)
-	{
-		position += Input.Weights[i] * mul(float4(Input.vPosition[i], 1), BT_Transforms[Input.BoneIndices[i]]).xyz;
-	}
+	float3 position = float3(0, 0, 0);
+	position += Input.Weights.x * mul(float4(Input.vPosition[0].xyz, 1), BT_Transforms[Input.BoneIndices.x]).xyz;
+	position += Input.Weights.y * mul(float4(Input.vPosition[1].xyz, 1), BT_Transforms[Input.BoneIndices.y]).xyz;
+	position += Input.Weights.z * mul(float4(Input.vPosition[2].xyz, 1), BT_Transforms[Input.BoneIndices.z]).xyz;
+	position += Input.Weights.w * mul(float4(Input.vPosition[3].xyz, 1), BT_Transforms[Input.BoneIndices.w]).xyz;
 	
+	float3 normal = float3(0, 0, 0);
+	normal += Input.Weights.x * mul(Input.vNormal, (float3x3)BT_Transforms[Input.BoneIndices.x]);
+	normal += Input.Weights.y * mul(Input.vNormal, (float3x3)BT_Transforms[Input.BoneIndices.y]);
+	normal += Input.Weights.z * mul(Input.vNormal, (float3x3)BT_Transforms[Input.BoneIndices.z]);
+	normal += Input.Weights.w * mul(Input.vNormal, (float3x3)BT_Transforms[Input.BoneIndices.w]);
 	
-	float3 positionWorld = mul(float4(position + PI_ModelFatness * Input.vNormal,1), M_World).xyz;
+	float3 positionWorld = mul(float4(position + PI_ModelFatness * normal,1), M_World).xyz;
 	
 	//Output.vPosition = float4(Input.vPosition, 1);
-	Output.vPosition = mul( float4(positionWorld,1), M_ViewProj);
+	Output.vPosition = mul(float4(positionWorld,1), M_ViewProj);
 	Output.vTexcoord2 = Input.vTex1;
 	Output.vTexcoord = Input.vTex1;
-	Output.vDiffuse  = Input.vDiffuse;
-	Output.vNormalVS = mul(Input.vNormal, (float3x3)mul(M_World, M_View));
+	Output.vDiffuse  = PI_ModelColor;
+	Output.vNormalVS = mul(Input.vBindPoseNormal, (float3x3)mul(M_World, M_View));
 	Output.vViewPosition = mul(float4(positionWorld,1),M_View).xyz;
 	//Output.vWorldPosition = positionWorld;
 	
 	return Output;
 }
-

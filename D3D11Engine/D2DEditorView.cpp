@@ -136,13 +136,13 @@ XRESULT D2DEditorView::InitControls() {
 	VegRestrictByTextureCheckBox = new SV_Checkbox( MainView, MainTabControl->GetTabPanel() );
 	VegRestrictByTextureCheckBox->SetSize( D2D1::SizeF( 160, 20 ) );
 	VegRestrictByTextureCheckBox->AlignUnder( addVegButton, 8.0f );
-	VegRestrictByTextureCheckBox->SetCaption( "Texture aware" );
+	VegRestrictByTextureCheckBox->SetCaption( L"Texture aware" );
 	MainTabControl->AddControlToTab( VegRestrictByTextureCheckBox, "Vegetation" );
 
 	VegCircularShapeCheckBox = new SV_Checkbox( MainView, MainTabControl->GetTabPanel() );
 	VegCircularShapeCheckBox->SetSize( D2D1::SizeF( 160, 20 ) );
 	VegCircularShapeCheckBox->AlignUnder( VegRestrictByTextureCheckBox, 5.0f );
-	VegCircularShapeCheckBox->SetCaption( "Circular shape" );
+	VegCircularShapeCheckBox->SetCaption( L"Circular shape" );
 	MainTabControl->AddControlToTab( VegCircularShapeCheckBox, "Vegetation" );
 
 	SV_Button* removeVegButton = new SV_Button( MainView, MainTabControl->GetTabPanel() );
@@ -156,7 +156,7 @@ XRESULT D2DEditorView::InitControls() {
 	SelectTrianglesOnlyCheckBox = new SV_Checkbox( MainView, MainTabControl->GetTabPanel() );
 	SelectTrianglesOnlyCheckBox->SetSize( D2D1::SizeF( 160, 20 ) );
 	SelectTrianglesOnlyCheckBox->SetPosition( D2D1::Point2F( 10, 10 ) );
-	SelectTrianglesOnlyCheckBox->SetCaption( "Select Triangles Only CheckBox" );
+	SelectTrianglesOnlyCheckBox->SetCaption( L"Select Triangles Only CheckBox" );
 	MainTabControl->AddControlToTab( SelectTrianglesOnlyCheckBox, "Selection" );
 	SelectTrianglesOnlyCheckBox->SetChecked( false );
 
@@ -197,7 +197,7 @@ XRESULT D2DEditorView::InitControls() {
 	float alignDistance = -3.0f;
 	SelectedTexNrmStrSlider = new SV_NamedSlider( MainView, SelectionTabControl->GetTabPanel() );
 	SelectedTexNrmStrSlider->AlignUnder( SelectedImageNameLabel, alignDistance + 5.0f );
-	SelectedTexNrmStrSlider->GetLabel()->SetCaption( "Normalmap:" );
+	SelectedTexNrmStrSlider->GetLabel()->SetCaption( L"Normalmap:" );
 	SelectedTexNrmStrSlider->GetLabel()->SetSize( D2D1::SizeF( textwidth, SelectedTexNrmStrSlider->GetLabel()->GetSize().height ) );
 	SelectedTexNrmStrSlider->GetSlider()->SetPositionAndSize( D2D1::Point2F( 0, 0 ), D2D1::SizeF( 150, 15 ) );
 	SelectedTexNrmStrSlider->UpdateDimensions();
@@ -208,7 +208,7 @@ XRESULT D2DEditorView::InitControls() {
 
 	SelectedTexSpecIntensSlider = new SV_NamedSlider( MainView, SelectionTabControl->GetTabPanel() );
 	SelectedTexSpecIntensSlider->AlignUnder( SelectedTexNrmStrSlider, alignDistance );
-	SelectedTexSpecIntensSlider->GetLabel()->SetCaption( "Spec intens:" );
+	SelectedTexSpecIntensSlider->GetLabel()->SetCaption( L"Spec intens:" );
 	SelectedTexSpecIntensSlider->GetLabel()->SetSize( D2D1::SizeF( textwidth, SelectedTexSpecIntensSlider->GetLabel()->GetSize().height ) );
 	SelectedTexSpecIntensSlider->GetSlider()->SetPositionAndSize( D2D1::Point2F( 0, 0 ), D2D1::SizeF( 150, 15 ) );
 	SelectedTexSpecIntensSlider->UpdateDimensions();
@@ -219,7 +219,7 @@ XRESULT D2DEditorView::InitControls() {
 
 	SelectedTexSpecPowerSlider = new SV_NamedSlider( MainView, SelectionTabControl->GetTabPanel() );
 	SelectedTexSpecPowerSlider->AlignUnder( SelectedTexSpecIntensSlider, alignDistance );
-	SelectedTexSpecPowerSlider->GetLabel()->SetCaption( "Spec power:" );
+	SelectedTexSpecPowerSlider->GetLabel()->SetCaption( L"Spec power:" );
 	SelectedTexSpecPowerSlider->GetLabel()->SetSize( D2D1::SizeF( textwidth, SelectedTexSpecPowerSlider->GetLabel()->GetSize().height ) );
 	SelectedTexSpecPowerSlider->GetSlider()->SetPositionAndSize( D2D1::Point2F( 0, 0 ), D2D1::SizeF( 150, 15 ) );
 	SelectedTexSpecPowerSlider->UpdateDimensions();
@@ -233,12 +233,12 @@ XRESULT D2DEditorView::InitControls() {
 	worldMeshSettingsInfoLabel->SetSize( D2D1::SizeF( 270, 15 ) );
 	worldMeshSettingsInfoLabel->AlignUnder( SelectedTexSpecPowerSlider, alignDistance );
 	worldMeshSettingsInfoLabel->SetDrawBackground( true );
-	worldMeshSettingsInfoLabel->SetCaption( " WorldMesh-Settings:" );
+	worldMeshSettingsInfoLabel->SetCaption( L" WorldMesh-Settings:" );
 	SelectionTabControl->AddControlToTab( worldMeshSettingsInfoLabel, "Selection/Texture" );
 
 	SelectedTexDisplacementSlider = new SV_NamedSlider( MainView, SelectionTabControl->GetTabPanel() );
 	SelectedTexDisplacementSlider->AlignUnder( worldMeshSettingsInfoLabel, alignDistance + 5.0f );
-	SelectedTexDisplacementSlider->GetLabel()->SetCaption( "Displacement:" );
+	SelectedTexDisplacementSlider->GetLabel()->SetCaption( L"Displacement:" );
 	SelectedTexDisplacementSlider->GetLabel()->SetSize( D2D1::SizeF( textwidth, SelectedTexDisplacementSlider->GetLabel()->GetSize().height ) );
 	SelectedTexDisplacementSlider->GetSlider()->SetPositionAndSize( D2D1::Point2F( 0, 0 ), D2D1::SizeF( 150, 15 ) );
 	SelectedTexDisplacementSlider->UpdateDimensions();
@@ -249,7 +249,7 @@ XRESULT D2DEditorView::InitControls() {
 
 	SelectedMeshTessAmountSlider = new SV_NamedSlider( MainView, SelectionTabControl->GetTabPanel() );
 	SelectedMeshTessAmountSlider->AlignUnder( SelectedTexDisplacementSlider, alignDistance * 2 );
-	SelectedMeshTessAmountSlider->GetLabel()->SetCaption( "Tesselation:" );
+	SelectedMeshTessAmountSlider->GetLabel()->SetCaption( L"Tesselation:" );
 	SelectedMeshTessAmountSlider->GetLabel()->SetSize( D2D1::SizeF( textwidth, SelectedMeshTessAmountSlider->GetLabel()->GetSize().height ) );
 	SelectedMeshTessAmountSlider->GetSlider()->SetPositionAndSize( D2D1::Point2F( 0, 0 ), D2D1::SizeF( 150, 15 ) );
 	SelectedMeshTessAmountSlider->UpdateDimensions();
@@ -260,7 +260,7 @@ XRESULT D2DEditorView::InitControls() {
 
 	SelectedMeshRoundnessSlider = new SV_NamedSlider( MainView, SelectionTabControl->GetTabPanel() );
 	SelectedMeshRoundnessSlider->AlignUnder( SelectedMeshTessAmountSlider, alignDistance );
-	SelectedMeshRoundnessSlider->GetLabel()->SetCaption( "Roundness:" );
+	SelectedMeshRoundnessSlider->GetLabel()->SetCaption( L"Roundness:" );
 	SelectedMeshRoundnessSlider->GetLabel()->SetSize( D2D1::SizeF( textwidth, SelectedMeshRoundnessSlider->GetLabel()->GetSize().height ) );
 	SelectedMeshRoundnessSlider->GetSlider()->SetPositionAndSize( D2D1::Point2F( 0, 0 ), D2D1::SizeF( 150, 15 ) );
 	SelectedMeshRoundnessSlider->UpdateDimensions();
@@ -273,7 +273,7 @@ XRESULT D2DEditorView::InitControls() {
 	subdivInfoLabel->SetSize( D2D1::SizeF( 270, 15 ) );
 	subdivInfoLabel->AlignUnder( SelectedMeshRoundnessSlider, 2.0f );
 	subdivInfoLabel->SetDrawBackground( false );
-	subdivInfoLabel->SetCaption( "Press Space to subdivide the selected surface.\n(Not saved yet)" );
+	subdivInfoLabel->SetCaption( L"Press Space to subdivide the selected surface.\n(Not saved yet)" );
 	SelectionTabControl->AddControlToTab( subdivInfoLabel, "Selection/Texture" );
 
 
@@ -305,7 +305,7 @@ XRESULT D2DEditorView::InitControls() {
 
 	SV_Label* selVegSizeLabel = new SV_Label( MainView, SelectionTabControl->GetTabPanel() );
 	selVegSizeLabel->SetPositionAndSize( D2D1::Point2F( 10, 10 ), D2D1::SizeF( 150, 12 ) );
-	selVegSizeLabel->SetCaption( "Vegetation size:" );
+	selVegSizeLabel->SetCaption( L"Vegetation size:" );
 	SelectionTabControl->AddControlToTab( selVegSizeLabel, "Selection/Vegetation" );
 
 	SelectedVegSizeSlider->AlignUnder( selVegSizeLabel, 5 );
@@ -320,7 +320,7 @@ XRESULT D2DEditorView::InitControls() {
 
 	SV_Label* selVegAmountLabel = new SV_Label( MainView, SelectionTabControl->GetTabPanel() );
 	selVegAmountLabel->SetPositionAndSize( D2D1::Point2F( 10, 10 ), D2D1::SizeF( 150, 12 ) );
-	selVegAmountLabel->SetCaption( "Vegetation density:" );
+	selVegAmountLabel->SetCaption( L"Vegetation density:" );
 	SelectionTabControl->AddControlToTab( selVegAmountLabel, "Selection/Vegetation" );
 
 	selVegAmountLabel->AlignUnder( SelectedVegSizeSlider, 8 );
@@ -328,7 +328,7 @@ XRESULT D2DEditorView::InitControls() {
 
 	SelectedVegModifiedWarningLabel = new SV_Label( MainView, SelectionTabControl->GetTabPanel() );
 	SelectedVegModifiedWarningLabel->SetPositionAndSize( D2D1::Point2F( 10, 10 ), D2D1::SizeF( 150, 12 ) );
-	SelectedVegModifiedWarningLabel->SetCaption( "You may lose changes made to the volume after changing its density!" );
+	SelectedVegModifiedWarningLabel->SetCaption( L"You may lose changes made to the volume after changing its density!" );
 	SelectedVegModifiedWarningLabel->SetTextColor( D2D1::ColorF( 1, 0, 0, 1 ) );
 	SelectedVegModifiedWarningLabel->SetTextSize( 9 );
 	SelectionTabControl->AddControlToTab( SelectedVegModifiedWarningLabel, "Selection/Vegetation" );
@@ -839,7 +839,7 @@ void D2DEditorView::UpdateSelectionPanel() {
 	if ( Selection.SelectedMaterial && Selection.SelectedMaterial->GetTexture() ) {
 		// Select preferred texture for the texture settings
 		Engine::AntTweakBar->SetPreferredTextureForSettings( Selection.SelectedMaterial->GetTexture()->GetNameWithoutExt() );
-		SelectedImageNameLabel->SetCaption( Selection.SelectedMaterial->GetTexture()->GetNameWithoutExt() );
+		SelectedImageNameLabel->SetCaption( Toolbox::ToWideChar( Selection.SelectedMaterial->GetTexture()->GetNameWithoutExt() ) );
 
 		// Update thumbnail
 		MyDirectDrawSurface7* surface = Engine::GAPI->GetSurface( Selection.SelectedMaterial->GetTexture()->GetNameWithoutExt() );
@@ -1022,7 +1022,7 @@ bool D2DEditorView::OnWindowMessage( HWND hWnd, unsigned int msg, WPARAM wParam,
 
 	bool enableEditorPanel = zCOption::GetOptions()->IsParameter( "XEnableEditorPanel" );
 
-#if defined(BUILD_GOTHIC_1_08k) || !defined(PUBLIC_RELEASE)
+#if !defined(PUBLIC_RELEASE)
 	// zCOptions not working for G1 yet
 	enableEditorPanel = true;
 #endif

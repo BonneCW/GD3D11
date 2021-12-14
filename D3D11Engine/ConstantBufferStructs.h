@@ -229,8 +229,17 @@ struct VS_ExConstantBuffer_PerInstance {
     float4 Color;
 };
 
+struct VS_ExConstantBuffer_PerInstanceNode {
+    DirectX::XMFLOAT4X4 World;
+    float4 Color;
+    float Fatness;
+    float Scaling;
+    float2 Pad1;
+};
+
 struct VS_ExConstantBuffer_PerInstanceSkeletal {
     DirectX::XMFLOAT4X4 World;
+    float4 PI_ModelColor;
     float PI_ModelFatness;
     float3 PI_Pad1;
 };

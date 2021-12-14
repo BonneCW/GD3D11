@@ -9,6 +9,11 @@ class SV_Label;
 class SV_Checkbox;
 class D2DSettingsDialog;
 
+enum Languages {
+    LANGUAGE_POLISH = 0,
+    LANGUAGE_ENGLISH
+};
+
 struct FovOverrideCheckedChangedState {
     D2DSettingsDialog* SettingsDialog;
     SV_Label* horizFOVLabel;
@@ -36,8 +41,10 @@ public:
 
 protected:
     /** Tab in main tab-control was switched */
+    static void TextureQualitySliderChanged( SV_Slider* sender, void* userdata );
     static void ShadowQualitySliderChanged( SV_Slider* sender, void* userdata );
     static void ResolutionSliderChanged( SV_Slider* sender, void* userdata );
+    static void ModeSliderChanged( SV_Slider* sender, void* userdata );
     static void FpsLimitSliderChanged( SV_Slider* sender, void* userdata );
     /** Close button */
     static void CloseButtonPressed( SV_Button* sender, void* userdata );
@@ -45,11 +52,17 @@ protected:
     /** Apply button */
     static void ApplyButtonPressed( SV_Button* sender, void* userdata );
     static void FovOverrideCheckedChanged( SV_Checkbox* sender, void* userdata );
+    static void MTResourceManagerCheckedChanged( SV_Checkbox* sender, void* userdata );
+    static void CompressBackBufferCheckedChanged( SV_Checkbox* sender, void* userdata );
     /** Initial renderer settings, used to determine a change */
     GothicRendererSettings InitialSettings;
 
     /** Current resolution setting */
+    int TextureQuality;
     int ResolutionSetting;
+    int CurrentWindowMode;
+    int ActiveWindowMode;
     std::vector<DisplayModeInfo> Resolutions;
     FovOverrideCheckedChangedState* CheckedChangedState;
+    SV_Slider* modeSlider;
 };

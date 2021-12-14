@@ -244,9 +244,6 @@
     <ClInclude Include="D3D11PFX_Blur.h">
       <Filter>Engine\D3D11\PFX\Effects</Filter>
     </ClInclude>
-    <ClInclude Include="D3D11FullscreenQuad.h">
-      <Filter>Tools\D3D11</Filter>
-    </ClInclude>
     <ClInclude Include="GInventory.h">
       <Filter>Engine\GAPI\Objects</Filter>
     </ClInclude>
@@ -726,6 +723,9 @@
     <ClInclude Include="GothicMemoryLocations1_12f.h">
       <Filter>ZenGin</Filter>
     </ClInclude>
+    <ClInclude Include="SteamOverlay.h">
+      <Filter>Tools</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
@@ -782,9 +782,6 @@
     </ClCompile>
     <ClCompile Include="D3D11PFX_Blur.cpp">
       <Filter>Engine\D3D11\PFX\Effects</Filter>
-    </ClCompile>
-    <ClCompile Include="D3D11FullscreenQuad.cpp">
-      <Filter>Tools\D3D11</Filter>
     </ClCompile>
     <ClCompile Include="GInventory.cpp">
       <Filter>Engine\GAPI\Objects</Filter>
@@ -845,9 +842,6 @@
     </ClCompile>
     <ClCompile Include="StackWalker.cpp">
       <Filter>Librarys\StackWalker</Filter>
-    </ClCompile>
-    <ClCompile Include="oCNPC.cpp">
-      <Filter>ZenGin\Classes</Filter>
     </ClCompile>
     <ClCompile Include="MeshModifier.cpp">
       <Filter>Engine\GAPI</Filter>
@@ -957,6 +951,9 @@
     <ClCompile Include="BaseShadowedPointLight.cpp" />
     <ClCompile Include="D3D11GraphicsEngine.cpp">
       <Filter>Engine\D3D11\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="SteamOverlay.cpp">
+      <Filter>Tools</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

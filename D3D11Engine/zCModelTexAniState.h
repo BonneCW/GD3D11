@@ -8,7 +8,7 @@
 class zCModelTexAniState {
 public:
     void UpdateTexList() {
-        XCALL( GothicMemoryLocations::zCModelTexAniState::UpdateTexList );
+        reinterpret_cast<void( __fastcall* )( zCModelTexAniState* )>( GothicMemoryLocations::zCModelTexAniState::UpdateTexList )( this );
     }
 
     int	NumNodeTex;

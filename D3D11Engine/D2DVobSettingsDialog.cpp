@@ -15,7 +15,7 @@
 
 D2DVobSettingsDialog::D2DVobSettingsDialog( D2DView* view, D2DSubView* parent ) : D2DDialog( view, parent ) {
     SetPositionCentered( D2D1::Point2F( view->GetRenderTarget()->GetSize().width / 2, view->GetRenderTarget()->GetSize().height / 2 ), D2D1::SizeF( 700, 450 ) );
-    Header->SetCaption( "VOB Settings" );
+    Header->SetCaption( L"VOB Settings" );
 
     Vob = nullptr;
 
@@ -39,7 +39,7 @@ XRESULT D2DVobSettingsDialog::InitControls() {
     float textwidth = 80;
     RenderMode = new SV_NamedSlider( MainView, MainPanel );
     RenderMode->AlignRightTo( MeshView, 10 );
-    RenderMode->GetLabel()->SetCaption( "Draw mode:" );
+    RenderMode->GetLabel()->SetCaption( L"Draw mode:" );
     RenderMode->GetLabel()->SetSize( D2D1::SizeF( textwidth, RenderMode->GetLabel()->GetSize().height ) );
     RenderMode->GetSlider()->SetPositionAndSize( D2D1::Point2F( 0, 0 ), D2D1::SizeF( 150, 15 ) );
     RenderMode->UpdateDimensions();
@@ -57,7 +57,7 @@ XRESULT D2DVobSettingsDialog::InitControls() {
 
     TesselationFactorSetting = new SV_NamedSlider( MainView, MainPanel );
     TesselationFactorSetting->AlignRightTo( MeshView, 10 );
-    TesselationFactorSetting->GetLabel()->SetCaption( "Tesselation:" );
+    TesselationFactorSetting->GetLabel()->SetCaption( L"Tesselation:" );
     TesselationFactorSetting->GetLabel()->SetSize( D2D1::SizeF( textwidth, TesselationFactorSetting->GetLabel()->GetSize().height ) );
     TesselationFactorSetting->GetSlider()->SetPositionAndSize( D2D1::Point2F( 0, 0 ), D2D1::SizeF( 150, 15 ) );
     TesselationFactorSetting->UpdateDimensions();
@@ -67,7 +67,7 @@ XRESULT D2DVobSettingsDialog::InitControls() {
 
     RoundnessSetting = new SV_NamedSlider( MainView, MainPanel );
     RoundnessSetting->AlignRightTo( MeshView );
-    RoundnessSetting->GetLabel()->SetCaption( "Roundness:" );
+    RoundnessSetting->GetLabel()->SetCaption( L"Roundness:" );
     RoundnessSetting->GetLabel()->SetSize( D2D1::SizeF( textwidth, RoundnessSetting->GetLabel()->GetSize().height ) );
     RoundnessSetting->GetSlider()->SetPositionAndSize( D2D1::Point2F( 0, 0 ), D2D1::SizeF( 150, 15 ) );
     RoundnessSetting->UpdateDimensions();
@@ -77,7 +77,7 @@ XRESULT D2DVobSettingsDialog::InitControls() {
 
     DisplacementStrengthSetting = new SV_NamedSlider( MainView, MainPanel );
     DisplacementStrengthSetting->AlignRightTo( MeshView );
-    DisplacementStrengthSetting->GetLabel()->SetCaption( "Displacement:" );
+    DisplacementStrengthSetting->GetLabel()->SetCaption( L"Displacement:" );
     DisplacementStrengthSetting->GetLabel()->SetSize( D2D1::SizeF( textwidth, DisplacementStrengthSetting->GetLabel()->GetSize().height ) );
     DisplacementStrengthSetting->GetSlider()->SetPositionAndSize( D2D1::Point2F( 0, 0 ), D2D1::SizeF( 150, 15 ) );
     DisplacementStrengthSetting->UpdateDimensions();
@@ -175,5 +175,5 @@ void D2DVobSettingsDialog::SetVobInfo( BaseVobInfo* vob ) {
     MeshView->SetMeshes( meshes, vob->VisualInfo );
     MeshView->UpdateView();
 
-    Header->SetCaption( "Visual Settings (" + Vob->VisualInfo->VisualName + ")" );
+    Header->SetCaption( Toolbox::ToWideChar( "Visual Settings (" + Vob->VisualInfo->VisualName + ")" ) );
 }

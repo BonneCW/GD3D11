@@ -9,7 +9,6 @@ public:
     D3D11GShader();
     ~D3D11GShader();
 
-
     /** Loads shader */
     XRESULT LoadShader( const char* geometryShader, const std::vector<D3D_SHADER_MACRO>& makros = std::vector<D3D_SHADER_MACRO>(), bool createStreamOutFromVS = false, int soLayout = 0 );
 
@@ -22,20 +21,11 @@ public:
     /** Returns the shader */
     Microsoft::WRL::ComPtr<ID3D11GeometryShader> GetShader() { return GeometryShader.Get(); }
 
-    /** Returns this textures ID */
-    UINT16 GetID() { return ID; };
-
 private:
-
     /** Compiles the shader from file and outputs error messages if needed */
     HRESULT CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, const std::vector<D3D_SHADER_MACRO>& makros );
 
     Microsoft::WRL::ComPtr<ID3D11GeometryShader> GeometryShader;
     std::vector<D3D11ConstantBuffer*> ConstantBuffers;
-
-    std::string File;
-
-    /** ID of this shader */
-    UINT16 ID;
 };
 

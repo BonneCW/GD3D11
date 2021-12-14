@@ -16,6 +16,8 @@ int clipput(char *toclipdata)
 	OpenClipboard(nullptr);
 	EmptyClipboard();
 	clipbuffer = GlobalAlloc(GMEM_DDESHARE,bytes+1);
+    if ( clipbuffer == nullptr )
+        return GetLastError() * -1; // Do what you want to signal error
 	buffer = (char far*)GlobalLock(clipbuffer);
 	if (buffer == nullptr)
 		return GetLastError() * -1; // Do what you want to signal error
@@ -51,15 +53,18 @@ char *clipget(int &bytes)
 			{
 				bytes = strlen(empty);
 				data = (char *) malloc(bytes+1);
-				strcpy(data,empty);
-				bytes = bytes * -1;
+                if ( data ) {
+                    strcpy( data, empty );
+                }
 			}
 			// Return pointer to retrieved data
 			else
 			{
 				bytes = strlen(buffer);
 				data = (char *) malloc(bytes+1);
-				strcpy(data,buffer);
+                if ( data ) {
+                    strcpy( data, buffer );
+                }
 			}
 		}
 		// Return an open clipboard failed message

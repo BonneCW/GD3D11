@@ -4,15 +4,6 @@
 
 class zCObject {
 public:
-    void Release() {
-        refCtr--;
-        int temp = refCtr;
-        if ( temp <= 0 ) {
-            // Call destructor
-            delete this;
-        }
-    }
-
     // Recreate V-Table
     virtual	zCClassDef* _GetClassDef() = 0;
     virtual void Archive() = 0;

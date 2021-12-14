@@ -64,7 +64,7 @@ public:
     }
 
     void TestKey( GOTHIC_KEY key ) {
-        XCALL( GothicMemoryLocations::oCGame::TestKeys );
+        reinterpret_cast<void( __fastcall* )( oCGame*, int, GOTHIC_KEY )>( GothicMemoryLocations::oCGame::TestKeys )( this, 0, key );
     }
 
     static oCNPC* GetPlayer() {

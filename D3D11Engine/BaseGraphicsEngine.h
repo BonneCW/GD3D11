@@ -15,14 +15,23 @@ struct VobLightInfo;
 class zFont;
 
 struct DisplayModeInfo {
+    DisplayModeInfo() {}
+    DisplayModeInfo( int w, int h ) : Width(static_cast<DWORD>(w)), Height(static_cast<DWORD>(h)) {}
+
     DWORD Height;
     DWORD Width;
-    DWORD Bpp;
 };
 
 enum RenderStage {
     STAGE_DRAW_WORLD = 0,
     STAGE_DRAW_SKELETAL = 1,
+};
+
+enum WindowModes {
+    WINDOW_MODE_FULLSCREEN_EXCLUSIVE = 1,
+    WINDOW_MODE_FULLSCREEN_BORDERLESS = 2,
+    WINDOW_MODE_FULLSCREEN_LOWLATENCY = 3,
+    WINDOW_MODE_WINDOWED = 4,
 };
 
 struct ViewportInfo {
@@ -108,6 +117,9 @@ public:
     /** Returns the graphics-device this is running on */
     virtual std::string GetGraphicsDeviceName() = 0;
 
+    /** Draws a screen fade effects */
+    virtual XRESULT DrawScreenFade( void* camera ) { return XR_SUCCESS; };
+
     /** Draws a vertexarray, used for rendering gothics UI */
     virtual XRESULT DrawVertexArray( ExVertexStruct* vertices, unsigned int numVertices, unsigned int startVertex = 0, unsigned int stride = sizeof( ExVertexStruct ) ) = 0;
     virtual XRESULT DrawVertexArrayMM( ExVertexStruct* vertices, unsigned int numVertices, unsigned int startVertex = 0, unsigned int stride = sizeof( ExVertexStruct ) ) = 0;
@@ -126,7 +138,7 @@ public:
     virtual XRESULT DrawVertexBufferIndexedUINT( D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, unsigned int indexOffset ) { return XR_SUCCESS; };
 
     /** Draws a skeletal mesh */
-    virtual XRESULT DrawSkeletalMesh( SkeletalVobInfo* vi, const std::vector<DirectX::XMFLOAT4X4>& transforms, float fatness = 1.0f ) { return XR_SUCCESS; };
+    virtual XRESULT DrawSkeletalMesh( SkeletalVobInfo* vi, const std::vector<DirectX::XMFLOAT4X4>& transforms, float4 color, float fatness = 1.0f ) { return XR_SUCCESS; };
 
     /** Draws a vertexarray, non-indexed */
     virtual XRESULT DrawIndexedVertexArray( ExVertexStruct* vertices, unsigned int numVertices, D3D11VertexBuffer* ib, unsigned int numIndices, unsigned int stride = sizeof( ExVertexStruct ) ) { return XR_SUCCESS; };
@@ -194,6 +206,9 @@ public:
 
     /** Handles an UI-Event */
     virtual void OnUIEvent( EUIEvent uiEvent ) {}
+
+    /** Draws particle meshes */
+    virtual void DrawFrameParticleMeshes( std::unordered_map<zCVob*, MeshVisualInfo*>& progMeshes ) {}
 
     /** Draws particle effects */
     virtual void DrawFrameParticles( std::map<zCTexture*, std::vector<ParticleInstanceInfo>>& particles, std::map<zCTexture*, ParticleRenderInfo>& info ) {}

@@ -5,11 +5,17 @@
 class zCInput {
 public:
     int GetDeviceEnabled( int dev ) {
-        XCALL( GothicMemoryLocations::zCInput::GetDeviceEnabled );
+        return reinterpret_cast<int( __fastcall* )( zCInput*, int, int )>
+            ( GothicMemoryLocations::zCInput::GetDeviceEnabled )( this, 0, dev );
     }
 
     void SetDeviceEnabled( int dev, int i ) {
-        XCALL( GothicMemoryLocations::zCInput::SetDeviceEnabled );
+        reinterpret_cast<void( __fastcall* )( zCInput*, int, int, int )>
+            ( GothicMemoryLocations::zCInput::SetDeviceEnabled )( this, 0, dev, i );
+    }
+
+    void ClearKeyBuffer() {
+        reinterpret_cast<void( __fastcall* )( zCInput* )>( GothicMemoryLocations::zCInput::ClearKeyBuffer )( this );
     }
 
     inline static zCInput* GetInput() {

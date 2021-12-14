@@ -44,10 +44,8 @@ public:
 
     void CreateListsFromArrays()
     {
-        XCALL(GothicMemoryLocations::zCMesh::CreateListsFromArrays);
+        reinterpret_cast<void( __fastcall* )( zCMesh* )>( GothicMemoryLocations::zCMesh::CreateListsFromArrays )( this );
     }
-
-
 
     zCMeshData* GetData()
     {

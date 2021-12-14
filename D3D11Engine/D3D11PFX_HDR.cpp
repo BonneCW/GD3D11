@@ -118,6 +118,7 @@ void D3D11PFX_HDR::CreateBloom( RenderToTextureBuffer* lum ) {
 	BlurConstantBuffer bcb;
 	bcb.B_BlurSize = 1.0f;
 	bcb.B_PixelSize = float2( 1.0f / FxRenderer->GetTempBufferDS4_1().GetSizeX(), 0.0f );
+    //bcb.B_ColorMod = float4( 1.0f, 1.0f, 1.0f, 1.0f );
 	gaussPS->GetConstantBuffer()[0]->UpdateBuffer( &bcb );
 	gaussPS->GetConstantBuffer()[0]->BindToPixelShader( 0 );
 
@@ -166,9 +167,7 @@ RenderToTextureBuffer* D3D11PFX_HDR::CalcLuminance() {
 		currentLum = LumBuffer1;
 		break;
 	default:
-	{
 		return nullptr;
-	}
 	}
 
 	auto lps = engine->GetShaderManager().GetPShader( "PS_PFX_LumConvert" );

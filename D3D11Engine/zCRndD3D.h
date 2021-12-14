@@ -15,6 +15,21 @@ public:
 
         XHook( HookedFunctions::OriginalFunctions.original_zCRnd_D3D_DrawPoly, GothicMemoryLocations::zCRndD3D::DrawPoly, hooked_zCRndD3DDrawPoly );
         XHook( HookedFunctions::OriginalFunctions.original_zCRnd_D3D_DrawPolySimple, GothicMemoryLocations::zCRndD3D::DrawPolySimple, hooked_zCRndD3DDrawPolySimple );
+
+        XHook( GothicMemoryLocations::zCRndD3D::CacheInSurface, hooked_zCSurfaceCache_D3DCacheInSurface );
+        XHook( GothicMemoryLocations::zCRndD3D::CacheOutSurface, hooked_zCSurfaceCache_D3DCacheOutSurface );
+
+        XHook( GothicMemoryLocations::zCRndD3D::RenderScreenFade, hooked_zCCameraRenderScreenFade );
+        XHook( GothicMemoryLocations::zCRndD3D::RenderCinemaScope, hooked_zCCameraRenderCinemaScope );
+    }
+
+    /** Disable caching surfaces to let engine create new surfaces for every textures */
+    static int __fastcall hooked_zCSurfaceCache_D3DCacheInSurface( void* thisptr, void* _EDX, void* surface, void* slotindex ) {
+        return FALSE;
+    }
+
+    static void* __fastcall hooked_zCSurfaceCache_D3DCacheOutSurface( void* thisptr, void* _EDX, void* slotindex ) {
+        return nullptr;
     }
 
     /** Draws a straight line from xyz1 to xyz2 */
@@ -74,6 +89,14 @@ public:
         hook_outfunc
     }
 
+    static void __fastcall hooked_zCCameraRenderScreenFade( void* thisptr ) {
+        Engine::GraphicsEngine->DrawScreenFade( thisptr );
+    }
+
+    static void __fastcall hooked_zCCameraRenderCinemaScope( void* thisptr ) {
+        // Do nothing here
+    }
+
     void ResetRenderState() {
         // Set render state values to some absurd high value so that they will be changed by engine for sure
         *(DWORD*)THISPTR_OFFSET( GothicMemoryLocations::zCRndD3D::Offset_BoundTexture + ( /*TEX0*/0 * 4) ) = 0x00000000;
@@ -84,7 +107,7 @@ public:
 
     /*float GetGammaValue()
     {
-        XCALL(GothicMemoryLocations::zCRndD3D::Vid_GetGammaCorrection);
+        return reinterpret_cast<float( __fastcall* )( zCRndD3D* )>( GothicMemoryLocations::zCRndD3D::Vid_GetGammaCorrection )( this );
     }*/
 
     static zCRndD3D* GetRenderer() {

@@ -69,9 +69,10 @@ public:
 	HRESULT STDMETHODCALLTYPE GetDeviceIdentifier( LPDDDEVICEIDENTIFIER2 lpdddi, DWORD dwFlags ) {
 		DebugWrite( "MyDirectDraw::GetDeviceIdentifier\n" );
 
-		ZeroMemory( lpdddi, sizeof( LPDDDEVICEIDENTIFIER2 ) );
-		strcpy( lpdddi->szDescription, "D3D11-Renderer" );
-		strcpy( lpdddi->szDriver, "D3D11-Renderer" );
+		ZeroMemory( lpdddi, sizeof( DDDEVICEIDENTIFIER2 ) );
+		strcpy( lpdddi->szDescription, "DirectX11" );
+		strcpy( lpdddi->szDriver, "DirectX11" );
+        lpdddi->guidDeviceIdentifier = { 0xF5049E78, 0x4861, 0x11D2, {0xA4, 0x07, 0x00, 0xA0, 0xC9, 0x06, 0x29, 0xA8} };
 
 		return S_OK;
 	}
@@ -225,7 +226,6 @@ public:
 			FakeDirectDrawSurface7* lastMip = nullptr;
 			int level = 1;
 			while ( desc.dwMipMapCount > 1 ) {
-
 				FakeDirectDrawSurface7* mip = new FakeDirectDrawSurface7;
 				desc.dwMipMapCount--;
 				//desc.dwHeight /= 2;
@@ -241,8 +241,6 @@ public:
 				lastMip = mip;
 				level++;
 			}
-
-
 		}
 
 		*lplpDDSurface = mySurface;
@@ -257,42 +255,57 @@ public:
 		return S_OK;
 	}
 
-	struct ModesEnumInfo {
-		LPDDENUMMODESCALLBACK2 originalFn;
-		LPVOID originalUserArg;
-	};
-
-	static HRESULT WINAPI EnumModesCallback2( LPDDSURFACEDESC2 lpDDSurfaceDesc, LPVOID lpContext ) {
-		LogInfo() << "RefreshRate: " << lpDDSurfaceDesc->dwRefreshRate;
-		LogInfo() << "\nWidth: " << lpDDSurfaceDesc->dwWidth;
-		LogInfo() << "\nHeight: " << lpDDSurfaceDesc->dwHeight;
-
-		/*FILE* f = fopen("system\\GD3D11\\data\\ModesEnum.bin", "ab");
-
-		fwrite(lpDDSurfaceDesc, sizeof(DDSURFACEDESC2), 1, f);
-
-		fclose(f);*/
-
-		return (*((ModesEnumInfo*)lpContext)->originalFn)(lpDDSurfaceDesc, ((ModesEnumInfo*)lpContext)->originalUserArg);
-	}
-
 	HRESULT STDMETHODCALLTYPE EnumDisplayModes( DWORD dwFlags, LPDDSURFACEDESC2 lpDDSurfaceDesc2, LPVOID lpContext, LPDDENUMMODESCALLBACK2 lpEnumModesCallback ) {
 		DebugWrite( "MyDirectDraw::EnumDisplayModes\n" );
-
-		ModesEnumInfo info;
-		info.originalFn = lpEnumModesCallback;
-		info.originalUserArg = lpContext;
 
 		std::vector<DisplayModeInfo> modes;
 		Engine::GraphicsEngine->GetDisplayModeList( &modes );
 
-		for ( unsigned int i = 0; i < modes.size(); i++ ) {
+        // Gothic expects 640x480 and 800x600 resolutions to be available
+        // otherwise it results in D3DXERR_CAPSNOTSUPPORTED error
+        // if this device don't have those resolutions report them anyway
+
+        INT2 currentResolution = Engine::GraphicsEngine->GetResolution( );
+        bool have640x480 = false, have800x600 = false, haveCurrentResolution = false;
+        for ( DisplayModeInfo& mode : modes ) {
+            if ( mode.Width == 640 && mode.Height == 480 )
+                have640x480 = true;
+            if ( mode.Width == 800 && mode.Height == 600 )
+                have800x600 = true;
+            if ( mode.Width == static_cast<DWORD>(currentResolution.x) && mode.Height == static_cast<DWORD>(currentResolution.y) )
+                haveCurrentResolution = true;
+        }
+
+        if ( !haveCurrentResolution ) {
+            DisplayModeInfo info;
+            info.Width = static_cast<DWORD>(currentResolution.x);
+            info.Height = static_cast<DWORD>(currentResolution.y);
+            modes.insert( modes.begin(), info );
+        }
+        if ( !have800x600 ) {
+            DisplayModeInfo info;
+            info.Width = 800;
+            info.Height = 600;
+            modes.insert( modes.begin(), info );
+        }
+        if ( !have640x480 ) {
+            DisplayModeInfo info;
+            info.Width = 640;
+            info.Height = 480;
+            modes.insert( modes.begin(), info );
+        }
+
+		for ( DisplayModeInfo& mode : modes ) {
 			DDSURFACEDESC2 desc;
 			ZeroMemory( &desc, sizeof( desc ) );
 
-			desc.dwHeight = modes[i].Height;
-			desc.dwWidth = modes[i].Width;
-			desc.ddpfPixelFormat.dwRGBBitCount = modes[i].Bpp;
+            desc.dwSize = sizeof( DDSURFACEDESC2 );
+            desc.dwWidth = mode.Width;
+			desc.dwHeight = mode.Height;
+			desc.ddpfPixelFormat.dwRGBBitCount = 32;
+            if ( dwFlags & DDEDM_REFRESHRATES ) {
+                desc.dwRefreshRate = 60;
+            }
 
 			(*lpEnumModesCallback)(&desc, lpContext);
 		}

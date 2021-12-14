@@ -153,8 +153,8 @@ namespace Toolbox {
         float dx = std::max( std::max( min.x - p.x, 0.0f ), p.x - max.x );
         float dy = std::max( std::max( min.y - p.y, 0.0f ), p.y - max.y );
         float dz = std::max( std::max( min.z - p.z, 0.0f ), p.z - max.z );
-        //return sqrtf( dx * dx + dy * dy );
-        return _mm_cvtss_f32( _mm_rcp_ss( _mm_rsqrt_ss( _mm_set_ss( dx * dx + dy * dy ) ) ) );
+        //return sqrtf( dx * dx + dz * dz );
+        return _mm_cvtss_f32( _mm_rcp_ss( _mm_rsqrt_ss( _mm_set_ss( dx * dx + dz * dz ) ) ) );
     }
 
     /** Computes the Normal of a triangle */

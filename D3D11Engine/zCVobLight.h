@@ -17,7 +17,7 @@ public:
     }
 
     void DoAnimation() {
-        XCALL( GothicMemoryLocations::zCVobLight::DoAnimation );
+        reinterpret_cast<void( __fastcall* )( zCVobLight* )>( GothicMemoryLocations::zCVobLight::DoAnimation )( this );
     }
 
     bool IsStatic() {

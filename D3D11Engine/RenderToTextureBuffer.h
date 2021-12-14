@@ -13,7 +13,6 @@ struct RenderToTextureBuffer {
         HRESULT hr = S_OK;
 
         ZeroMemory( CubeMapRTVs, sizeof( CubeMapRTVs ) );
-        ZeroMemory( CubeMapSRVs, sizeof( CubeMapSRVs ) );
 
         if ( SizeX == 0 || SizeY == 0 ) {
             LogError() << L"SizeX or SizeY can't be 0";
@@ -84,16 +83,6 @@ struct RenderToTextureBuffer {
         DescRV.Texture2D.MostDetailedMip = 0;
         LE( device->CreateShaderResourceView( Texture.Get(), &DescRV, ShaderResView.GetAddressOf() ) );
 
-        if ( arraySize > 1 ) {
-            // Create the one-face render target views
-            DescRV.Texture2DArray.ArraySize = 1;
-            DescRV.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
-            for ( int i = 0; i < 6; ++i ) {
-                DescRV.Texture2DArray.FirstArraySlice = i;
-                LE( device->CreateShaderResourceView( Texture.Get(), &DescRV, CubeMapSRVs[i].GetAddressOf() ) );
-            }
-        }
-
         if ( FAILED( hr ) ) {
             LogError() << L"Coould not create ID3D11Texture2D, ID3D11ShaderResourceView, or ID3D11RenderTargetView. Killing created resources (If any).";
             ReleaseAll();
@@ -119,7 +108,6 @@ struct RenderToTextureBuffer {
     //void SetRenderTargetView( Microsoft::WRL::ComPtr<ID3D11RenderTargetView> rtv ) { RenderTargetView = rtv.Get(); }
 
     Microsoft::WRL::ComPtr<ID3D11RenderTargetView>& GetRTVCubemapFace( UINT i ) { return CubeMapRTVs[i]; }
-    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>& GetSRVCubemapFace( UINT i ) { return CubeMapSRVs[i]; }
 
     UINT GetSizeX() { return SizeX; }
     UINT GetSizeY() { return SizeY; }
@@ -134,7 +122,6 @@ private:
 
     // Rendertargets for the cubemap-faces, if this is a cubemap
     Microsoft::WRL::ComPtr<ID3D11RenderTargetView> CubeMapRTVs[6];
-    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> CubeMapSRVs[6];
 
     UINT SizeX;
     UINT SizeY;
@@ -159,8 +146,6 @@ struct RenderToDepthStencilBuffer {
             LogError() << "Only supporting single render targets and cubemaps ATM. Unsupported Arraysize: " << arraySize;
             return;
         }
-
-
 
         if ( SizeX == 0 || SizeY == 0 ) {
             LogError() << L"SizeX or SizeY can't be 0";
@@ -232,16 +217,6 @@ struct RenderToDepthStencilBuffer {
         DescRV.Texture2D.MostDetailedMip = 0;
         LE( device->CreateShaderResourceView( Texture.Get(), &DescRV, ShaderResView.GetAddressOf() ) );
 
-        if ( arraySize > 1 ) {
-            // Create the one-face render target views
-            DescRV.Texture2DArray.ArraySize = 1;
-            DescRV.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
-            for ( int i = 0; i < 6; ++i ) {
-                DescRV.Texture2DArray.FirstArraySlice = i;
-                LE( device->CreateShaderResourceView( Texture.Get(), &DescRV, CubeMapSRVs[i].GetAddressOf() ) );
-            }
-        }
-
         if ( FAILED( hr ) ) {
             LogError() << L"Could not create ID3D11Texture2D, ID3D11ShaderResourceView, or ID3D11DepthStencilView. Killing created resources (If any).";
             if ( Result )*Result = hr;
@@ -268,7 +243,6 @@ struct RenderToDepthStencilBuffer {
     UINT GetSizeY() const { return SizeY; }
 
     Microsoft::WRL::ComPtr<ID3D11DepthStencilView> GetDSVCubemapFace( UINT i ) { return CubeMapDSVs[i].Get(); }
-    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> GetSRVCubemapFace( UINT i ) { return CubeMapSRVs[i].Get(); }
 
     //void SetTexture( Microsoft::WRL::ComPtr<ID3D11Texture2D> tx ) { Texture = tx.Get(); }
     //void SetShaderResView( Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv ) { ShaderResView = srv.Get(); }
@@ -288,5 +262,4 @@ private:
 
     // Rendertargets for the cubemap-faces, if this is a cubemap
     Microsoft::WRL::ComPtr<ID3D11DepthStencilView> CubeMapDSVs[6];
-    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> CubeMapSRVs[6];
 };

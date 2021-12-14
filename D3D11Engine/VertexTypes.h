@@ -29,12 +29,12 @@ struct BasicVertexStruct {
 };
 
 struct ExSkelVertexStruct {
-    float3 Position[4];
+    unsigned short Position[4][4];
     float3 Normal;
+    float3 BindPoseNormal;
     float2 TexCoord;
-    DWORD Color;
     unsigned char boneIndices[4];
-    float weights[4];
+    unsigned short weights[4];
 };
 
 struct Gothic_XYZ_DIF_T1_Vertex {

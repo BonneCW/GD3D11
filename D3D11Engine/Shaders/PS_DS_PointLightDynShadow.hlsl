@@ -21,9 +21,6 @@ cbuffer DS_PointLightConstantBuffer : register( b0 )
 	
 	float3 PL_LightScreenPos;
 	float PL_Pad3;
-	
-	matrix PL_ShadowView; // Optimize out!
-	matrix PL_ShadowProj; // Optimize out!
 };
 
 static const float BLUR_SCALE = 0.029f;
@@ -88,42 +85,33 @@ struct PS_INPUT
 
 float3 VSPositionFromDepth(float depth, float2 vTexCoord)
 {
-    // Get the depth value for this pixel
-    float z = depth; 
-    // Get x/w and y/w from the viewport position
-    float x = vTexCoord.x * 2 - 1;
-    float y = (1 - vTexCoord.y) * 2 - 1;
-    float4 vProjectedPos = float4(x, y, z, 1.0f);
-    // Transform by the inverse projection matrix
-    float4 vPositionVS = mul(vProjectedPos, PL_InvProj); //invViewProj == invProjection here  
-    // Divide by w to get the view-space position
-    return vPositionVS.xyz / vPositionVS.w;   
+	// Get NDC clip-space position
+	float4 vProjectedPos = float4(vTexCoord * float2(2.0f, -2.0f) + float2(-1.0f, 1.0f), depth, 1.0f);
+
+	// Transform by the inverse projection matrix
+	float4 vPositionVS = mul(vProjectedPos, PL_InvProj); //invViewProj == invProjection here
+
+	// Divide by w to get the view-space position
+	return vPositionVS.xyz / vPositionVS.www;
 }
 
 //--------------------------------------------------------------------------------------
 // Blinn-Phong Lighting Reflection Model
 //--------------------------------------------------------------------------------------
-float CalcBlinnPhongLighting(float3 N, float3 H )
+float CalcBlinnPhongLighting(float3 N, float3 H)
 {
-    return saturate(dot(N,H));
+    return saturate(dot(N, H));
 }
 
 float IsInShadow(float3 wsPosition, TextureCube shadowCube, SamplerComparisonState samplerState, float bias = 0.01f)
 {
-	float4 vShadowSamplingPos = mul(float4(wsPosition, 1), mul(PL_ShadowView, PL_ShadowProj));
-	
-	float2 projectedTexCoords;
-	vShadowSamplingPos.xyz /= vShadowSamplingPos.w;
-    projectedTexCoords[0] = vShadowSamplingPos.x/2.0f +0.5f;
-    projectedTexCoords[1] = vShadowSamplingPos.y/-2.0f +0.5f;
-	
 	// Get dir from pointlight to pixel
 	float distance = length(wsPosition - Pl_PositionWorld);
 	float3 dir = normalize(wsPosition - Pl_PositionWorld);
 	
 	float zFar = PL_Range * 2.0f;
 	float zNear = 50.0f;
-
+	
 	//float s = shadowCube.Sample(SS_Linear, dir).r;
 	//s *= zFar;
 	//s = -51.2820549f / (s - 1.02564108f);
@@ -134,7 +122,7 @@ float IsInShadow(float3 wsPosition, TextureCube shadowCube, SamplerComparisonSta
 	distance = distance / zFar;
 	
 	float shd = 0;
-	for(int i=0;i<BLUR_COUNT;i++)
+	[unroll] for(int i=0;i<BLUR_COUNT;i++)
 	{
 		shd += shadowCube.SampleCmpLevelZero(samplerState, dir + BLUR_OFFSETS[i] * BLUR_SCALE, distance - bias);
 	}
@@ -151,7 +139,7 @@ float IsInShadow(float3 wsPosition, TextureCube shadowCube, SamplerComparisonSta
 float4 PSMain( PS_INPUT Input ) : SV_TARGET
 {
 	// Get screen UV
-	float2 uv = Input.vPosition.xy / PL_ViewportSize; 
+	float2 uv = Input.vPosition.xy / PL_ViewportSize;
 	
 	// Look up the diffuse color
 	float4 diffuse = TX_Diffuse.Sample(SS_Linear, uv);
@@ -169,7 +157,7 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	// Reconstruct VS World Position from depth
 	float expDepth = TX_Depth.Sample(SS_Linear, uv).r;
 	float3 vsPosition = VSPositionFromDepth(expDepth, uv);
-	float3 wsPosition = mul(float4(vsPosition,1), PL_InvView);
+	float3 wsPosition = mul(float4(vsPosition, 1), PL_InvView);
 	
 	//return float4(normalize(wsPosition - Pl_PositionWorld), 1.0f);
 	
@@ -181,7 +169,7 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	
 	//return float4(Pl_PositionView, 1);
 	
-	// Get direction and distance from the light to that position 
+	// Get direction and distance from the light to that position
 	float3 lightDir = Pl_PositionView - vsPosition;
 	float distance = length(lightDir);
 	lightDir /= distance; // Normalize the direction
@@ -197,12 +185,12 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	//ndl *= saturate(dot(lightDir, flatNormal)  / 0.00001f);
 	
 	// Compute range falloff
-	float falloff = pow(saturate(1.0f - (distance / PL_Range)), 1.2f); 
+	float falloff = pow(saturate(1.0f - (distance / PL_Range)), 1.2f);
 	//float falloff = saturate(1.0f / (pow(distance / PL_Range * 2, 2)));
 	
 	// Compute specular lighting
 	float3 V = normalize(-Pl_PositionView);
-	float3 H = normalize(lightDir + V );
+	float3 H = normalize(lightDir + V);
 	float spec = CalcBlinnPhongLighting(normal, H);
 	float specMod = pow(dot(float3(0.333f,0.333f,0.333f), diffuse.rgb), 2);
 	float3 specBare = pow(spec, specPower) * specIntensity * PL_Color.rgb * falloff;

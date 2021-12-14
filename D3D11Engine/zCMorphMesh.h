@@ -18,14 +18,13 @@ public:
     }
 
     void CalcVertexPositions() {
-        XCALL( GothicMemoryLocations::zCMorphMesh::CalcVertexPositions );
+        reinterpret_cast<void( __fastcall* )( zCMorphMesh* )>( GothicMemoryLocations::zCMorphMesh::CalcVertexPositions )( this );
     }
 
     void AdvanceAnis() {
-        XCALL( GothicMemoryLocations::zCMorphMesh::AdvanceAnis );
+        reinterpret_cast<void( __fastcall* )( zCMorphMesh* )>( GothicMemoryLocations::zCMorphMesh::AdvanceAnis )( this );
     }
 
     void UpdateBuffer( D3D11VertexBuffer* buffer ) {
-
     }
 };

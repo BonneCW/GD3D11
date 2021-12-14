@@ -9,16 +9,9 @@
 
 using namespace DirectX;
 
-D3D11VShader::D3D11VShader() {
-
-    // Insert into state-map
-    ID = D3D11ObjectIdManager::AddVShader( this );
-}
+D3D11VShader::D3D11VShader() {}
 
 D3D11VShader::~D3D11VShader() {
-    // Remove from state map
-    D3D11ObjectIdManager::EraseVShader( this );
-
     for ( unsigned int i = 0; i < ConstantBuffers.size(); i++ ) {
         delete ConstantBuffers[i];
     }
@@ -78,11 +71,10 @@ XRESULT D3D11VShader::LoadShader( const char* vertexShader, int layout, const st
 
     if ( Engine::GAPI->GetRendererState().RendererSettings.EnableDebugLog )
         LogInfo() << "Compilling vertex shader: " << vertexShader;
-    File = vertexShader;
 
 
     // Compile shader
-    if ( FAILED( CompileShaderFromFile( vertexShader, "VSMain", "vs_5_0", vsBlob.GetAddressOf(), makros ) ) ) {
+    if ( FAILED( CompileShaderFromFile( vertexShader, "VSMain", "vs_4_0", vsBlob.GetAddressOf(), makros ) ) ) {
         return XR_FAILED;
     }
 
@@ -111,15 +103,15 @@ XRESULT D3D11VShader::LoadShader( const char* vertexShader, int layout, const st
 
     const D3D11_INPUT_ELEMENT_DESC layout3[] =
     {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "POSITION", 1, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "POSITION", 2, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "POSITION", 3, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "POSITION", 0, DXGI_FORMAT_R16G16B16A16_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "POSITION", 1, DXGI_FORMAT_R16G16B16A16_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "POSITION", 2, DXGI_FORMAT_R16G16B16A16_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "POSITION", 3, DXGI_FORMAT_R16G16B16A16_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
         { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "DIFFUSE", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
         { "BONEIDS", 0, DXGI_FORMAT_R8G8B8A8_UINT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "WEIGHTS", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "WEIGHTS", 0, DXGI_FORMAT_R16G16B16A16_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
     };
 
     const D3D11_INPUT_ELEMENT_DESC layout4[] =

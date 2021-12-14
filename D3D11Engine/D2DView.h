@@ -84,10 +84,10 @@ public:
     IDWriteTextFormat* GetTextFormatBig() const { return TextFormatBig; }
 
     /** Returns the width of the specified text */
-    static float GetLabelTextWidth( IDWriteTextLayout* layout, const std::string& text );
+    static float GetLabelTextWidth( IDWriteTextLayout* layout, size_t length );
 
     /** Returns the max height of this text */
-    static float GetTextHeight( IDWriteTextLayout* layout, const std::string& text );
+    static float GetTextHeight( IDWriteTextLayout* layout, size_t length );
 
     /** Returns the current cursor position */
     static POINT GetCursorPosition();

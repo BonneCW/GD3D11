@@ -9,10 +9,13 @@
 const int zMAT_GROUP_WATER = 5;
 const int zMAT_GROUP_SNOW = 6;
 
-const int zMAT_ALPHA_FUNC_FUNC_MAT_DEFAULT = 0;
-const int zMAT_ALPHA_FUNC_FUNC_NONE = 1;
+const int zMAT_ALPHA_FUNC_MAT_DEFAULT = 0;
+const int zMAT_ALPHA_FUNC_NONE = 1;
 const int zMAT_ALPHA_FUNC_BLEND = 2;
 const int zMAT_ALPHA_FUNC_ADD = 3;
+const int zMAT_ALPHA_FUNC_SUB = 4;
+const int zMAT_ALPHA_FUNC_MUL = 5;
+const int zMAT_ALPHA_FUNC_MUL2 = 6;
 const int zMAT_ALPHA_FUNC_TEST = 7;
 const int zMAT_ALPHA_FUNC_BLEND_TEST = 8;
 
@@ -27,9 +30,6 @@ private:
 
 class zCMaterial {
 public:
-    zCMaterial();
-    ~zCMaterial();
-
     /** Hooks the functions of this Class */
     static void Hook() {
         XHook( HookedFunctions::OriginalFunctions.original_zCMaterialDestructor, GothicMemoryLocations::zCMaterial::Destructor, zCMaterial::Hooked_Destructor );
@@ -76,10 +76,18 @@ public:
         return (zCTexAniCtrl*)(((char*)this) + GothicMemoryLocations::zCMaterial::Offset_TexAniCtrl);
     }
 
-    /** Returns AniTexture */
+    /** Returns AniTexture - single animation channel */
     zCTexture* GetTexture() {
-        //return GetTextureSingle(); // TODO: GetAniTexture crashes sometimes
-        XCALL( GothicMemoryLocations::zCMaterial::GetAniTexture );
+        zCTexture* texture = GetTextureSingle();
+        if ( texture ) {
+            unsigned char flags = *(unsigned char*)(((char*)texture) + GothicMemoryLocations::zCTexture::Offset_Flags);
+            if ( flags & GothicMemoryLocations::zCTexture::Mask_FlagIsAnimated ) {
+                reinterpret_cast<void( __fastcall* )(zCTexAniCtrl*, int, zCTexture* )>
+                    ( GothicMemoryLocations::zCMaterial::AdvanceAni )( GetTexAniCtrl(), 0, texture );
+                return GetCurrentTexture();
+            }
+        }
+        return texture;
     }
 
     /** Returns the color-mod of this material */
@@ -92,38 +100,59 @@ public:
         return *(zCTexture**)(((char*)this) + GothicMemoryLocations::zCMaterial::Offset_Texture);
     }
 
+    /** Returns the current texture - single animation channel */
+    zCTexture* GetCurrentTexture() {
+        zCTexture* texture = GetTextureSingle();
+        if ( texture ) {
+            unsigned char flags = *(unsigned char*)(((char*)texture) + GothicMemoryLocations::zCTexture::Offset_Flags);
+            if ( flags & GothicMemoryLocations::zCTexture::Mask_FlagIsAnimated ) {
+                int animationChannel = *(int*)(((char*)this) + GothicMemoryLocations::zCMaterial::Offset_TexAniCtrl);
+                int animationFrames = ((int*)(((char*)texture) + GothicMemoryLocations::zCTexture::Offset_AniFrames))[animationChannel];
+                if ( animationFrames <= 0 )
+                    return texture;
+
+                zCTexture* tex = texture;
+                int activeAnimationFrame = ((int*)(((char*)texture) + GothicMemoryLocations::zCTexture::Offset_ActAniFrame))[animationChannel];
+                for ( int i = 0; i < activeAnimationFrame; ++i ) {
+                    zCTexture* activeAnimationFrame = ((zCTexture**)(((char*)tex) + GothicMemoryLocations::zCTexture::Offset_NextFrame))[animationChannel];
+                    if ( !activeAnimationFrame )
+                        return tex;
+
+                    tex = activeAnimationFrame;
+                }
+                return tex;
+            }
+        }
+        return texture;
+    }
+
     /** Returns the current texture from GetAniTexture */
     zCTexture* GetAniTexture() {
-        XCALL( GothicMemoryLocations::zCMaterial::GetAniTexture );
+        return reinterpret_cast<zCTexture*( __fastcall* )( zCMaterial* )>( GothicMemoryLocations::zCMaterial::GetAniTexture )( this );
     }
 
     void BindTexture( int slot ) {
-        if ( GetTexture() ) {
+        if ( zCTexture* texture = GetAniTexture() ) {
             // Bind it
-            if ( GetTexture()->CacheIn( 0.6f ) == zRES_CACHED_IN )
-                GetTexture()->Bind( slot );
+            if ( texture->CacheIn( 0.6f ) == zRES_CACHED_IN )
+                texture->Bind( slot );
         }
     }
 
     void BindTextureSingle( int slot ) {
-        if ( GetTextureSingle() ) {
+        if ( zCTexture* texture = GetTextureSingle() ) {
             // Bind it
-            if ( GetTextureSingle()->CacheIn( 0.6f ) == zRES_CACHED_IN )
-                GetTextureSingle()->Bind( slot );
+            if ( texture->CacheIn( 0.6f ) == zRES_CACHED_IN )
+                texture->Bind( slot );
         }
     }
 
     int GetAlphaFunc() {
-        return (*(int*)THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_AlphaFunc )) & 0xFF;
+        return static_cast<int>(*(unsigned char*)THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_AlphaFunc ));
     }
 
     void SetAlphaFunc( int func ) {
-        int f = (*(int*)THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_AlphaFunc ));
-        f &= ~0xFF;
-
-        f |= func;
-
-        (*(int*)THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_AlphaFunc )) = f;
+        *(unsigned char*)THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_AlphaFunc ) = static_cast<unsigned char>(func);
     }
 
     int GetMatGroup() {
@@ -133,6 +162,14 @@ public:
     bool HasAlphaTest() {
         int f = GetAlphaFunc();
         return f == zMAT_ALPHA_FUNC_TEST || f == zMAT_ALPHA_FUNC_BLEND_TEST;
+    }
+
+    bool HasTexAniMap() {
+        return (*(unsigned char*)THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_AlphaFunc )) & GothicMemoryLocations::zCMaterial::Mask_FlagTexAniMap;
+    }
+
+    DirectX::XMFLOAT2 GetTexAniMapDelta() {
+        return *(DirectX::XMFLOAT2*)THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_TexAniMapDelta );
     }
 };
 

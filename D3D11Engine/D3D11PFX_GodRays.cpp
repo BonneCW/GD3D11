@@ -21,6 +21,9 @@ D3D11PFX_GodRays::~D3D11PFX_GodRays() {}
 
 /** Draws this effect to the given buffer */
 XRESULT D3D11PFX_GodRays::Render( RenderToTextureBuffer* fxbuffer ) {
+    if ( Engine::GAPI->GetSky()->GetAtmoshpereSettings().LightDirection.y <= 0 )
+        return XR_SUCCESS; // Don't render the godrays in the night-time
+
 	D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
 
 	engine->SetDefaultStates();
@@ -31,10 +34,10 @@ XRESULT D3D11PFX_GodRays::Render( RenderToTextureBuffer* fxbuffer ) {
 	xmSunPosition *= outerRadius;
 	xmSunPosition += Engine::GAPI->GetCameraPositionXM(); // Maybe use cameraposition from sky?
 
-	XMMATRIX view = XMLoadFloat4x4( &Engine::GAPI->GetRendererState().TransformState.TransformView );
+	XMMATRIX view = Engine::GAPI->GetViewMatrixXM();
 	XMMATRIX proj = XMLoadFloat4x4( &Engine::GAPI->GetProjectionMatrix() );
 
-	XMMATRIX viewProj = XMMatrixTranspose( XMMatrixMultiply(proj, view) );
+	XMMATRIX viewProj = XMMatrixTranspose( XMMatrixMultiply( proj, view ) );
 	view = XMMatrixTranspose( view );
 
 	XMFLOAT3 sunViewPosition; XMStoreFloat3( &sunViewPosition, XMVector3TransformCoord( xmSunPosition, view ) ); // This is for checking if the light is behind the camera
