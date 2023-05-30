@@ -1,10 +1,11 @@
 #pragma once
-
 #include <string>
 
 #include <Windows.h>
 
 #include <DirectXMath.h>
+
+using namespace DirectX;
 
 /** Defines types used for the project */
 
@@ -21,9 +22,9 @@ struct INT2 {
         this->y = y;
     }
 
-    INT2( const DirectX::XMFLOAT2& v ) {
-        this->x = (int)(v.x + 0.5f);
-        this->y = (int)(v.y + 0.5f);
+    INT2( const XMFLOAT2& v ) {
+        this->x = static_cast<int>(v.x + 0.5f);
+        this->y = static_cast<int>(v.y + 0.5f);
     }
 
     INT2() { x = 0; y = 0; }
@@ -53,7 +54,6 @@ struct INT4 {
 };
 
 struct float4;
-struct DirectX::XMFLOAT3;
 
 struct float3 {
     float3( float x, float y, float z ) {
@@ -63,32 +63,29 @@ struct float3 {
     }
 
     float3( const DWORD& color ) {
-        BYTE r = (color >> 16) & 0xFF;
-        BYTE g = (color >> 8) & 0xFF;
-        BYTE b = color & 0xFF;
-
-        x = r / 255.0f;
-        y = g / 255.0f;
-        z = b / 255.0f;
+        x = ((color >> 16) & 0xFF) / 255.0f;
+        y = ((color >> 8) & 0xFF) / 255.0f;
+        z = (color & 0xFF) / 255.0f;
     }
 
     float3( const float4& v ) {
-        x = ((float3*)&v)->x;
-        y = ((float3*)&v)->y;
-        z = ((float3*)&v)->z;
+        const float3* asF3 = reinterpret_cast<const float3*>(&v);
+        x = asF3->x;
+        y = asF3->y;
+        z = asF3->z;
     }
 
-    float3( const DirectX::XMFLOAT3& v ) {
+    float3( const XMFLOAT3& v ) {
         x = v.x;
         y = v.y;
         z = v.z;
     }
 
-    DirectX::XMFLOAT3* toXMFLOAT3() const {
-        return (DirectX::XMFLOAT3*)this;
+    XMFLOAT3* toXMFLOAT3() const {
+        return reinterpret_cast<XMFLOAT3*>(const_cast<float3*>(this));
     }
     std::string toString() const {
-        return std::string( "(" ) + std::to_string( x ) + ", " + std::to_string( y ) + ", " + std::to_string( z ) + ")";
+        return "(" + std::to_string( x ) + ", " + std::to_string( y ) + ", " + std::to_string( z ) + ")";
     }
 
     /** Checks if this float3 is in the range a of the given float3 */
@@ -98,7 +95,7 @@ struct float3 {
         t.y = abs( y - f.y );
         t.z = abs( z - f.z );
 
-        return t.x < a&& t.y < a&& t.z < a;
+        return t.x < a && t.y < a && t.z < a;
     }
 
     static float3 FromColor( unsigned char r, unsigned char g, unsigned char b ) {
@@ -129,15 +126,10 @@ struct float3 {
 
 struct float4 {
     float4( const DWORD& color ) {
-        BYTE a = color >> 24;
-        BYTE r = (color >> 16) & 0xFF;
-        BYTE g = (color >> 8) & 0xFF;
-        BYTE b = color & 0xFF;
-
-        x = r / 255.0f;
-        y = g / 255.0f;
-        z = b / 255.0f;
-        w = a / 255.0f;
+        x = ((color >> 16) & 0xFF) / 255.0f;
+        y = ((color >> 8) & 0xFF) / 255.0f;
+        z = (color & 0xFF) / 255.0f;
+        w = (color >> 24) / 255.0f;
     }
 
     float4( float x, float y, float z, float w ) {
@@ -160,14 +152,14 @@ struct float4 {
         this->z = f.z;
         this->w = a;
     }
-    float4( const DirectX::XMFLOAT3& v ) {
+    float4( const XMFLOAT3& v ) {
         x = v.x;
         y = v.y;
         z = v.z;
         w = 1.0f;
     }
 
-    float4( const DirectX::XMFLOAT4& v ) {
+    float4( const XMFLOAT4& v ) {
         x = v.x;
         y = v.y;
         z = v.z;
@@ -176,30 +168,23 @@ struct float4 {
 
     float4() { x = 0; y = 0; z = 0; w = 0; }
 
-    DirectX::XMFLOAT4* toXMFLOAT4() const {
-        return (DirectX::XMFLOAT4*)this;
+    XMFLOAT4* toXMFLOAT4() const {
+        return reinterpret_cast<XMFLOAT4*>(const_cast<float4*>(this));
     }
 
-    DirectX::XMFLOAT3* toXMFLOAT3() const {
-        return (DirectX::XMFLOAT3*)this;
+    XMFLOAT3* toXMFLOAT3() const {
+        return reinterpret_cast<XMFLOAT3*>(const_cast<float4*>(this));
     }
     float* toPtr() const {
-        return (float*)this;
+        return reinterpret_cast<float*>(const_cast<float4*>(this));
     }
 
     DWORD ToDWORD() const {
-        BYTE a = (BYTE)(w * 255.0f);
-        BYTE r = (BYTE)(x * 255.0f);
-        BYTE g = (BYTE)(y * 255.0f);
-        BYTE b = (BYTE)(z * 255.0f);
-
-        char c[4];
-        c[0] = a;
-        c[1] = r;
-        c[2] = g;
-        c[3] = b;
-
-        return *(DWORD*)c;
+        BYTE a = static_cast<BYTE>(w * 255.0f);
+        BYTE r = static_cast<BYTE>(x * 255.0f);
+        BYTE g = static_cast<BYTE>(y * 255.0f);
+        BYTE b = static_cast<BYTE>(z * 255.0f);
+        return static_cast<DWORD>((a << 24) | (r << 16) | (g << 8) | b);
     }
 
     float x, y, z, w;
@@ -212,28 +197,28 @@ struct float2 {
     }
 
     float2( int x, int y ) {
-        this->x = (float)x;
-        this->y = (float)y;
+        this->x = static_cast<float>(x);
+        this->y = static_cast<float>(y);
     }
 
     float2( const INT2& i ) {
-        this->x = (float)i.x;
-        this->y = (float)i.y;
+        this->x = static_cast<float>(i.x);
+        this->y = static_cast<float>(i.y);
     }
 
-    float2( const DirectX::XMFLOAT2& v ) {
+    float2( const XMFLOAT2& v ) {
         this->x = v.x;
         this->y = v.y;
     }
 
     float2() { x = 0; y = 0; }
 
-    DirectX::XMFLOAT2* toXMFLOAT2() const {
-        return (DirectX::XMFLOAT2*)this;
+    XMFLOAT2* toXMFLOAT2() const {
+        return reinterpret_cast<XMFLOAT2*>(const_cast<float2*>(this));
     }
 
     std::string toString() const {
-        return std::string( "(" ) + std::to_string( x ) + ", " + std::to_string( y ) + ")";
+        return "(" + std::to_string( x ) + ", " + std::to_string( y ) + ")";
     }
 
     bool operator<( const float2& rhs ) const {
@@ -248,4 +233,3 @@ struct float2 {
 
     float x, y;
 };
-

@@ -162,7 +162,7 @@ bool D2DSubView::PointInsideRect( const D2D1_POINT_2F& p, const D2D1_RECT_F& r )
 }
 
 bool D2DSubView::PointInsideRect( const POINT& p, const D2D1_RECT_F& r ) {
-    if ( (float)p.x > r.left && (float)p.x < r.right && (float)p.y > r.top && (float)p.y < r.bottom ) {
+    if ( static_cast<float>(p.x) > r.left && static_cast<float>(p.x) < r.right && static_cast<float>(p.y) > r.top && static_cast<float>(p.y) < r.bottom ) {
         return true;
     }
 

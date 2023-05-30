@@ -154,7 +154,7 @@ bool SV_TabControl::OnWindowMessage( HWND hWnd, unsigned int msg, WPARAM wParam,
             float width = D2DView::GetLabelTextWidth( it->second.CaptionLayout, it->first.length() );
 
             D2D1_RECT_F tabRect = D2D1::RectF( x + ViewRect.left, ViewRect.top, x + ViewRect.left + width + 10.0f, ViewRect.top + SV_TABCONTROL_HEADER_SIZE_Y );
-            if ( PointInsideRect( D2D1::Point2F( (float)p.x, (float)p.y ), tabRect ) ) {
+            if ( PointInsideRect( D2D1::Point2F( static_cast<float>(p.x), static_cast<float>(p.y) ), tabRect ) ) {
                 SetActiveTab( it->second.Caption );
                 return false;
             }
@@ -210,8 +210,8 @@ void SV_TabControl::SetActiveTab( const std::string& tab ) {
         return; // Don't have that
 
     // Hide all
-    for ( std::map<std::string, SV_TabControl_Tab>::iterator it = Tabs.begin(); it != Tabs.end(); ++it ) {
-        SetTabVisibility( &it->second, true );
+    for ( auto& [k, tab] : Tabs ) {
+        SetTabVisibility( &tab, true );
     }
 
     // Set and Show active

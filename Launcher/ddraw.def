@@ -22,3 +22,16 @@ EXPORTS
 	GetSurfaceFromDC			= FakeGetSurfaceFromDC				@20
 	RegisterSpecialCase			= FakeRegisterSpecialCase			@21
 	ReleaseDDThreadLock			= FakeReleaseDDThreadLock			@22
+	GDX_AddPointLocator			= FakeGDX_AddPointLocator			@23
+	GDX_SetFogColor				= FakeGDX_SetFogColor				@24
+	GDX_SetFogDensity			= FakeGDX_SetFogDensity				@25
+	GDX_SetFogHeight			= FakeGDX_SetFogHeight				@26
+	GDX_SetFogHeightFalloff		= FakeGDX_SetFogHeightFalloff		@27
+	GDX_SetSunColor				= FakeGDX_SetSunColor				@28
+	GDX_SetSunStrength			= FakeGDX_SetSunStrength			@29
+	GDX_SetShadowStrength		= FakeGDX_SetShadowStrength			@30
+	GDX_SetShadowAOStrength		= FakeGDX_SetShadowAOStrength		@31
+	GDX_SetWorldAOStrength		= FakeGDX_SetWorldAOStrength		@32
+	GDX_OpenMessageBox			= FakeGDX_OpenMessageBox			@33
+	GDX_Module					= FakeGDX_Module					@34
+	UpdateCustomFontMultiplier	= FakeUpdateCustomFontMultiplier	@35

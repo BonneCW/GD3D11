@@ -1,5 +1,4 @@
 #pragma once
-
 #include "WorldObjects.h"
 
 class BaseLineRenderer;
@@ -63,7 +62,8 @@ class BaseGraphicsEngine {
 public:
     enum EUIEvent {
         UI_OpenSettings,
-        UI_OpenEditor
+        UI_OpenEditor,
+        UI_ClosedSettings,
     };
 
     BaseGraphicsEngine() { };
@@ -138,7 +138,7 @@ public:
     virtual XRESULT DrawVertexBufferIndexedUINT( D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, unsigned int indexOffset ) { return XR_SUCCESS; };
 
     /** Draws a skeletal mesh */
-    virtual XRESULT DrawSkeletalMesh( SkeletalVobInfo* vi, const std::vector<DirectX::XMFLOAT4X4>& transforms, float4 color, float fatness = 1.0f ) { return XR_SUCCESS; };
+    virtual XRESULT DrawSkeletalMesh( SkeletalVobInfo* vi, const std::vector<XMFLOAT4X4>& transforms, float4 color, float fatness = 1.0f ) { return XR_SUCCESS; };
 
     /** Draws a vertexarray, non-indexed */
     virtual XRESULT DrawIndexedVertexArray( ExVertexStruct* vertices, unsigned int numVertices, D3D11VertexBuffer* ib, unsigned int numIndices, unsigned int stride = sizeof( ExVertexStruct ) ) { return XR_SUCCESS; };
@@ -186,11 +186,8 @@ public:
     /** Draws a fullscreenquad, copying the given texture to the viewport */
     virtual void DrawQuad( INT2 position, INT2 size ) {}
 
-    /** Draws a single VOB */
-    virtual void DrawVobSingle( VobInfo* vob ) {}
-
-    /** Draws a multiple VOBs (used for inventory) */
-    virtual void DrawVobsList( const std::list<VobInfo*>& vobs, zCCamera& camera ) {};
+    /** Draws a VOB (used for inventory) */
+    virtual void DrawVobSingle( VobInfo* vob, zCCamera& camera ) {};
 
     /** Message-Callback for the main window */
     virtual LRESULT OnWindowMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam ) { return 0; }

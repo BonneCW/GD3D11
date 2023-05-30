@@ -8,8 +8,6 @@
 #include <d3dcompiler.h>
 #include "D3D11_Helpers.h"
 
-using namespace DirectX;
-
 D3D11Texture::D3D11Texture() {}
 
 D3D11Texture::~D3D11Texture() {
@@ -21,14 +19,14 @@ D3D11Texture::~D3D11Texture() {
 /** Initializes the texture object */
 XRESULT D3D11Texture::Init( INT2 size, ETextureFormat format, UINT mipMapCount, void* data, const std::string& fileName ) {
     HRESULT hr;
-    D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
+    D3D11GraphicsEngineBase* engine = reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine);
 
-    TextureFormat = (DXGI_FORMAT)format;
+    TextureFormat = static_cast<DXGI_FORMAT>(format);
     TextureSize = size;
     MipMapCount = mipMapCount;
 
     CD3D11_TEXTURE2D_DESC textureDesc(
-        (DXGI_FORMAT)format,
+        static_cast<DXGI_FORMAT>(format),
         size.x,
         size.y,
         1,
@@ -52,12 +50,13 @@ XRESULT D3D11Texture::Init( INT2 size, ETextureFormat format, UINT mipMapCount, 
 /** Initializes the texture from a file */
 XRESULT D3D11Texture::Init( const std::string& file ) {
     HRESULT hr;
-    D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
+    D3D11GraphicsEngineBase* engine = reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine);
 
     //LogInfo() << "Loading Engine-Texture: " << file;
 
     Microsoft::WRL::ComPtr<ID3D11Texture2D> res;
-    LE( CreateDDSTextureFromFile( engine->GetDevice().Get(), Toolbox::ToWideChar( file.c_str() ).c_str(), (ID3D11Resource**)res.ReleaseAndGetAddressOf(), ShaderResourceView.GetAddressOf() ) );
+    LE( CreateDDSTextureFromFile( engine->GetDevice().Get(), Toolbox::ToWideChar( file.c_str() ).c_str(),
+        reinterpret_cast<ID3D11Resource**>(res.ReleaseAndGetAddressOf()), ShaderResourceView.GetAddressOf() ) );
 
     if ( !ShaderResourceView.Get() || !res.Get() )
         return XR_FAILED;
@@ -78,7 +77,7 @@ XRESULT D3D11Texture::Init( const std::string& file ) {
 
 /** Updates the Texture-Object */
 XRESULT D3D11Texture::UpdateData( void* data, int mip ) {
-    D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
+    D3D11GraphicsEngineBase* engine = reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine);
 
     UINT TextureWidth = (TextureSize.x >> mip);
     UINT TextureHeight = (TextureSize.y >> mip);
@@ -110,7 +109,7 @@ XRESULT D3D11Texture::UpdateData( void* data, int mip ) {
 
 /** Updates the Texture-Object using the deferred context (For loading in an other thread) */
 XRESULT D3D11Texture::UpdateDataDeferred( void* data, int mip ) {
-    D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
+    D3D11GraphicsEngineBase* engine = reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine);
 
     UINT TextureWidth = (TextureSize.x >> mip);
     UINT TextureHeight = (TextureSize.y >> mip);
@@ -148,8 +147,7 @@ UINT D3D11Texture::GetRowPitchBytes( int mip ) {
     if ( TextureFormat == DXGI_FORMAT_BC1_UNORM || TextureFormat == DXGI_FORMAT_BC2_UNORM ||
         TextureFormat == DXGI_FORMAT_BC3_UNORM ) {
         return Toolbox::GetDDSRowPitchSize( px, TextureFormat == DXGI_FORMAT_BC1_UNORM );
-    } else // Use R8G8B8A8
-    {
+    } else { // Use R8G8B8A8
         return px * 4;
     }
 }
@@ -162,24 +160,20 @@ UINT D3D11Texture::GetSizeInBytes( int mip ) {
     if ( TextureFormat == DXGI_FORMAT_BC1_UNORM || TextureFormat == DXGI_FORMAT_BC2_UNORM ||
         TextureFormat == DXGI_FORMAT_BC3_UNORM ) {
         return Toolbox::GetDDSStorageRequirements( px, py, TextureFormat == DXGI_FORMAT_BC1_UNORM );
-    } else // Use R8G8B8A8
-    {
+    } else { // Use R8G8B8A8
         return px * py * 4;
     }
 }
 
 /** Binds this texture to a pixelshader */
 XRESULT D3D11Texture::BindToPixelShader( int slot ) {
-    D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
-
-    engine->GetContext()->PSSetShaderResources( slot, 1, ShaderResourceView.GetAddressOf() );
-
+    reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine)->GetContext()->PSSetShaderResources( slot, 1, ShaderResourceView.GetAddressOf() );
     return XR_SUCCESS;
 }
 
 /** Binds this texture to a pixelshader */
 XRESULT D3D11Texture::BindToVertexShader( int slot ) {
-    D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
+    D3D11GraphicsEngineBase* engine = reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine);
 
     engine->GetContext()->VSSetShaderResources( slot, 1, ShaderResourceView.GetAddressOf() );
     engine->GetContext()->DSSetShaderResources( slot, 1, ShaderResourceView.GetAddressOf() );
@@ -189,22 +183,19 @@ XRESULT D3D11Texture::BindToVertexShader( int slot ) {
 
 /** Binds this texture to a domainshader */
 XRESULT D3D11Texture::BindToDomainShader( int slot ) {
-    D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
-
-    engine->GetContext()->DSSetShaderResources( slot, 1, ShaderResourceView.GetAddressOf() );
-
+    reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine)->GetContext()->DSSetShaderResources( slot, 1, ShaderResourceView.GetAddressOf() );
     return XR_SUCCESS;
 }
 
 /** Creates a thumbnail for this */
 XRESULT D3D11Texture::CreateThumbnail() {
-    D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
+    D3D11GraphicsEngineBase* engine = reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine);
     HRESULT hr;
     // Since D2D can't load DXTn-Textures on Windows 7, we copy it over to a smaller texture here in d3d11
 
     // Create texture
     CD3D11_TEXTURE2D_DESC textureDesc(
-        (DXGI_FORMAT)DXGI_FORMAT_R8G8B8A8_UNORM,
+        DXGI_FORMAT_R8G8B8A8_UNORM,
         256,
         256,
         1,
@@ -219,7 +210,7 @@ XRESULT D3D11Texture::CreateThumbnail() {
     if ( !tempRTV.Get() )
         return XR_FAILED;
 
-    engine->GetContext()->ClearRenderTargetView( tempRTV.Get(), (float*)&float4( 1, 0, 0, 1 ) );
+    engine->GetContext()->ClearRenderTargetView( tempRTV.Get(), reinterpret_cast<float*>(&float4( 1, 0, 0, 1 )) );
 
     // Copy main texture to it
     engine->GetContext()->PSSetShaderResources( 0, 1, ShaderResourceView.GetAddressOf() );
@@ -247,9 +238,10 @@ XRESULT D3D11Texture::GenerateMipMaps() {
     if ( MipMapCount == 1 )
         return XR_SUCCESS;
 
-    D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
+    D3D11GraphicsEngineBase* engine = reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine);
 
-    std::unique_ptr<RenderToTextureBuffer> b = std::make_unique<RenderToTextureBuffer>( engine->GetDevice().Get(), TextureSize.x, TextureSize.y, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, MipMapCount );
+    std::unique_ptr<RenderToTextureBuffer> b = std::make_unique<RenderToTextureBuffer>( engine->GetDevice().Get(), TextureSize.x, TextureSize.y,
+        DXGI_FORMAT_R8G8B8A8_UNORM, nullptr, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, MipMapCount );
 
     // Copy the main image
     engine->GetContext()->CopySubresourceRegion( b->GetTexture().Get(), 0, 0, 0, 0, Texture.Get(), 0, nullptr );

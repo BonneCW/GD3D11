@@ -32,7 +32,7 @@ void SV_Panel::Draw( const D2D1_RECT_F& clientRectAbs, float deltaTime ) {
         MainView->GetBrush()->SetColor( PanelColor );
         MainView->GetRenderTarget()->FillRectangle( ViewRect, MainView->GetBrush() );
     } else if ( RenderMode == PR_Background ) {
-        float darkness = 1.0f - powf( 0.7f, (float)Level );
+        float darkness = 1.0f - powf( 0.7f, static_cast<float>(Level) );
 
         MainView->GetBackgroundBrush()->SetStartPoint( D2D1::Point2F( -clientRectAbs.left, -clientRectAbs.top ) );
         MainView->GetBackgroundBrush()->SetEndPoint( D2D1::Point2F( clientRectAbs.right - clientRectAbs.left, clientRectAbs.bottom - clientRectAbs.top ) );
@@ -100,12 +100,12 @@ D2D1_COLOR_F SV_Panel::GetPanelColor() const {
 HRESULT SV_Panel::SetD3D11TextureAsImage( ID3D11Texture2D* texture, INT2 size ) {
     SAFE_RELEASE( Image );
 
-    D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
+    D3D11GraphicsEngineBase* engine = reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine);
     HRESULT hr;
     // Since D2D can't load DXTn-Textures on Windows 7, we copy it over to a smaller texture here in d3d11
 
     // Create texture
-    CD3D11_TEXTURE2D_DESC textureDesc( (DXGI_FORMAT)DXGI_FORMAT_R8G8B8A8_UNORM, size.x, size.y, 1, 1, 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, 1, 0, 0 );
+    CD3D11_TEXTURE2D_DESC textureDesc( DXGI_FORMAT_R8G8B8A8_UNORM, size.x, size.y, 1, 1, 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, 1, 0, 0 );
 
     ComPtr<ID3D11Texture2D> staging;
     LE( engine->GetDevice()->CreateTexture2D( &textureDesc, nullptr, staging.ReleaseAndGetAddressOf() ) );

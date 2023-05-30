@@ -15,14 +15,11 @@ D2DMessageBox::D2DMessageBox( D2DView* view, D2DSubView* parent, ED2D_MB_TYPE ty
     InitControls( type );
 }
 
-
 D2DMessageBox::~D2DMessageBox() {}
 
 /** Initializes the controls of this view */
 XRESULT D2DMessageBox::InitControls( ED2D_MB_TYPE type ) {
     D2DSubView::InitControls();
-
-
 
     // Create message label
     Message = new SV_Label( MainView, MainPanel );
@@ -49,7 +46,7 @@ XRESULT D2DMessageBox::InitControls( ED2D_MB_TYPE type ) {
 }
 
 void D2DMessageBox::ButtonPressed( SV_Button* sender, void* userdata ) {
-    D2DMessageBox* b = (D2DMessageBox*)userdata;
+    D2DMessageBox* b = reinterpret_cast<D2DMessageBox*>(userdata);
 
     if ( sender == b->OkButton ) {
         b->SetHidden( true );

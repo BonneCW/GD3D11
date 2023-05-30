@@ -22,33 +22,10 @@ struct zCMeshData {
 class zCMesh {
 public:
     zCPolygon** GetPolygons() {
-        return *(zCPolygon***)THISPTR_OFFSET( GothicMemoryLocations::zCMesh::Offset_Polygons );
+        return *reinterpret_cast<zCPolygon***>(THISPTR_OFFSET( GothicMemoryLocations::zCMesh::Offset_Polygons ));
     }
 
     int GetNumPolygons() {
-        return *(int*)THISPTR_OFFSET( GothicMemoryLocations::zCMesh::Offset_NumPolygons );
+        return *reinterpret_cast<int*>(THISPTR_OFFSET( GothicMemoryLocations::zCMesh::Offset_NumPolygons ));
     }
-
-    /*zCPolygon* GetPolyArray()
-    {
-        return *(zCPolygon **)THISPTR_OFFSET(GothicMemoryLocations::zCMesh::Offset_PolyArray);
-    }
-
-    zCPolygon* SharePoly(int i)
-    {
-        if (GetPolyArray())
-            return GetPolyArray() + i;
-        else
-            return GetPolygons()[i];
-    }
-
-    void CreateListsFromArrays()
-    {
-        reinterpret_cast<void( __fastcall* )( zCMesh* )>( GothicMemoryLocations::zCMesh::CreateListsFromArrays )( this );
-    }
-
-    zCMeshData* GetData()
-    {
-        return (zCMeshData*)THISPTR_OFFSET(GothicMemoryLocations::zCMesh::Offset_NumPolygons);
-    }*/
 };

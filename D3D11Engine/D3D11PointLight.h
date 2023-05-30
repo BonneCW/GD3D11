@@ -3,6 +3,7 @@
 #include "WorldConverter.h"
 #include <thread>
 #include <condition_variable>
+#include <atomic>
 
 class D3D11PointLight;
 
@@ -26,6 +27,9 @@ public:
     /** Binds the shadowmap to the pixelshader */
     void OnRenderLight();
 
+    /** Returns if this light is inited already */
+    bool IsInited();
+
     /** Returns if this light needs an update */
     bool NeedsUpdate();
 
@@ -40,7 +44,7 @@ public:
 
 protected:
     /** Renders the scene with the given view-proj-matrices */
-    void RenderCubemapFace( const DirectX::XMFLOAT4X4& view, const DirectX::XMFLOAT4X4& proj, UINT faceIdx );
+    void RenderCubemapFace( const XMFLOAT4X4& view, const XMFLOAT4X4& proj, UINT faceIdx );
 
     /** Renders all cubemap faces at once, using the geometry shader */
     void RenderFullCubemap();
@@ -52,12 +56,12 @@ protected:
 
     VobLightInfo* LightInfo;
     std::unique_ptr<RenderToDepthStencilBuffer> DepthCubemap;
-    DirectX::XMFLOAT4X4 CubeMapViewMatrices[6];
-    DirectX::XMFLOAT3 LastUpdatePosition;
+    XMFLOAT4X4 CubeMapViewMatrices[6];
+    XMFLOAT3 LastUpdatePosition;
     DWORD LastUpdateColor;
     std::unique_ptr<D3D11ConstantBuffer> ViewMatricesCB;
     bool DynamicLight;
-    bool InitDone;
+    std::atomic<bool> InitDone;
     bool DrawnOnce;
 };
 

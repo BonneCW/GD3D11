@@ -10,6 +10,7 @@
 const int WORLDMESHINFO_VERSION = 5;
 const int VISUALINFO_VERSION = 5;
 
+#if ENABLE_TESSELATION > 0
 /** Saves the info for this visual */
 void WorldMeshInfo::SaveWorldMeshInfo( const std::string& name ) {
     FILE* f = fopen( ("system\\GD3D11\\meshes\\infos\\" + name + ".wi").c_str(), "wb" );
@@ -20,12 +21,15 @@ void WorldMeshInfo::SaveWorldMeshInfo( const std::string& name ) {
 
         return;
     }
+    char WriteBuffer[sizeof( int ) + sizeof( TesselationSettings )] = {};
 
     // Write the version first
-    fwrite( &WORLDMESHINFO_VERSION, sizeof( WORLDMESHINFO_VERSION ), 1, f );
+    memcpy( WriteBuffer, &WORLDMESHINFO_VERSION, sizeof( int ) );
 
     // Then the TesselationInfo
-    fwrite( &TesselationSettings.buffer, sizeof( TesselationSettings ), 1, f );
+    memcpy( WriteBuffer + sizeof( int ), &TesselationSettings.buffer, sizeof( TesselationSettings.buffer ) );
+
+    fwrite( WriteBuffer, 1, sizeof( WriteBuffer ), f );
     Toolbox::SaveStringToFILE( f, TesselationSettings.TesselationShader );
 
     fclose( f );
@@ -40,12 +44,11 @@ void WorldMeshInfo::LoadWorldMeshInfo( const std::string& name ) {
         return;
     }
 
-    // Read the version first
-    int version;
-    fread( &version, sizeof( version ), 1, f );
+    char ReadBuffer[sizeof( int ) + sizeof( TesselationSettings )];
+    fread( ReadBuffer, 1, sizeof( ReadBuffer ), f );
 
-    // Then the TesselationInfo
-    fread( &TesselationSettings.buffer, sizeof( TesselationSettings ), 1, f );
+    // Read the TesselationInfo
+    memcpy( &TesselationSettings.buffer, ReadBuffer + sizeof( int ), sizeof( TesselationSettings.buffer ) );
     TesselationSettings.TesselationShader = Toolbox::LoadStringFromFILE( f );
 
     TesselationSettings.UpdateConstantbuffer();
@@ -57,15 +60,16 @@ void WorldMeshInfo::LoadWorldMeshInfo( const std::string& name ) {
 
     fclose( f );
 }
+#endif
 
 /** Updates the vobs constantbuffer */
 void VobInfo::UpdateVobConstantBuffer() {
     VS_ExConstantBuffer_PerInstance cb;
-    DirectX::XMStoreFloat4x4( &cb.World, Vob->GetWorldMatrixXM() );
+    XMStoreFloat4x4( &cb.World, Vob->GetWorldMatrixXM() );
 
     VobConstantBuffer->UpdateBuffer( &cb );
 
-    DirectX::XMStoreFloat3( &LastRenderPosition, Vob->GetPositionWorldXM() );
+    XMStoreFloat3( &LastRenderPosition, Vob->GetPositionWorldXM() );
     WorldMatrix = cb.World;
 
     // Colorize the vob according to the underlaying polygon
@@ -77,13 +81,13 @@ void VobInfo::UpdateVobConstantBuffer() {
         GroundColor = Vob->GetGroundPoly() ? Vob->GetGroundPoly()->getFeatures()[0]->lightStatic : 0xFFFFFFFF;
     }
 
-    //&WorldMatrix = DirectX::XMMatrixTranspose(XMLoadFloat4x4(&cb.World));
+    //&WorldMatrix = XMMatrixTranspose(XMLoadFloat4x4(&cb.World));
 }
 
 /** Updates the vobs constantbuffer */
 void SkeletalVobInfo::UpdateVobConstantBuffer() {
     VS_ExConstantBuffer_PerInstance cb;
-    DirectX::XMStoreFloat4x4( &cb.World, Vob->GetWorldMatrixXM() );
+    XMStoreFloat4x4( &cb.World, Vob->GetWorldMatrixXM() );
 
     WorldMatrix = cb.World;
 
@@ -93,6 +97,7 @@ void SkeletalVobInfo::UpdateVobConstantBuffer() {
         VobConstantBuffer->UpdateBuffer( &cb );
 }
 
+#if ENABLE_TESSELATION > 0
 /** creates/updates the constantbuffer */
 void VisualTesselationSettings::UpdateConstantbuffer() {
     if ( Constantbuffer ) {
@@ -101,8 +106,9 @@ void VisualTesselationSettings::UpdateConstantbuffer() {
         Engine::GraphicsEngine->CreateConstantBuffer( &Constantbuffer, &buffer, sizeof( buffer ) );
     }
 }
+#endif
 
-
+#if ENABLE_TESSELATION > 0
 /** Creates PNAEN-Info for all meshes if not already there */
 void SkeletalMeshVisualInfo::CreatePNAENInfo( bool softNormals ) {
     for ( std::map<zCMaterial*, std::vector<SkeletalMeshInfo*>>::iterator it = SkeletalMeshes.begin(); it != SkeletalMeshes.end(); it++ ) {
@@ -126,7 +132,9 @@ void SkeletalMeshVisualInfo::ClearPNAENInfo() {
 
     BaseVisualInfo::ClearPNAENInfo();
 }
+#endif
 
+#if ENABLE_TESSELATION > 0
 /** Creates PNAEN-Info for all meshes if not already there */
 void MeshVisualInfo::CreatePNAENInfo( bool softNormals ) {
     for ( std::map<zCMaterial*, std::vector<MeshInfo*>>::iterator it = Meshes.begin(); it != Meshes.end(); it++ ) {
@@ -160,12 +168,15 @@ void BaseVisualInfo::SaveMeshVisualInfo( const std::string& name ) {
 
         return;
     }
+    char WriteBuffer[sizeof( int ) + sizeof( TesselationInfo )] = {};
 
     // Write the version first
-    fwrite( &VISUALINFO_VERSION, sizeof( VISUALINFO_VERSION ), 1, f );
+    memcpy( WriteBuffer, &VISUALINFO_VERSION, sizeof( int ) );
 
     // Then the TesselationInfo
-    fwrite( &TesselationInfo.buffer, sizeof( TesselationInfo ), 1, f );
+    memcpy( WriteBuffer + sizeof( int ), &TesselationInfo.buffer, sizeof( TesselationInfo.buffer ) );
+
+    fwrite( WriteBuffer, 1, sizeof( WriteBuffer ), f );
     Toolbox::SaveStringToFILE( f, TesselationInfo.TesselationShader );
 
     fclose( f );
@@ -180,22 +191,22 @@ void BaseVisualInfo::LoadMeshVisualInfo( const std::string& name ) {
         return;
     }
 
-    // Read the version first
-    int version;
-    fread( &version, sizeof( version ), 1, f );
+    char ReadBuffer[sizeof( int ) + sizeof( TesselationInfo )];
+    fread( ReadBuffer, 1, sizeof( ReadBuffer ), f );
 
-    // Then the TesselationInfo
-    fread( &TesselationInfo.buffer, sizeof( TesselationInfo ), 1, f );
+    // Read the TesselationInfo
+    memcpy( &TesselationInfo.buffer, ReadBuffer + sizeof( int ), sizeof( TesselationInfo.buffer ) );
     TesselationInfo.TesselationShader = Toolbox::LoadStringFromFILE( f );
 
     TesselationInfo.UpdateConstantbuffer();
 
     fclose( f );
 }
+#endif
 
 SectionInstanceCache::~SectionInstanceCache() {
-    for ( std::map<MeshVisualInfo*, D3D11VertexBuffer*>::iterator it = InstanceCache.begin(); it != InstanceCache.end(); it++ ) {
-        delete it->second;
+    for ( auto& [mvi, vertexBuffer] : InstanceCache ) {
+        delete vertexBuffer;
     }
 }
 
@@ -205,8 +216,9 @@ MeshInfo::~MeshInfo() {
 
     delete MeshVertexBuffer;
     delete MeshIndexBuffer;
+#if ENABLE_TESSELATION > 0
     delete MeshIndexBufferPNAEN;
-
+#endif
 }
 
 SkeletalMeshInfo::~SkeletalMeshInfo() {
@@ -215,7 +227,9 @@ SkeletalMeshInfo::~SkeletalMeshInfo() {
 
     delete MeshVertexBuffer;
     delete MeshIndexBuffer;
+#if ENABLE_TESSELATION > 0
     delete MeshIndexBufferPNAEN;
+#endif
 }
 
 /** Clears the cache for the given progmesh */
@@ -235,11 +249,9 @@ void WorldMeshSectionInfo::SaveSectionMeshToFile( const std::string& name ) {
 
     if ( !f )
         return;
-
-
 }
 
-
+#if ENABLE_TESSELATION > 0
 /** Saves the mesh infos for this section */
 void WorldMeshSectionInfo::SaveMeshInfos( const std::string& worldName, INT2 sectionPos ) {
     for ( auto it = WorldMeshes.begin(); it != WorldMeshes.end(); it++ ) {
@@ -266,6 +278,7 @@ void WorldMeshSectionInfo::LoadMeshInfos( const std::string& worldName, INT2 sec
         }
     }
 }
+#endif
 
 /** Creates buffers for this mesh info */
 XRESULT MeshInfo::Create( ExVertexStruct* vertices, unsigned int numVertices, VERTEX_INDEX* indices, unsigned int numIndices ) {

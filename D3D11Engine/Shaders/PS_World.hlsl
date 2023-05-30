@@ -58,14 +58,14 @@ DEFERRED_PS_OUTPUT PSMain( PS_INPUT Input ) : SV_TARGET
 	
 	// WorldMesh can always do the alphatest
 	DoAlphaTest(color.a);
-
-
+	
 	DEFERRED_PS_OUTPUT output;
 	output.vDiffuse = float4(color.rgb, Input.vDiffuse.y);
-		
+	
+	output.vNrm.xyz = normalize(Input.vNormalVS);
+	output.vNrm.w = 1.0f;
 
-	output.vNrm_SI_SP.xy = EncodeNormal(normalize(Input.vNormalVS));
-	output.vNrm_SI_SP.z = MI_SpecularIntensity;
-	output.vNrm_SI_SP.w = MI_SpecularPower;
+	output.vSI_SP.x = MI_SpecularIntensity;
+	output.vSI_SP.y = MI_SpecularPower;
 	return output;
 }

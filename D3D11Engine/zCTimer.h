@@ -35,5 +35,5 @@ public:
 
     DWORD forcedMaxFrameTime;  //zDWORD //länger als das darf ein Frame (in Spielzeit) nicht dauern. Um zu große Zeitsprünge für die Objekte zu vermeiden? Jedenfalls sort dies dafür, dass das Spiel langsamer läuft, wenn das Spiel mit rendern nicht hinterherkommt.
 
-    static zCTimer* GetTimer() { return (zCTimer*)GothicMemoryLocations::GlobalObjects::zCTimer; }
+    static zCTimer* GetTimer() { return reinterpret_cast<zCTimer*>(GothicMemoryLocations::GlobalObjects::zCTimer); }
 };

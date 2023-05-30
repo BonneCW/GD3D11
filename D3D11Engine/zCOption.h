@@ -12,9 +12,9 @@ public:
 
     /** Hooks the functions of this Class */
     static void Hook() {
-        XHook( HookedFunctions::OriginalFunctions.original_zCOptionReadInt, GothicMemoryLocations::zCOption::ReadInt, zCOption::hooked_zOptionReadInt );
-        XHook( HookedFunctions::OriginalFunctions.original_zCOptionReadBool, GothicMemoryLocations::zCOption::ReadBool, zCOption::hooked_zOptionReadBool );
-        XHook( HookedFunctions::OriginalFunctions.original_zCOptionReadDWORD, GothicMemoryLocations::zCOption::ReadDWORD, zCOption::hooked_zOptionReadDWORD );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCOptionReadInt), hooked_zOptionReadInt );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCOptionReadBool), hooked_zOptionReadBool );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCOptionReadDWORD), hooked_zOptionReadDWORD );
     }
 
     /** Returns true if the given string is in the commandline of the game */
@@ -86,10 +86,6 @@ public:
         if ( _stricmp( var, "zWaterAniEnabled" ) == 0 ) {
             Engine::GAPI->SetIntParamFromConfig( "zWaterAniEnabled", 0 );
             return 0; // Disable water animations
-        } else if ( _stricmp( var, "scaleVideos" ) == 0 ) // Force scaleVideos to get them into the upper left corner
-        {
-            Engine::GAPI->SetIntParamFromConfig( "scaleVideos", 0 );
-            return 0;
         } else if ( _stricmp( var, "zStartupWindowed" ) == 0 ) {
             Engine::GAPI->SetIntParamFromConfig( "zStartupWindowed", r );
             return 1;
@@ -99,9 +95,6 @@ public:
             return 0;
 #endif
         }
-
-
-
 
         Engine::GAPI->SetIntParamFromConfig( var, r );
         return r;
@@ -177,8 +170,6 @@ public:
         return HookedFunctions::OriginalFunctions.original_zCOptionReadDWORD( thisptr, section, var, def );
     }
 
-
-
     static long __fastcall hooked_zOptionReadInt( void* thisptr, void* unknwn, zSTRING const& section, char const* var, int def ) {
         int i = Do_hooked_zOptionReadInt( thisptr, section, var, def );
 
@@ -192,7 +183,7 @@ public:
         reinterpret_cast<void( __thiscall* )( zCOption*, zSTRING const&, const char*, zSTRING, int )>( GothicMemoryLocations::zCOption::WriteString )( this, section, var, def, 0 );
     }
 
-    static zCOption* GetOptions() { return *(zCOption**)GothicMemoryLocations::GlobalObjects::zCOption; }
+    static zCOption* GetOptions() { return *reinterpret_cast<zCOption**>(GothicMemoryLocations::GlobalObjects::zCOption); }
 private:
     std::string GetCommandLineNormalized() {
         std::string cmdLine = this->GetCommandline();
@@ -203,6 +194,3 @@ private:
         return cmdLine;
     }
 };
-
-
-

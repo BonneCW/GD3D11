@@ -21,9 +21,6 @@ public:
     Microsoft::WRL::ComPtr<ID3D11PixelShader> GetShader() { return PixelShader.Get(); }
 
 private:
-    /** Compiles the shader from file and outputs error messages if needed */
-    HRESULT CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, const std::vector<D3D_SHADER_MACRO>& makros );
-
     Microsoft::WRL::ComPtr<ID3D11PixelShader> PixelShader;
     std::vector<D3D11ConstantBuffer*> ConstantBuffers;
 };

@@ -10,6 +10,12 @@
 
 namespace Engine {
 
+    /** Refresh worker threadpool */
+    void RefreshWorkerThreadpool() {
+        delete WorkerThreadPool;
+        WorkerThreadPool = new ThreadPool;
+    }
+
     /** Creates main graphics engine */
     void CreateGraphicsEngine() {
         LogInfo() << "Creating Main graphics engine";

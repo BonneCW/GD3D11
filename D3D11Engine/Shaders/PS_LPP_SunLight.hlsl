@@ -57,8 +57,7 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	float4 gb2 = TX_Nrm_SI_SP.Sample(SS_Linear, uv);
 	
 	// Decode the view-space normal back
-	float3 normal = DecodeNormal(gb2.xy);
-	normal = normalize(normal);
+	float3 normal = normalize(gb2.xyz);
 	
 	// Get specular parameters
 	float specIntensity = gb2.z;

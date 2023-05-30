@@ -19,23 +19,18 @@ public:
 
     /** Hooks the functions of this Class */
     static void Hook() {
-        //XHook(HookedFunctions::OriginalFunctions.original_zCResourceManagerCacheOut, GothicMemoryLocations::zCResourceManager::CacheOut, zCResourceManager::hooked_CacheOut);
+        //DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCResourceManagerCacheOut), hooked_CacheOut );
     }
 
+    /*
     static void __fastcall hooked_CacheOut( void* thisptr, void* unknwn, class zCResource* res ) {
         hook_infunc
-            //Engine::GAPI->EnterResourceCriticalSection(); // Protect the game from running into a deadlock
-            //Sleep(0);
-            //Engine::GAPI->LeaveResourceCriticalSection();
-
-            //GetResourceManagerMutex().lock();
 
             HookedFunctions::OriginalFunctions.original_zCResourceManagerCacheOut( thisptr, res );
 
-        //GetResourceManagerMutex().unlock();
-
         hook_outfunc
     }
+    */
 
     zTResourceCacheState CacheIn( zCTexture* res, float priority ) {
         return reinterpret_cast<zTResourceCacheState( __fastcall* )( zCResourceManager*, int, zCTexture*, float )>
@@ -57,5 +52,5 @@ public:
             ( GothicMemoryLocations::zCResourceManager::SetThreadingEnabled )( this, 0, enabled );
     }
 
-    static zCResourceManager* GetResourceManager() { return *(zCResourceManager**)GothicMemoryLocations::GlobalObjects::zCResourceManager; }
+    static zCResourceManager* GetResourceManager() { return *reinterpret_cast<zCResourceManager**>(GothicMemoryLocations::GlobalObjects::zCResourceManager); }
 };

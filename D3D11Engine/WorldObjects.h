@@ -62,6 +62,7 @@ struct cmpMeshKey {
     }
 };*/
 
+#if ENABLE_TESSELATION > 0
 struct VisualTesselationSettings {
     VisualTesselationSettings() {
         buffer.VT_DisplacementStrength = 0.0f;
@@ -88,6 +89,7 @@ struct VisualTesselationSettings {
     std::string TesselationShader;
     Buffer buffer;
 };
+#endif
 
 /** Holds information about a mesh, ready to be loaded into the renderer */
 struct MeshInfo {
@@ -96,7 +98,9 @@ struct MeshInfo {
         MeshIndexBuffer = nullptr;
         BaseIndexLocation = 0;
         MeshIndex = -1;
+#if ENABLE_TESSELATION > 0
         MeshIndexBufferPNAEN = nullptr;
+#endif
     }
 
     virtual ~MeshInfo();
@@ -109,9 +113,11 @@ struct MeshInfo {
     std::vector<ExVertexStruct> Vertices;
     std::vector<VERTEX_INDEX> Indices;
 
+#if ENABLE_TESSELATION > 0
     D3D11VertexBuffer* MeshIndexBufferPNAEN;
     std::vector<VERTEX_INDEX> IndicesPNAEN;
     std::vector<ExVertexStruct> VerticesPNAEN;
+#endif
     unsigned int BaseIndexLocation;
     unsigned int MeshIndex;
 };
@@ -121,6 +127,7 @@ struct WorldMeshInfo : public MeshInfo {
         SaveInfo = false;
     }
 
+#if ENABLE_TESSELATION > 0
     /** Saves the info for this visual */
     void SaveWorldMeshInfo( const std::string& name );
 
@@ -128,6 +135,7 @@ struct WorldMeshInfo : public MeshInfo {
     void LoadWorldMeshInfo( const std::string& name );
 
     VisualTesselationSettings TesselationSettings;
+#endif
 
     /** If true we will save an info-file on next zen-resource-save */
     bool SaveInfo;
@@ -157,7 +165,9 @@ struct SkeletalMeshInfo {
         MeshVertexBuffer = nullptr;
         MeshIndexBuffer = nullptr;
         visual = nullptr;
+#if ENABLE_TESSELATION > 0
         MeshIndexBufferPNAEN = nullptr;
+#endif
     }
 
     ~SkeletalMeshInfo();
@@ -167,8 +177,10 @@ struct SkeletalMeshInfo {
     std::vector<ExSkelVertexStruct> Vertices;
     std::vector<VERTEX_INDEX> Indices;
 
+#if ENABLE_TESSELATION > 0
     D3D11VertexBuffer* MeshIndexBufferPNAEN;
     std::vector<VERTEX_INDEX> IndicesPNAEN;
+#endif
 
     /** Actual visual containing this */
     zCMeshSoftSkin* visual;
@@ -181,12 +193,14 @@ struct BaseVisualInfo {
     }
 
     virtual ~BaseVisualInfo() {
-        for ( std::map<zCMaterial*, std::vector<MeshInfo*>>::iterator it = Meshes.begin(); it != Meshes.end(); it++ ) {
-            for ( unsigned int i = 0; i < it->second.size(); i++ )
-                delete it->second[i];
+        for ( auto& [k, meshes] : Meshes ) {
+            for ( MeshInfo* mi : meshes ) {
+                delete mi;
+            }
         }
     }
 
+#if ENABLE_TESSELATION > 0
     /** Creates PNAEN-Info for all meshes if not already there */
     virtual void CreatePNAENInfo( bool softNormals = false ) {}
 
@@ -198,11 +212,14 @@ struct BaseVisualInfo {
 
     /** Loads the info for this visual */
     virtual void LoadMeshVisualInfo( const std::string& name );
+#endif
 
     std::map<zCMaterial*, std::vector<MeshInfo*>> Meshes;
 
+#if ENABLE_TESSELATION > 0
     /** Tesselation settings for this vob */
     VisualTesselationSettings TesselationInfo;
+#endif
 
     /** "size" of the mesh. The distance between it's bbox min and bbox max */
     float MeshSize;
@@ -211,7 +228,7 @@ struct BaseVisualInfo {
     zTBBox3D BBox;
 
     /** Meshes midpoint */
-    DirectX::XMFLOAT3 MidPoint;
+    XMFLOAT3 MidPoint;
 
     /** Games visual */
     zCVisual* Visual;
@@ -244,8 +261,10 @@ struct MeshVisualInfo : public BaseVisualInfo {
         Instances.clear();
     }
 
+#if ENABLE_TESSELATION > 0
     /** Creates PNAEN-Info for all meshes if not already there */
     void CreatePNAENInfo( bool softNormals = false );
+#endif
 
     std::map<MeshKey, std::vector<MeshInfo*>, cmpMeshKey> MeshesByTexture;
 
@@ -273,22 +292,36 @@ struct SkeletalMeshVisualInfo : public BaseVisualInfo {
     }
 
     ~SkeletalMeshVisualInfo() {
-        for ( std::map<zCMaterial*, std::vector<SkeletalMeshInfo*>>::iterator it = SkeletalMeshes.begin(); it != SkeletalMeshes.end(); it++ ) {
-            for ( unsigned int i = 0; i < it->second.size(); i++ )
-                delete it->second[i];
+        for ( auto& [k, meshes] : SkeletalMeshes ) {
+            for ( SkeletalMeshInfo* smi : meshes ) {
+                delete smi;
+            }
         }
     }
 
+    void ClearMeshes() {
+        for ( auto& [k, meshes] : SkeletalMeshes )
+            for ( SkeletalMeshInfo* smi : meshes )
+                delete smi;
+
+        for ( auto& [k, meshes] : Meshes )
+            for ( MeshInfo* mi : meshes )
+                delete mi;
+
+        SkeletalMeshes.clear();
+        Meshes.clear();
+    }
+
+#if ENABLE_TESSELATION > 0
     /** Creates PNAEN-Info for all meshes if not already there */
     void CreatePNAENInfo( bool softNormals = false );
 
     /** Removes PNAEN info from this visual */
     void ClearPNAENInfo();
+#endif
 
     /** Submeshes of this visual */
     std::map<zCMaterial*, std::vector<SkeletalMeshInfo*>> SkeletalMeshes;
-
-
 };
 
 struct BaseVobInfo {
@@ -322,7 +355,7 @@ struct VobInfo : public BaseVobInfo {
     D3D11ConstantBuffer* VobConstantBuffer;
 
     /** Position the vob was at while being rendered last time */
-    DirectX::XMFLOAT3 LastRenderPosition;
+    XMFLOAT3 LastRenderPosition;
 
     /** True if this is an indoor-vob */
     bool IsIndoorVob;
@@ -334,7 +367,7 @@ struct VobInfo : public BaseVobInfo {
     WorldMeshSectionInfo* VobSection;
 
     /** Current world transform */
-    DirectX::XMFLOAT4X4 WorldMatrix;
+    XMFLOAT4X4 WorldMatrix;
 
     /** BSP-Node this is stored in */
     std::vector<BspInfo*> ParentBSPNodes;
@@ -350,6 +383,7 @@ struct VobLightInfo {
         Vob = nullptr;
         LightShadowBuffers = nullptr;
         VisibleInRenderPass = false;
+        IsPFXVobLight = false;
         IsIndoorVob = false;
         DynamicShadows = false;
         UpdateShadows = true;
@@ -364,6 +398,7 @@ struct VobLightInfo {
 
     /** Flag to see if this vob was drawn in the current render pass. Used to collect the same vob only once. */
     bool VisibleInRenderPass;
+    bool IsPFXVobLight;
 
     /** True if this is an indoor-vob */
     bool IsIndoorVob;
@@ -377,7 +412,7 @@ struct VobLightInfo {
     bool UpdateShadows; // Whether to update this lights shadows on the next occasion
 
     /** Position where we were rendered the last time */
-    DirectX::XMFLOAT3 LastRenderedPosition;
+    XMFLOAT3 LastRenderedPosition;
 };
 
 
@@ -394,9 +429,10 @@ struct SkeletalVobInfo : public BaseVobInfo {
     ~SkeletalVobInfo() {
         //delete VisualInfo;
 
-        for ( std::map<int, std::vector<MeshVisualInfo*>>::iterator it = NodeAttachments.begin(); it != NodeAttachments.end(); it++ ) {
-            for ( unsigned int i = 0; i < it->second.size(); i++ )
-                delete it->second[i];
+        for ( auto& [k, meshes] : NodeAttachments ) {
+            for ( MeshVisualInfo* mvi : meshes ) {
+                delete mvi;
+            }
         }
 
         delete VobConstantBuffer;
@@ -418,7 +454,7 @@ struct SkeletalVobInfo : public BaseVobInfo {
     bool VisibleInRenderPass;
 
     /** Current world transform */
-    DirectX::XMFLOAT4X4 WorldMatrix;
+    XMFLOAT4X4 WorldMatrix;
 
     /** BSP-Node this is stored in */
     std::vector<BspInfo*> ParentBSPNodes;
@@ -436,7 +472,6 @@ struct SectionInstanceCache {
 
     std::map<MeshVisualInfo*, std::vector<VS_ExConstantBuffer_PerInstance>> InstanceCacheData;
     std::map<MeshVisualInfo*, D3D11VertexBuffer*> InstanceCache;
-
 };
 
 class D3D11Texture;
@@ -444,38 +479,31 @@ class D3D11Texture;
 /** Describes a world-section for the renderer */
 struct WorldMeshSectionInfo {
     WorldMeshSectionInfo() {
-        BoundingBox.Min = DirectX::XMFLOAT3( FLT_MAX, FLT_MAX, FLT_MAX );
-        BoundingBox.Max = DirectX::XMFLOAT3( -FLT_MAX, -FLT_MAX, -FLT_MAX );
+        BoundingBox.Min = XMFLOAT3( FLT_MAX, FLT_MAX, FLT_MAX );
+        BoundingBox.Max = XMFLOAT3( -FLT_MAX, -FLT_MAX, -FLT_MAX );
         FullStaticMesh = nullptr;
     }
 
     ~WorldMeshSectionInfo() {
-        for ( std::map<MeshKey, WorldMeshInfo*>::iterator it = WorldMeshes.begin(); it != WorldMeshes.end(); it++ ) {
-            delete it->second;
+        for ( auto& [k, mesh] : WorldMeshes ) {
+            delete mesh;
         }
-        WorldMeshes.clear();
 
-        for ( std::map<MeshKey, MeshInfo*>::iterator it = SuppressedMeshes.begin(); it != SuppressedMeshes.end(); it++ ) {
-            delete it->second;
+        for ( auto& [k, mesh] : SuppressedMeshes ) {
+            delete mesh;
         }
-        SuppressedMeshes.clear();
 
-        for ( std::map<D3D11Texture*, std::vector<MeshInfo*>>::iterator it = WorldMeshesByCustomTexture.begin(); it != WorldMeshesByCustomTexture.end(); it++ ) {
-            delete it->first; // Meshes are stored in "WorldMeshes". Only delete the texture
+        for ( auto& [texture, meshes] : WorldMeshesByCustomTexture ) {
+            delete texture; // Meshes are stored in "WorldMeshes". Only delete the texture
         }
-        WorldMeshesByCustomTexture.clear();
 
-        for ( std::list<VobInfo*>::iterator it = Vobs.begin(); it != Vobs.end(); it++ ) {
-            delete (*it);
+        for ( VobInfo* vob : Vobs ) {
+            delete vob;
         }
-        Vobs.clear();
 
-        for ( auto it = SectionPolygons.begin(); it != SectionPolygons.end(); it++ ) {
-            delete (*it);
+        for ( zCPolygon* poly : SectionPolygons ) {
+            delete poly;
         }
-        SectionPolygons.clear();
-
-
 
         delete FullStaticMesh;
     }
@@ -483,11 +511,13 @@ struct WorldMeshSectionInfo {
     /** Saves this sections mesh to a file */
     void SaveSectionMeshToFile( const std::string& name );
 
+#if ENABLE_TESSELATION > 0
     /** Saves the mesh infos for this section */
     void SaveMeshInfos( const std::string& worldName, INT2 sectionPos );
 
     /** Saves the mesh infos for this section */
     void LoadMeshInfos( const std::string& worldName, INT2 sectionPos );
+#endif
 
     std::map<MeshKey, WorldMeshInfo*, cmpMeshKey> WorldMeshes;
     std::map<D3D11Texture*, std::vector<MeshInfo*>> WorldMeshesByCustomTexture;
@@ -496,7 +526,7 @@ struct WorldMeshSectionInfo {
     std::list<VobInfo*> Vobs;
 
     /** Loaded ocean-polys of this section */
-    std::vector<DirectX::XMFLOAT3> OceanPoints;
+    std::vector<XMFLOAT3> OceanPoints;
 
     // This is filled in case we have loaded a custom worldmesh
     std::vector<zCPolygon*> SectionPolygons;
@@ -524,7 +554,7 @@ struct WorldInfo {
         CustomWorldLoaded = false;
     }
 
-    DirectX::XMFLOAT2 MidPoint;
+    XMFLOAT2 MidPoint;
     float LowestVertex;
     float HighestVertex;
     zCBspTree* BspTree;

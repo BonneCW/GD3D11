@@ -20,13 +20,13 @@ public:
 
     static bool IsFreeLookActive() {
 #ifdef BUILD_GOTHIC_2_6_fix
-        return (*(int*)(GothicMemoryLocations::zCCamera::Var_FreeLook)) != 0;
+        return *reinterpret_cast<int*>(GothicMemoryLocations::zCCamera::Var_FreeLook) != 0;
 #else
         return false;
 #endif
     }
 
-    const DirectX::XMFLOAT4X4& GetTransformDX( const ETransformType type ) {
+    const XMFLOAT4X4& GetTransformDX( const ETransformType type ) {
         switch ( type ) {
         case ETransformType::TT_WORLD:			return trafoWorld;		break;
         case ETransformType::TT_VIEW:			return trafoView;		break;
@@ -37,13 +37,13 @@ public:
         };
     }
 
-    void SetTransform( const ETransformType type, const DirectX::XMFLOAT4X4& mat ) {
-        reinterpret_cast<void( __fastcall* )( zCCamera*, int, const ETransformType, const DirectX::XMFLOAT4X4& )>
+    void SetTransform( const ETransformType type, const XMFLOAT4X4& mat ) {
+        reinterpret_cast<void( __fastcall* )( zCCamera*, int, const ETransformType, const XMFLOAT4X4& )>
             ( GothicMemoryLocations::zCCamera::SetTransform )( this, 0, type, mat );
     }
 
-    void SetTransformXM( const ETransformType type, const DirectX::XMMATRIX& mat ) {
-        DirectX::XMFLOAT4X4 m; DirectX::XMStoreFloat4x4( &m, mat );
+    void SetTransformXM( const ETransformType type, const XMMATRIX& mat ) {
+        XMFLOAT4X4 m; XMStoreFloat4x4( &m, mat );
         SetTransform( type, m );
     }
 
@@ -77,11 +77,11 @@ public:
     }
 
     float GetFarPlane() {
-        return *(float*)((char*)this + GothicMemoryLocations::zCCamera::Offset_FarPlane);
+        return *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCCamera::Offset_FarPlane ));
     }
 
     float GetNearPlane() {
-        return *(float*)((char*)this + GothicMemoryLocations::zCCamera::Offset_NearPlane);
+        return *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCCamera::Offset_NearPlane ));
     }
 
     void SetFarPlane( float value ) {
@@ -90,52 +90,40 @@ public:
     }
 
     bool HasScreenFadeEnabled() {
-        return (*(int*)((char*)this + GothicMemoryLocations::zCCamera::Offset_ScreenFadeEnabled)) != 0;
+        return *reinterpret_cast<int*>(THISPTR_OFFSET( GothicMemoryLocations::zCCamera::Offset_ScreenFadeEnabled )) != 0;
     }
 
     void ResetScreenFadeEnabled() {
-        *(int*)((char*)this + GothicMemoryLocations::zCCamera::Offset_ScreenFadeEnabled) = 0;
+        *reinterpret_cast<int*>(THISPTR_OFFSET( GothicMemoryLocations::zCCamera::Offset_ScreenFadeEnabled )) = 0;
     }
 
     bool HasCinemaScopeEnabled() {
-        return (*(int*)((char*)this + GothicMemoryLocations::zCCamera::Offset_CinemaScopeEnabled)) != 0;
+        return *reinterpret_cast<int*>(THISPTR_OFFSET( GothicMemoryLocations::zCCamera::Offset_CinemaScopeEnabled )) != 0;
     }
 
     void ResetCinemaScopeEnabled() {
-        *(int*)((char*)this + GothicMemoryLocations::zCCamera::Offset_CinemaScopeEnabled) = 0;
+        *reinterpret_cast<int*>(THISPTR_OFFSET( GothicMemoryLocations::zCCamera::Offset_CinemaScopeEnabled )) = 0;
     }
 
     zColor GetScreenFadeColor() {
-        return *(zColor*)((char*)this + GothicMemoryLocations::zCCamera::Offset_ScreenFadeColor);
+        return *reinterpret_cast<zColor*>(THISPTR_OFFSET( GothicMemoryLocations::zCCamera::Offset_ScreenFadeColor ));
     }
 
     zColor GetCinemaScopeColor() {
-        return *(zColor*)((char*)this + GothicMemoryLocations::zCCamera::Offset_CinemaScopeColor);
+        return *reinterpret_cast<zColor*>(THISPTR_OFFSET( GothicMemoryLocations::zCCamera::Offset_CinemaScopeColor ));
     }
 
     int GetScreenFadeBlendFunc() {
 #ifdef BUILD_GOTHIC_2_6_fix
-        return static_cast<int>(*(BYTE*)((char*)this + GothicMemoryLocations::zCCamera::Offset_ScreenFadeBlendFunc));
+        return static_cast<int>(*reinterpret_cast<BYTE*>(THISPTR_OFFSET( GothicMemoryLocations::zCCamera::Offset_ScreenFadeBlendFunc )));
 #else
         return zRND_ALPHA_FUNC_BLEND;
 #endif
     }
 
     DWORD GetPolyMaterial() {
-        return *(DWORD*)((char*)this + GothicMemoryLocations::zCCamera::Offset_PolyMaterial);
+        return *reinterpret_cast<DWORD*>(THISPTR_OFFSET( GothicMemoryLocations::zCCamera::Offset_PolyMaterial ));
     }
-
-    /*void GetCameraPosition(DirectX::XMFLOAT3& v)
-    {
-        reinterpret_cast<void( __fastcall* )( zCCamera*, int, DirectX::XMFLOAT3& )>
-            ( GADDR::zCCamera_GetCameraPosition )( this, 0, v );
-    }*/
-
-    /*static void SetFreeLook(bool freeLook)
-    {
-        bool * f = (bool *)GothicMemoryLocations::zCCamera::Var_FreeLook;
-        *f = freeLook;
-    }*/
 
     /** Returns the frustumplanes */
     zTPlane* GetFrustumPlanes() {
@@ -147,7 +135,9 @@ public:
         return SignBits;
     }
 
-    static zCCamera* GetCamera() { return *(zCCamera**)GothicMemoryLocations::GlobalObjects::zCCamera; }
+    static zCCamera* GetCamera() {
+        return *reinterpret_cast<zCCamera**>(GothicMemoryLocations::GlobalObjects::zCCamera);
+    }
 
     /** Frustum Planes in world space */
     zTPlane FrustumPlanes[6];

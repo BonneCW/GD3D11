@@ -1,7 +1,8 @@
 struct DEFERRED_PS_OUTPUT
 {
 	float4 vDiffuse : SV_TARGET0;
-	float4 vNrm_SI_SP : SV_TARGET1; 
+	float4 vNrm : SV_TARGET1; 
+	float2 vSI_SP : SV_TARGET2; 
 };
 
 struct DEFERRED_PS_OUTPUT_ALPHA_TO_COVERAGE

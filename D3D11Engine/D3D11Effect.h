@@ -15,6 +15,8 @@ public:
     /** Draws GPU-Based rain */
     XRESULT DrawRain();
 
+    XRESULT LoadRainResources();
+
     /** Renders the rain-shadowmap */
     XRESULT DrawRainShadowmap();
 

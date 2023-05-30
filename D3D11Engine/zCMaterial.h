@@ -32,18 +32,18 @@ class zCMaterial {
 public:
     /** Hooks the functions of this Class */
     static void Hook() {
-        XHook( HookedFunctions::OriginalFunctions.original_zCMaterialDestructor, GothicMemoryLocations::zCMaterial::Destructor, zCMaterial::Hooked_Destructor );
-        //XHook(HookedFunctions::OriginalFunctions.original_zCMaterialConstruktor, GothicMemoryLocations::zCMaterial::Constructor, zCMaterial::Hooked_Constructor);
-        XHook( HookedFunctions::OriginalFunctions.original_zCMaterialInitValues, GothicMemoryLocations::zCMaterial::InitValues, zCMaterial::Hooked_InitValues );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCMaterialDestructor), Hooked_Destructor );
+        //DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCMaterialConstruktor), Hooked_Constructor );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCMaterialInitValues), Hooked_InitValues );
 
     }
 
-    static void __fastcall Hooked_Destructor( void* thisptr, void* unknwn ) {
+    static void __fastcall Hooked_Destructor( zCMaterial* thisptr, void* unknwn ) {
         hook_infunc
 
             // Notify the world
             if ( Engine::GAPI )
-                Engine::GAPI->OnMaterialDeleted( (zCMaterial*)thisptr );
+                Engine::GAPI->OnMaterialDeleted( thisptr );
 
         HookedFunctions::OriginalFunctions.original_zCMaterialDestructor( thisptr );
 
@@ -60,12 +60,12 @@ public:
         hook_outfunc
     }
 
-    static void __fastcall Hooked_InitValues( void* thisptr, void* unknwn ) {
+    static void __fastcall Hooked_InitValues( zCMaterial* thisptr, void* unknwn ) {
         hook_infunc
 
             // Notify the world
             if ( Engine::GAPI )
-                Engine::GAPI->OnMaterialCreated( (zCMaterial*)thisptr );
+                Engine::GAPI->OnMaterialCreated( thisptr );
 
         HookedFunctions::OriginalFunctions.original_zCMaterialInitValues( thisptr );
 
@@ -73,14 +73,14 @@ public:
     }
 
     zCTexAniCtrl* GetTexAniCtrl() {
-        return (zCTexAniCtrl*)(((char*)this) + GothicMemoryLocations::zCMaterial::Offset_TexAniCtrl);
+        return reinterpret_cast<zCTexAniCtrl*>(THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_TexAniCtrl ));
     }
 
     /** Returns AniTexture - single animation channel */
     zCTexture* GetTexture() {
         zCTexture* texture = GetTextureSingle();
         if ( texture ) {
-            unsigned char flags = *(unsigned char*)(((char*)texture) + GothicMemoryLocations::zCTexture::Offset_Flags);
+            unsigned char flags = *reinterpret_cast<unsigned char*>(reinterpret_cast<DWORD>(texture) + GothicMemoryLocations::zCTexture::Offset_Flags);
             if ( flags & GothicMemoryLocations::zCTexture::Mask_FlagIsAnimated ) {
                 reinterpret_cast<void( __fastcall* )(zCTexAniCtrl*, int, zCTexture* )>
                     ( GothicMemoryLocations::zCMaterial::AdvanceAni )( GetTexAniCtrl(), 0, texture );
@@ -92,29 +92,29 @@ public:
 
     /** Returns the color-mod of this material */
     DWORD GetColor() {
-        return *(DWORD*)THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_Color );
+        return *reinterpret_cast<DWORD*>(THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_Color ));
     }
 
     /** Returns single texture, because not all seem to be animated and returned by GetAniTexture? */
     zCTexture* GetTextureSingle() {
-        return *(zCTexture**)(((char*)this) + GothicMemoryLocations::zCMaterial::Offset_Texture);
+        return *reinterpret_cast<zCTexture**>(THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_Texture ));
     }
 
     /** Returns the current texture - single animation channel */
     zCTexture* GetCurrentTexture() {
         zCTexture* texture = GetTextureSingle();
         if ( texture ) {
-            unsigned char flags = *(unsigned char*)(((char*)texture) + GothicMemoryLocations::zCTexture::Offset_Flags);
+            unsigned char flags = *reinterpret_cast<unsigned char*>(reinterpret_cast<DWORD>(texture) + GothicMemoryLocations::zCTexture::Offset_Flags);
             if ( flags & GothicMemoryLocations::zCTexture::Mask_FlagIsAnimated ) {
-                int animationChannel = *(int*)(((char*)this) + GothicMemoryLocations::zCMaterial::Offset_TexAniCtrl);
-                int animationFrames = ((int*)(((char*)texture) + GothicMemoryLocations::zCTexture::Offset_AniFrames))[animationChannel];
+                int animationChannel = *reinterpret_cast<int*>(reinterpret_cast<DWORD>(this) + GothicMemoryLocations::zCMaterial::Offset_TexAniCtrl);
+                int animationFrames = reinterpret_cast<int*>(reinterpret_cast<DWORD>(texture) + GothicMemoryLocations::zCTexture::Offset_AniFrames)[animationChannel];
                 if ( animationFrames <= 0 )
                     return texture;
 
                 zCTexture* tex = texture;
-                int activeAnimationFrame = ((int*)(((char*)texture) + GothicMemoryLocations::zCTexture::Offset_ActAniFrame))[animationChannel];
+                int activeAnimationFrame = reinterpret_cast<int*>(reinterpret_cast<DWORD>(texture) + GothicMemoryLocations::zCTexture::Offset_ActAniFrame)[animationChannel];
                 for ( int i = 0; i < activeAnimationFrame; ++i ) {
-                    zCTexture* activeAnimationFrame = ((zCTexture**)(((char*)tex) + GothicMemoryLocations::zCTexture::Offset_NextFrame))[animationChannel];
+                    zCTexture* activeAnimationFrame = reinterpret_cast<zCTexture**>(reinterpret_cast<DWORD>(tex) + GothicMemoryLocations::zCTexture::Offset_NextFrame)[animationChannel];
                     if ( !activeAnimationFrame )
                         return tex;
 
@@ -148,15 +148,15 @@ public:
     }
 
     int GetAlphaFunc() {
-        return static_cast<int>(*(unsigned char*)THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_AlphaFunc ));
+        return static_cast<int>(*reinterpret_cast<unsigned char*>(THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_AlphaFunc )));
     }
 
     void SetAlphaFunc( int func ) {
-        *(unsigned char*)THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_AlphaFunc ) = static_cast<unsigned char>(func);
+        *reinterpret_cast<unsigned char*>(THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_AlphaFunc )) = static_cast<unsigned char>(func);
     }
 
     int GetMatGroup() {
-        return *(int*)THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_MatGroup );
+        return *reinterpret_cast<int*>(THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_MatGroup ));
     }
 
     bool HasAlphaTest() {
@@ -165,11 +165,11 @@ public:
     }
 
     bool HasTexAniMap() {
-        return (*(unsigned char*)THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_AlphaFunc )) & GothicMemoryLocations::zCMaterial::Mask_FlagTexAniMap;
+        return *reinterpret_cast<unsigned char*>(THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_AlphaFunc )) & GothicMemoryLocations::zCMaterial::Mask_FlagTexAniMap;
     }
 
-    DirectX::XMFLOAT2 GetTexAniMapDelta() {
-        return *(DirectX::XMFLOAT2*)THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_TexAniMapDelta );
+    XMFLOAT2 GetTexAniMapDelta() {
+        return *reinterpret_cast<XMFLOAT2*>(THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_TexAniMapDelta ));
     }
 };
 

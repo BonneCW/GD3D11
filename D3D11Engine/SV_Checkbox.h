@@ -1,5 +1,4 @@
 #pragma once
-
 #include "D2DSubView.h"
 
 const float SV_CHKBOX_BOX_SIZE_XY = 13;

@@ -12,7 +12,6 @@
 #include "zCWorld.h"
 
 GSky::GSky() {
-
     Atmosphere.Kr = 0.0075f;
     Atmosphere.Km = 0.0010f;
     Atmosphere.ESun = 20.0f;
@@ -42,12 +41,6 @@ XRESULT GSky::InitSky() {
     const float sizeX = 500000;
     const float sizeY = 10000;
 
-
-    /*SkyPlaneVertices[0].Position = float3(+sizeX, sizeY, -sizeX); // 1, 0
-    SkyPlaneVertices[1].Position = float3(+sizeX, sizeY, +sizeX); // 1, 1
-    SkyPlaneVertices[2].Position = float3(-sizeX, sizeY, +sizeX); // 0, 1
-    SkyPlaneVertices[3].Position = float3(-sizeX, sizeY, -sizeX); // 0, 0*/
-
     SkyPlaneVertices[0].Position = float3( -sizeX, sizeY, -sizeX ); // 0
     SkyPlaneVertices[1].Position = float3( +sizeX, sizeY, -sizeX ); // 1
     SkyPlaneVertices[2].Position = float3( -sizeX, sizeY, +sizeX ); // 2
@@ -57,7 +50,7 @@ XRESULT GSky::InitSky() {
     SkyPlaneVertices[5].Position = float3( -sizeX, sizeY, +sizeX ); // 2
 
     const float scale = 20.0f;
-    DirectX::XMFLOAT2 displacement;
+    XMFLOAT2 displacement;
     float4 color = float4( 1, 1, 1, 1 );
 
     // Construct vertices
@@ -117,15 +110,8 @@ XRESULT GSky::AddSkyTexture( const std::string& file ) {
 XRESULT GSky::LoadSkyResources() {
     SkyDome = std::make_unique<GMesh>();
     SkyDome->LoadMesh( "system\\GD3D11\\meshes\\unitSphere.obj" );
-    //SkyDome->LoadMesh("system\\GD3D11\\meshes\\skySphere.obj");
 
     LogInfo() << "Loading sky textures...";
-    //AddSkyTexture("system\\GD3D11\\textures\\sky\\cgcookie_sky01.dds");
-    /*AddSkyTexture("system\\GD3D11\\textures\\sky\\cgcookie_sky01.dds");
-    AddSkyTexture("system\\GD3D11\\textures\\sky\\cgcookie_sky02.dds");
-    AddSkyTexture("system\\GD3D11\\textures\\sky\\cgcookie_sky03.dds");
-    AddSkyTexture("system\\GD3D11\\textures\\sky\\cgcookie_sky04.dds");
-    AddSkyTexture("system\\GD3D11\\textures\\sky\\cgcookie_sky05.dds");*/
 
     D3D11Texture* cloudTex;
     XLE( Engine::GraphicsEngine->CreateTexture( &cloudTex ) );
@@ -143,7 +129,7 @@ XRESULT GSky::LoadSkyResources() {
 
     XLE( NightTexture->Init( "system\\GD3D11\\Textures\\starsh.dds" ) );
 
-    VERTEX_INDEX indices[] = { 0, 1,2,3,4,5 };
+    VERTEX_INDEX indices[] = { 0, 1, 2, 3, 4, 5 };
     SkyPlane = std::make_unique<MeshInfo>();
     SkyPlane->Create( SkyPlaneVertices, 6, indices, 6 );
 
@@ -181,11 +167,11 @@ void GSky::GetTextureOfDaytime( float time, D3D11Texture** t1, D3D11Texture** t2
     float index = time * (SkyTextures.size() - 0.5f);
 
     // Get indices of the current and the next texture
-    int i0 = (int)index;
-    int i1 = (unsigned int)index + 1 < SkyTextures.size() ? (int)index + 1 : 0;
+    int i0 = static_cast<int>(index);
+    int i1 = static_cast<unsigned int>(index + 1) < SkyTextures.size() ? static_cast<int>(index) + 1 : 0;
 
     // Calculate weight
-    float weight = index - (i0);
+    float weight = index - i0;
 
     *t1 = SkyTextures[i0];
     *t2 = SkyTextures[i1];
@@ -197,8 +183,6 @@ XRESULT GSky::RenderSky() {
     if ( !SkyDome ) {
         XLE( LoadSkyResources() );
     }
-
-    //return XR_SUCCESS;
 
     XMFLOAT3 camPos = Engine::GAPI->GetCameraPosition();
     XMFLOAT3 LightDir = {};
@@ -212,7 +196,7 @@ XRESULT GSky::RenderSky() {
             Atmosphere.LightDirection = LightDir;
         }
     }
-    XMStoreFloat3( &LightDir, XMVector3Normalize( XMLoadFloat3( &LightDir ) ) ); //XMVector3NormalizeEst leads to a flickering sun but smother moving shadows
+    XMStoreFloat3( &LightDir, XMVector3Normalize( XMLoadFloat3( &LightDir ) ) );
     //Atmosphere.SpherePosition.y = -Atmosphere.InnerRadius;
 
     Atmosphere.SpherePosition.x = 0;//Engine::GAPI->GetLoadedWorldInfo()->MidPoint.x;
@@ -230,7 +214,7 @@ XRESULT GSky::RenderSky() {
     AtmosphereCB.AC_InnerRadius = Atmosphere.InnerRadius;
     AtmosphereCB.AC_OuterRadius = Atmosphere.OuterRadius;
     AtmosphereCB.AC_nSamples = Atmosphere.Samples;
-    AtmosphereCB.AC_fSamples = (float)AtmosphereCB.AC_nSamples;
+    AtmosphereCB.AC_fSamples = static_cast<float>(AtmosphereCB.AC_nSamples);
 
     AtmosphereCB.AC_Kr4PI = Atmosphere.Kr * 4 * XM_PI;
     AtmosphereCB.AC_Km4PI = Atmosphere.Km * 4 * XM_PI;
@@ -269,17 +253,7 @@ GMesh* GSky::GetSkyDome() {
 /** Returns the current sky-light color */
 float4 GSky::GetSkylightColor() {
     zCSkyController_Outdoor* sc = oCGame::GetGame()->_zCSession_world->GetSkyControllerOutdoor();
-    float4 color = float4( 1, 1, 1, 1 );
-
-    if ( sc ) {
-        DWORD* clut = sc->PolyLightCLUTPtr;
-
-        if ( clut ) {
-
-        }
-    }
-
-    return color;
+    return float4( 1, 1, 1, 1 );
 }
 
 /** Returns the cloud texture */
@@ -309,7 +283,7 @@ float AC_getRayleighPhase( float fCos2 ) {
     return 0.75f + 0.75f * fCos2;
 }
 // Returns the near intersection point of a line and a sphere
-float AC_getNearIntersection( XMVECTOR v3Pos, XMVECTOR v3Ray, float fDistance2, float fRadius2 ) {
+float AC_getNearIntersection( FXMVECTOR v3Pos, FXMVECTOR v3Ray, float fDistance2, float fRadius2 ) {
     float B;
     XMStoreFloat( &B, XMVector3Dot( v3Pos, v3Ray ) * 2.0f );
     float C = fDistance2 - fRadius2;
@@ -317,7 +291,7 @@ float AC_getNearIntersection( XMVECTOR v3Pos, XMVECTOR v3Ray, float fDistance2, 
     return 0.5f * (-B - sqrt( fDet ));
 }
 // Returns the far intersection point of a line and a sphere
-float AC_getFarIntersection( XMVECTOR v3Pos, XMVECTOR v3Ray, float fDistance2, float fRadius2 ) {
+float AC_getFarIntersection( FXMVECTOR v3Pos, FXMVECTOR v3Ray, float fDistance2, float fRadius2 ) {
     float B;
     XMStoreFloat( &B, XMVector3Dot( v3Pos, v3Ray ) * 2.0f );
     float C = fDistance2 - fRadius2;
@@ -327,36 +301,16 @@ float AC_getFarIntersection( XMVECTOR v3Pos, XMVECTOR v3Ray, float fDistance2, f
 
 /** Returns the current sun color */
 float3 GSky::GetSunColor() {
-    XMFLOAT3 LightPos;
-    LightPos.x = AtmosphereCB.AC_LightPos.x;
-    LightPos.y = AtmosphereCB.AC_LightPos.y;
-    LightPos.z = AtmosphereCB.AC_LightPos.z;
-    FXMVECTOR wPos = (XMLoadFloat3( &LightPos ) * AtmosphereCB.AC_OuterRadius) + XMLoadFloat3( &Atmosphere.SpherePosition );
+    XMVECTORF32 LightPos = { AtmosphereCB.AC_LightPos.x, AtmosphereCB.AC_LightPos.y, AtmosphereCB.AC_LightPos.z, 0 };
+    XMVECTORF32 camPos = { AtmosphereCB.AC_CameraPos.x, AtmosphereCB.AC_CameraPos.y, AtmosphereCB.AC_CameraPos.z, 0 };
 
-
-    XMFLOAT3 camPos_FLOAT3;
-    camPos_FLOAT3.x = AtmosphereCB.AC_CameraPos.x;
-    camPos_FLOAT3.y = AtmosphereCB.AC_CameraPos.y;
-    camPos_FLOAT3.z = AtmosphereCB.AC_CameraPos.z;
-    FXMVECTOR camPos = XMLoadFloat3( &camPos_FLOAT3 );
-    XMFLOAT3 SpherePos_FLOAT3;
-    SpherePos_FLOAT3.x = AtmosphereCB.AC_SpherePosition.x;
-    SpherePos_FLOAT3.y = AtmosphereCB.AC_SpherePosition.y;
-    SpherePos_FLOAT3.z = AtmosphereCB.AC_SpherePosition.z;
-    FXMVECTOR vPos = wPos - XMLoadFloat3( &SpherePos_FLOAT3 );
+    FXMVECTOR wPos = (LightPos * AtmosphereCB.AC_OuterRadius) + XMLoadFloat3( &Atmosphere.SpherePosition );
+    FXMVECTOR vPos = wPos - XMVectorSet( AtmosphereCB.AC_SpherePosition.x, AtmosphereCB.AC_SpherePosition.y, AtmosphereCB.AC_SpherePosition.z, 0 );
     XMVECTOR vRay = vPos - camPos;
 
     float fFar;
     XMStoreFloat( &fFar, XMVector3Length( vRay ) );
     vRay /= fFar;
-
-    //return float4(abs(AC_SpherePosition), 1);
-
-    //if (AC_CameraHeight < AC_InnerRadius)
-    //	return float4(1, 0, 0, 1);
-
-    // Calculate the closest intersection of the ray with the outer atmosphere (which is the near point of the ray passing through the atmosphere)
-    //float fNear = AC_getNearIntersection( camPos, vRay, AtmosphereCB.AC_CameraHeight * AtmosphereCB.AC_CameraHeight, AtmosphereCB.AC_OuterRadius * AtmosphereCB.AC_OuterRadius ); //never used
 
     // Calculate the ray's starting position, then calculate its scattering offset
     float fDepth = exp( AtmosphereCB.AC_RayleighOverScaleDepth * (AtmosphereCB.AC_InnerRadius - AtmosphereCB.AC_CameraHeight) );
@@ -370,10 +324,8 @@ float3 GSky::GetSunColor() {
     FXMVECTOR vSampleRay = vRay * fSampleLength;
     XMVECTOR vSamplePoint = camPos + vSampleRay * 0.5f;
 
-    FXMVECTOR AC_Wavelenght_XMV = XMVectorSet( AtmosphereCB.AC_Wavelength.x, AtmosphereCB.AC_Wavelength.y, AtmosphereCB.AC_Wavelength.z, 0 );
     constexpr XMVECTORF32 Four_XMV = { 4, 4, 4, 0 };
-    FXMVECTOR vInvWavelength = XMQuaternionInverse( XMVectorPow( AC_Wavelenght_XMV, Four_XMV ) );
-    //return retF(AC_InnerRadius - length(vSamplePoint));
+    FXMVECTOR vInvWavelength = XMQuaternionInverse( XMVectorPow( XMVectorSet( AtmosphereCB.AC_Wavelength.x, AtmosphereCB.AC_Wavelength.y, AtmosphereCB.AC_Wavelength.z, 0 ), Four_XMV ) );
 
     // Now loop through the sample rays
     XMVECTOR vFrontColor = XMVectorZero();
@@ -384,12 +336,11 @@ float3 GSky::GetSunColor() {
         FXMVECTOR fHeight = XMVector3Length( vSamplePoint );
         XMStoreFloat( &fHeight_float, fHeight );
         float fDepth = exp( AtmosphereCB.AC_RayleighOverScaleDepth * (AtmosphereCB.AC_InnerRadius - fHeight_float) );
-        XMStoreFloat( &fLightAngle, XMVector3Dot( XMLoadFloat3( &LightPos ), vSamplePoint ) / fHeight );
+        XMStoreFloat( &fLightAngle, XMVector3Dot( LightPos, vSamplePoint ) / fHeight );
         XMStoreFloat( &fCameraAngle, XMVector3Dot( vRay, vSamplePoint ) / fHeight );
         float fScatter = (fStartOffset + fDepth * (AC_Escale( fLightAngle, AtmosphereCB.AC_RayleighScaleDepth ) - AC_Escale( fCameraAngle, AtmosphereCB.AC_RayleighScaleDepth )));
 
         FXMVECTOR vAttenuate = XMVectorExp( -fScatter * vInvWavelength * AtmosphereCB.AC_Kr4PI + XMVectorSet( AtmosphereCB.AC_Km4PI, AtmosphereCB.AC_Km4PI, AtmosphereCB.AC_Km4PI, 0 ) );
-
         vFrontColor += vAttenuate * fDepth * fScaledLength * 2;
         vSamplePoint += vSampleRay;
     }
@@ -400,11 +351,12 @@ float3 GSky::GetSunColor() {
     FXMVECTOR vDirection = camPos - vPos;
 
     float fCos;
-    XMStoreFloat( &fCos, XMVector3Dot( XMLoadFloat3( &LightPos ), vDirection ) / XMVector3Length( vDirection ) );
+    XMStoreFloat( &fCos, XMVector3Dot( LightPos, vDirection ) / XMVector3Length( vDirection ) );
 
     XMFLOAT3 suncolor_convert;
     float fCos2 = fCos * fCos;
     XMStoreFloat3( &suncolor_convert, AC_getRayleighPhase( fCos2 ) * c0 + AC_getMiePhase( fCos, fCos2, AtmosphereCB.AC_g, AtmosphereCB.AC_g * AtmosphereCB.AC_g ) * c1 );
+
     float3 suncolor_return;
     suncolor_return = suncolor_convert;
     return suncolor_return;

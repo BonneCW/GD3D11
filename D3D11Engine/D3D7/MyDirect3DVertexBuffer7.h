@@ -1,7 +1,4 @@
 #pragma once
-#ifndef MYDIRECT3DVERTEXBUFFER7_H
-#define MYDIRECT3DVERTEXBUFFER7_H
-
 #include "../pch.h"
 #include <d3d.h>
 #include "../Logger.h"
@@ -9,8 +6,6 @@
 #include "../BaseGraphicsEngine.h"
 #include "../D3D11VertexBuffer.h"
 #include "../Engine.h"
-
-
 
 class MyDirect3DVertexBuffer7 : public IDirect3DVertexBuffer7 {
 public:
@@ -36,33 +31,24 @@ public:
 
 	/*** IUnknown methods ***/
 	HRESULT STDMETHODCALLTYPE QueryInterface( REFIID riid, void** ppvObj ) {
-		//DebugWrite("MyDirect3DVertexBuffer7::QueryInterface\n");
-		//return this->direct3DVertexBuffer7->QueryInterface(riid, ppvObj);
-
-		LogError() << "QueryInterface on Vertexbuffer not supported!";
-		// Lets hope this never gets called
+		DebugWrite( "MyDirect3DVertexBuffer7::QueryInterface\n" );
 		return S_OK;
 	}
 
 	ULONG STDMETHODCALLTYPE AddRef() {
 		DebugWrite( "MyDirect3DVertexBuffer7::AddRef\n" );
-		RefCount++;
-
-		return RefCount;
+		return ++RefCount;
 	}
 
 	ULONG STDMETHODCALLTYPE Release() {
 		DebugWrite( "MyDirect3DVertexBuffer7::Release\n" );
 
-		RefCount--;
-
-		ULONG count = RefCount;
-		if ( 0 == count ) {
+		if ( --RefCount == 0 ) {
 			delete this;
 			return 0;
 		}
 
-		return count;
+		return RefCount;
 	}
 
 	/*** IDirect3DVertexBuffer7 methods ***/
@@ -126,5 +112,3 @@ private:
 	/** Referencecount on this */
 	int RefCount;
 };
-
-#endif

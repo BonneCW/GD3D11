@@ -37,12 +37,12 @@ float Gauss()
 	float u2 = rand() / (float)RAND_MAX;
 	if (u1 < 1e-6f)
 		u1 = 1e-6f;
-	return sqrtf(-2 * logf(u1)) * cosf(DirectX::XM_2PI * u2);
+	return sqrtf(-2 * logf(u1)) * cosf(XM_2PI * u2);
 }
 
 // Phillips Spectrum
 // K: normalized wave vector, W: wind direction, v: wind velocity, a: amplitude constant
-float Phillips(DirectX::XMFLOAT2 K, DirectX::XMFLOAT2 W, float v, float a, float dir_depend)
+float Phillips(XMFLOAT2 K, XMFLOAT2 W, float v, float a, float dir_depend)
 {
 	// largest possible wave from constant wind of velocity v
 	float l = v * v / GRAV_ACCEL;
@@ -155,7 +155,7 @@ OceanSimulator::OceanSimulator(OceanParameter& params, Microsoft::WRL::ComPtr<ID
 
 	// Height map H(0)
 	int height_map_size = (params.dmap_dim + 4) * (params.dmap_dim + 1);
-	DirectX::XMFLOAT2 * h0_data = new DirectX::XMFLOAT2[height_map_size * sizeof(DirectX::XMFLOAT2)];
+	XMFLOAT2 * h0_data = new XMFLOAT2[height_map_size * sizeof(XMFLOAT2)];
 	float * omega_data = new float[height_map_size * sizeof(float)];
 	initHeightMap(params, h0_data, omega_data);
 
@@ -253,7 +253,7 @@ OceanSimulator::OceanSimulator(OceanParameter& params, Microsoft::WRL::ComPtr<ID
 
 	// Quad vertex buffer
 	D3D11_BUFFER_DESC vb_desc = {};
-	vb_desc.ByteWidth = 4 * sizeof(DirectX::XMFLOAT4);
+	vb_desc.ByteWidth = 4 * sizeof(XMFLOAT4);
 	vb_desc.Usage = D3D11_USAGE_IMMUTABLE;
 	vb_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	vb_desc.CPUAccessFlags = 0;
@@ -332,13 +332,13 @@ OceanSimulator::~OceanSimulator()
 // Initialize the vector field.
 // wlen_x: width of wave tile, in meters
 // wlen_y: length of wave tile, in meters
-void OceanSimulator::initHeightMap(OceanParameter& params, DirectX::XMFLOAT2 * out_h0, float * out_omega)
+void OceanSimulator::initHeightMap(OceanParameter& params, XMFLOAT2 * out_h0, float * out_omega)
 {
 	int i, j;
-	DirectX::XMFLOAT2 K;
+	XMFLOAT2 K;
 
-	DirectX::XMFLOAT2 wind_dir;
-	XMStoreFloat2(&wind_dir, DirectX::XMVector2Normalize(XMLoadFloat2(&params.wind_dir)));
+	XMFLOAT2 wind_dir;
+	XMStoreFloat2(&wind_dir, XMVector2Normalize(XMLoadFloat2(&params.wind_dir)));
 	float a = params.wave_amplitude * 1e-7f;	// It is too small. We must scale it for editing.
 	float v = params.wind_speed;
 	float dir_depend = params.wind_dependency;
@@ -352,11 +352,11 @@ void OceanSimulator::initHeightMap(OceanParameter& params, DirectX::XMFLOAT2 * o
 	for (i = 0; i <= height_map_dim; i++)
 	{
 		// K is wave-vector, range [-|DX/W, |DX/W], [-|DY/H, |DY/H]
-		K.y = (-height_map_dim / 2.0f + i) * (DirectX::XM_2PI / patch_length);
+		K.y = (-height_map_dim / 2.0f + i) * (XM_2PI / patch_length);
 
 		for (j = 0; j <= height_map_dim; j++)
 		{
-			K.x = (-height_map_dim / 2.0f + j) * (DirectX::XM_2PI / patch_length);
+			K.x = (-height_map_dim / 2.0f + j) * (XM_2PI / patch_length);
 
 			float phil = (K.x == 0 && K.y == 0) ? 0 : sqrtf(Phillips(K, wind_dir, v, a, dir_depend));
 
@@ -450,7 +450,7 @@ void OceanSimulator::updateDisplacementMap(float time)
 
 	// IA setup
 	ID3D11Buffer* vbs = {m_pQuadVB.Get()};
-	UINT strides[1] = {sizeof(DirectX::XMFLOAT4)};
+	UINT strides[1] = {sizeof(XMFLOAT4)};
 	UINT offsets[1] = {0};
 	m_pd3dImmediateContext->IASetVertexBuffers(0, 1, &vbs, &strides[0], &offsets[0]);
 
@@ -505,7 +505,7 @@ void OceanSimulator::updateDisplacementMap(float time)
 		// and cast it as (float *)
 
 		// Write to disk
-		DirectX::XMFLOAT2 * v = (DirectX::XMFLOAT2 *)mapped_res.pData;
+		XMFLOAT2 * v = (XMFLOAT2 *)mapped_res.pData;
 
 		FILE* fp = fopen(".\\tmp\\Ht_raw.dat", "wb");
 		fwrite(v, 512*512*sizeof(float)*2*3, 1, fp);

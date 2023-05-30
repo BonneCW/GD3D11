@@ -12,12 +12,10 @@
 
 using namespace Assimp;
 
-
 GMeshSimple::GMeshSimple() {
     VertexBuffer = nullptr;
     IndexBuffer = nullptr;
 }
-
 
 GMeshSimple::~GMeshSimple() {
     delete VertexBuffer;

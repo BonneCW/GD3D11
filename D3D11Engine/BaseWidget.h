@@ -1,5 +1,4 @@
 #pragma once
-
 #include "pch.h"
 
 const float BASEWIDGET_TRANS_LENGTH = 1.5;
@@ -33,7 +32,7 @@ public:
 
     /** Widget primitives */
     void CreateArrowCone( int Detail, int Axis, const float4& Color, EditorLinePrimitive* Prim );
-    void CreateArrowCube( DirectX::XMFLOAT3* Offset, float Extends, const float4& Color, EditorLinePrimitive* Prim );
+    void CreateArrowCube( XMFLOAT3* Offset, float Extends, const float4& Color, EditorLinePrimitive* Prim );
 
     /** Returns whether this widget is active or not */
     virtual bool IsActive() const { return false; }
@@ -46,9 +45,9 @@ protected:
     void SetMouseVisibility( bool visible );
 
     /** Transforms of the widget */
-    DirectX::XMFLOAT3 Position;
-    DirectX::XMFLOAT4X4 Rotation;
-    DirectX::XMFLOAT3 Scale;
+    XMFLOAT3 Position;
+    XMFLOAT4X4 Rotation;
+    XMFLOAT3 Scale;
 
     /** Owning widgetcontainer */
     WidgetContainer* OwningContainer;

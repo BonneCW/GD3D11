@@ -1,5 +1,4 @@
 #pragma once
-
 #include "basegraphicsengine.h"
 #include <dxgi1_5.h>
 
@@ -128,6 +127,8 @@ public:
     virtual XRESULT SetActiveGShader( const std::string& shader );
     //virtual int MeasureString(std::string str, zFont* zFont);
 
+    void ResetPresentPending() { PresentPending = false; }
+
 protected:
     /** Updates the transformsCB with new values from the GAPI */
     void UpdateTransformsCB();
@@ -188,6 +189,9 @@ protected:
     std::shared_ptr<D3D11VShader> VS_ExRemapInstancedObj;
     std::shared_ptr<D3D11VShader> VS_ExSkeletal;
     std::shared_ptr<D3D11GShader> GS_Billboard;
+    
+    std::shared_ptr<D3D11PShader> PS_PortalDiffuse;
+    std::shared_ptr<D3D11PShader> PS_WaterfallFoam;
 
     std::shared_ptr<D3D11VShader> ActiveVS;
     std::shared_ptr<D3D11PShader> ActivePS;

@@ -64,6 +64,11 @@ struct GothicGraphicsState {
         FF_AlphaRef = 0.5f;
 
         FF_GSwitches = 0;
+
+        FF_Stages[0].ColorOp = FixedFunctionStage::EColorOp::CO_MODULATE;
+        FF_Stages[1].ColorOp = FixedFunctionStage::EColorOp::CO_DISABLE;
+        FF_Stages[0].ColorArg1 = FixedFunctionStage::ETextureArg::TA_TEXTURE;
+        FF_Stages[0].ColorArg2 = FixedFunctionStage::ETextureArg::TA_DIFFUSE;
     }
 
     /** Sets one of the GraphicsFlags */
@@ -104,7 +109,7 @@ __declspec(align(4)) struct GothicPipelineState {
     /** Sets this state dirty, which means that it will be updated before next rendering */
     void SetDirty() {
         StateDirty = true;
-        HashThis( (char*)this, StructSize );
+        HashThis( reinterpret_cast<char*>(this), StructSize );
     }
 
     /** Hashes the whole struct */
@@ -192,8 +197,8 @@ struct GothicDepthBufferStateInfo : public GothicPipelineState {
 
     /** Deletes all cached states */
     static void DeleteCachedObjects() {
-        for ( auto it = GothicStateCache::s_DepthBufferMap.begin(); it != GothicStateCache::s_DepthBufferMap.end(); ++it ) {
-            delete it->second;
+        for ( const auto& [k, depthBufferState] : GothicStateCache::s_DepthBufferMap ) {
+            delete depthBufferState;
         }
         GothicStateCache::s_DepthBufferMap.clear();
     }
@@ -337,10 +342,9 @@ struct GothicBlendStateInfo : public GothicPipelineState {
 
     /** Deletes all cached states */
     static void DeleteCachedObjects() {
-        for ( auto it = GothicStateCache::s_BlendStateMap.begin(); it != GothicStateCache::s_BlendStateMap.end(); ++it ) {
-            delete it->second;
+        for ( const auto& [k, blendState] : GothicStateCache::s_BlendStateMap ) {
+            delete blendState;
         }
-
         GothicStateCache::s_BlendStateMap.clear();
     }
 
@@ -412,10 +416,9 @@ struct GothicRasterizerStateInfo : public GothicPipelineState {
 
     /** Deletes all cached states */
     static void DeleteCachedObjects() {
-        for ( auto it = GothicStateCache::s_RasterizerStateMap.begin(); it != GothicStateCache::s_RasterizerStateMap.end(); ++it ) {
-            delete it->second;
+        for ( const auto& [k, rasterizerState] : GothicStateCache::s_RasterizerStateMap ) {
+            delete rasterizerState;
         }
-
         GothicStateCache::s_RasterizerStateMap.clear();
     }
 };
@@ -449,20 +452,20 @@ struct GothicSamplerStateInfo : public GothicPipelineState {
 struct GothicTransformInfo {
     /** Sets the default values for this struct */
     void SetDefault() {
-        XMMATRIX const& idMatrix = DirectX::XMMatrixIdentity();
+        XMMATRIX const& idMatrix = XMMatrixIdentity();
         XMStoreFloat4x4( &TransformWorld, idMatrix );
         XMStoreFloat4x4( &TransformView, idMatrix );
         XMStoreFloat4x4( &TransformProj, idMatrix );
     }
 
     /** This is actually world * view. Gothic never sets the view matrix */
-    DirectX::XMFLOAT4X4 TransformWorld;
+    XMFLOAT4X4 TransformWorld;
 
     /** Though never really set by Gothic, it's listed here for completeness sake */
-    DirectX::XMFLOAT4X4 TransformView;
+    XMFLOAT4X4 TransformView;
 
     /** Projectionmatrix */
-    DirectX::XMFLOAT4X4 TransformProj;
+    XMFLOAT4X4 TransformProj;
 };
 
 struct HBAOSettings {
@@ -533,6 +536,9 @@ struct GothicRendererSettings {
         ShowSkeletalVertexNormals = false;
         EnableDynamicLighting = true;
 
+        DrawG1ForestPortals = false;    //enables the textures around forests and some doors to darken them
+                                        //these are only applicable to G1, they don't appear to have been used in G2
+
         FastShadows = false;
         MaxNumFaces = 0;
         IndoorVobDrawRadius = 5000.0f;
@@ -541,6 +547,14 @@ struct GothicRendererSettings {
         VisualFXDrawRadius = 8000.0f;
         OutdoorSmallVobDrawRadius = 10000.0f;
         SmallVobSize = 1500.0f;
+
+
+#ifdef  BUILD_SPACER_NET
+        OutdoorSmallVobDrawRadius = 30000.0f;
+        IndoorVobDrawRadius = 10000.0f;
+        SectionDrawRadius = 8;
+#endif //  BUILD_SPACER_NET
+
 
 #ifdef BUILD_GOTHIC_1_08k
         SetupOldWorldSpecificValues();
@@ -596,12 +610,15 @@ struct GothicRendererSettings {
         SortRenderQueue = true;
         DrawThreaded = true;
 
+#if ENABLE_TESSELATION > 0
         EnableTesselation = false;
         AllowWorldMeshTesselation = false;
         TesselationFrustumCulling = true;
+#endif
         EnablePointlightShadows = PLS_UPDATE_DYNAMIC;
         MinLightShadowUpdateRange = 300.0f;
         PartialDynamicShadowUpdates = true;
+        DrawSectionIntersections = true;
 
         EnableGodRays = true;
 
@@ -614,11 +631,11 @@ struct GothicRendererSettings {
         RainHeightRange = 1000.0f;
         RainNumParticles = 50000;
         RainMoveParticles = true;
-        RainGlobalVelocity = DirectX::XMFLOAT3( 250, -1000, 0 );
+        RainGlobalVelocity = XMFLOAT3( 250, -1000, 0 );
         RainUseInitialSet = false;
         RainSceneWettness = 0.0f;
         RainSunLightStrength = 0.50f;
-        RainFogColor = DirectX::XMFLOAT3( 0.28f, 0.28f, 0.28f );
+        RainFogColor = XMFLOAT3( 0.28f, 0.28f, 0.28f );
         RainFogDensity = 0.00500f;
 
         EnableRain = true;
@@ -639,11 +656,11 @@ struct GothicRendererSettings {
         //DisableEverything();
 
         LimitLightIntesity = false;
-        AllowNormalmaps = true;
+        AllowNormalmaps = false;
 
         AllowNumpadKeys = false;
         EnableDebugLog = true;
-        EnableCustomFontRendering = false;
+        EnableCustomFontRendering = true;
 
         ForceFOV = false;
 
@@ -693,13 +710,16 @@ struct GothicRendererSettings {
     bool DrawParticleEffects;
     bool DrawSky;
     bool DrawFog;
+    bool DrawG1ForestPortals;
     bool EnableHDR;
     E_HDRToneMap HDRToneMap;
     bool EnableVSync;
     bool EnableSMAA;
+#if ENABLE_TESSELATION > 0
     bool EnableTesselation;
     bool AllowWorldMeshTesselation;
     bool TesselationFrustumCulling;
+#endif
     bool FastShadows;
     bool ReplaceSunDirection;
     bool AtmosphericScattering;
@@ -723,6 +743,7 @@ struct GothicRendererSettings {
     EPointLightShadowMode EnablePointlightShadows;
     float MinLightShadowUpdateRange;
     bool PartialDynamicShadowUpdates;
+    bool DrawSectionIntersections;
 
     int MaxNumFaces;
 
@@ -779,11 +800,11 @@ struct GothicRendererSettings {
     UINT RainNumParticles;
     bool RainMoveParticles;
     bool RainUseInitialSet;
-    DirectX::XMFLOAT3 RainGlobalVelocity;
+    XMFLOAT3 RainGlobalVelocity;
     float RainSceneWettness;
 
     float RainSunLightStrength;
-    DirectX::XMFLOAT3 RainFogColor;
+    XMFLOAT3 RainFogColor;
     float RainFogDensity;
 
     bool EnableRain;
@@ -868,9 +889,6 @@ struct GothicRendererInfo {
     GothicRendererInfo() {
         VOBVerticesDataSize = 0;
         SkeletalVerticesDataSize = 0;
-        FirstVideoFrame = 0;
-        FixBink = 0;
-        PlayingMovieResolution = INT2( 0, 0 );
         Reset();
     }
 
@@ -928,11 +946,6 @@ struct GothicRendererInfo {
 
     unsigned int VOBVerticesDataSize;
     unsigned int SkeletalVerticesDataSize;
-
-    /** Bink Video specific variables */
-    int FirstVideoFrame;
-    int FixBink;
-    INT2 PlayingMovieResolution;
 };
 
 /** This handles more device specific settings */

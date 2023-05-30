@@ -82,16 +82,16 @@ XRESULT D2DSettingsDialog::InitControls() {
 	resolutionSlider->AlignUnder( resolutionLabel, 5 );
 	resolutionSlider->SetSliderChangedCallback( ResolutionSliderChanged, this );
 	resolutionSlider->SetIsIntegralSlider( true );
-	resolutionSlider->SetMinMax( 0.0f, (float)Resolutions.size() );
+	resolutionSlider->SetMinMax( 0.0f, static_cast<float>(Resolutions.size()) );
 
 	// Construct string array for resolutions slider
 	std::vector<std::string> resStrings;
 	for ( unsigned int i = 0; i < Resolutions.size(); i++ ) {
 		std::string str = std::to_string( Resolutions[i].Width ) + "x" + std::to_string( Resolutions[i].Height );
-		resStrings.push_back( str );
+		resStrings.emplace_back( std::move( str ) );
 	}
 	resolutionSlider->SetDisplayValues( resStrings );
-	resolutionSlider->SetValue( (float)ResolutionSetting );
+	resolutionSlider->SetValue( static_cast<float>(ResolutionSetting) );
 
     SV_Label* modeLabel = new SV_Label( MainView, MainPanel );
     modeLabel->SetPositionAndSize( D2D1::Point2F( 10, 10 ), D2D1::SizeF( 150, 12 ) );
@@ -223,14 +223,6 @@ XRESULT D2DSettingsDialog::InitControls() {
 	filterShadowsCheckbox->AlignUnder( shadowsCheckbox, 5 );
 	filterShadowsCheckbox->SetChecked( InitialSettings.EnableSoftShadows );
 
-    //SV_Checkbox* multiThreadResourceManagerCheckbox = new SV_Checkbox( MainView, MainPanel );
-    //multiThreadResourceManagerCheckbox->SetSize( D2D1::SizeF( 160, 40 ) );
-    //multiThreadResourceManagerCheckbox->SetCaption( L"Multi-Thread Resource Manager" );
-    //multiThreadResourceManagerCheckbox->SetDataToUpdate( &Engine::GAPI->GetRendererState().RendererSettings.MTResoureceManager );
-    //multiThreadResourceManagerCheckbox->AlignUnder( filterShadowsCheckbox, 12 );
-    //multiThreadResourceManagerCheckbox->SetChecked( Engine::GAPI->GetRendererState().RendererSettings.MTResoureceManager );
-    //multiThreadResourceManagerCheckbox->SetCheckedChangedCallback( MTResourceManagerCheckedChanged, this );
-
     SV_Checkbox* compressBackBufferCheckbox = new SV_Checkbox( MainView, MainPanel );
     compressBackBufferCheckbox->SetSize( D2D1::SizeF( 160, 20 ) );
     switch ( userLanguage ) {
@@ -238,7 +230,6 @@ XRESULT D2DSettingsDialog::InitControls() {
     default: compressBackBufferCheckbox->SetCaption( L"Compress BackBuffer" ); break;
     }
     compressBackBufferCheckbox->SetDataToUpdate( &Engine::GAPI->GetRendererState().RendererSettings.CompressBackBuffer );
-    //compressBackBufferCheckbox->AlignUnder( multiThreadResourceManagerCheckbox, 12 );
     compressBackBufferCheckbox->AlignUnder( filterShadowsCheckbox, 5 );
     compressBackBufferCheckbox->SetChecked( Engine::GAPI->GetRendererState().RendererSettings.CompressBackBuffer );
     compressBackBufferCheckbox->SetCheckedChangedCallback( CompressBackBufferCheckedChanged, this );
@@ -268,13 +259,13 @@ XRESULT D2DSettingsDialog::InitControls() {
 	fpsLimitSlider->SetIsIntegralSlider( true );
 
 	const int FPSLIMIT_MAX = 240;
-	fpsLimitSlider->SetMinMax( 0.0f, float( FPSLIMIT_MAX ) );
+	fpsLimitSlider->SetMinMax( 0.0f, static_cast<float>( FPSLIMIT_MAX ) );
 	std::vector<std::string> fpsValues;
 	for ( size_t i = 0; i <= FPSLIMIT_MAX; i++ ) {
 		if ( i <= 25 ) {
-			fpsValues.push_back( "off" );
+			fpsValues.emplace_back( "off" );
 		} else {
-			fpsValues.push_back( std::to_string( i ) );
+			fpsValues.emplace_back( std::move( std::to_string( i ) ) );
 		}
 	}
 	fpsLimitSlider->SetDisplayValues( fpsValues );
@@ -383,8 +374,8 @@ XRESULT D2DSettingsDialog::InitControls() {
 	worldDDSlider->AlignUnder( worldDDLabel, 5 );
 	worldDDSlider->SetDataToUpdate( &Engine::GAPI->GetRendererState().RendererSettings.SectionDrawRadius );
 	worldDDSlider->SetIsIntegralSlider( true );
-	worldDDSlider->SetMinMax( 1.0f, 10.0f );
-	worldDDSlider->SetValue( (float)Engine::GAPI->GetRendererState().RendererSettings.SectionDrawRadius );
+	worldDDSlider->SetMinMax( 1.0f, 20.0f );
+	worldDDSlider->SetValue( static_cast<float>(Engine::GAPI->GetRendererState().RendererSettings.SectionDrawRadius) );
 
     SV_Label* shadowmapSizeLabel = new SV_Label( MainView, MainPanel );
     shadowmapSizeLabel->SetPositionAndSize( D2D1::Point2F( 10, 10 ), D2D1::SizeF( 150, 12 ) );
@@ -427,15 +418,18 @@ XRESULT D2DSettingsDialog::InitControls() {
 	SV_Slider* dynShadowSlider = new SV_Slider( MainView, MainPanel );
 	dynShadowSlider->SetPositionAndSize( D2D1::Point2F( 10, 22 ), D2D1::SizeF( 150, 15 ) );
 	dynShadowSlider->AlignUnder( dynShadowLabel, 5 );
-	dynShadowSlider->SetDataToUpdate( (int*)&Engine::GAPI->GetRendererState().RendererSettings.EnablePointlightShadows );
+	dynShadowSlider->SetDataToUpdate( reinterpret_cast<int*>(&Engine::GAPI->GetRendererState().RendererSettings.EnablePointlightShadows) );
 	dynShadowSlider->SetIsIntegralSlider( true );
 	dynShadowSlider->SetMinMax( 0.0f, GothicRendererSettings::_PLS_NUM_SETTINGS - 1 );
+	dynShadowSlider->SetDisplayValues( { "Disabled", "Static", "Update dynamic", "Full" } );
+	dynShadowSlider->SetValue( static_cast<float>(Engine::GAPI->GetRendererState().RendererSettings.EnablePointlightShadows) );
 
-	static char* dsValues [] = { "Disabled", "Static", "Update dynamic", "Full" };
-	std::vector<std::string> dsStrings = std::vector<std::string>( dsValues, dsValues + sizeof( dsValues ) / sizeof( dsValues[0] ) );
-	dynShadowSlider->SetDisplayValues( dsStrings );
-
-	dynShadowSlider->SetValue( (float)Engine::GAPI->GetRendererState().RendererSettings.EnablePointlightShadows );
+    SV_Checkbox* drawSectionIntersectionsCheckbox = new SV_Checkbox( MainView, MainPanel );
+    drawSectionIntersectionsCheckbox->SetSize( D2D1::SizeF( 160, 35 ) );
+    drawSectionIntersectionsCheckbox->SetCaption( L"Draw World Section Intersections" );
+    drawSectionIntersectionsCheckbox->SetDataToUpdate( &Engine::GAPI->GetRendererState().RendererSettings.DrawSectionIntersections );
+    drawSectionIntersectionsCheckbox->AlignUnder( dynShadowSlider, 17 );
+    drawSectionIntersectionsCheckbox->SetChecked( Engine::GAPI->GetRendererState().RendererSettings.DrawSectionIntersections );
 
 	// Third column
 	// FOV
@@ -580,7 +574,7 @@ void D2DSettingsDialog::FpsLimitSliderChanged( SV_Slider* sender, void* userdata
 }
 
 void D2DSettingsDialog::FovOverrideCheckedChanged( SV_Checkbox* sender, void* userdata ) {
-	FovOverrideCheckedChangedState* state = (FovOverrideCheckedChangedState*)userdata;
+	FovOverrideCheckedChangedState* state = reinterpret_cast<FovOverrideCheckedChangedState*>(userdata);
 	auto newValue = sender->GetChecked();
 	state->horizFOVLabel->SetDisabled( !newValue );
 	state->horizFOVSlider->SetDisabled( !newValue );
@@ -598,8 +592,8 @@ void D2DSettingsDialog::CompressBackBufferCheckedChanged( SV_Checkbox*, void* ) 
 
 /** Tab in main tab-control was switched */
 void D2DSettingsDialog::TextureQualitySliderChanged( SV_Slider* sender, void* userdata ) {
-    D2DSettingsDialog* d = (D2DSettingsDialog*)userdata;
-    switch ( (int)(sender->GetValue() + 0.5f) ) {
+    D2DSettingsDialog* d = reinterpret_cast<D2DSettingsDialog*>(userdata);
+    switch ( static_cast<int>(sender->GetValue() + 0.5f) ) {
     case 1: d->TextureQuality = 32; break;
     case 2: d->TextureQuality = 64; break;
     case 3: d->TextureQuality = 128; break;
@@ -610,7 +604,7 @@ void D2DSettingsDialog::TextureQualitySliderChanged( SV_Slider* sender, void* us
 }
 
 void D2DSettingsDialog::ShadowQualitySliderChanged( SV_Slider* sender, void* userdata ) {
-	switch ( (int)(sender->GetValue() + 0.5f) ) {
+	switch ( static_cast<int>(sender->GetValue() + 0.5f) ) {
 	case 1: Engine::GAPI->GetRendererState().RendererSettings.ShadowMapSize = 512; break;
 	case 2: Engine::GAPI->GetRendererState().RendererSettings.ShadowMapSize = 1024; break;
 	case 3: Engine::GAPI->GetRendererState().RendererSettings.ShadowMapSize = 2048; break;
@@ -621,9 +615,9 @@ void D2DSettingsDialog::ShadowQualitySliderChanged( SV_Slider* sender, void* use
 }
 
 void D2DSettingsDialog::ResolutionSliderChanged( SV_Slider* sender, void* userdata ) {
-	D2DSettingsDialog* d = (D2DSettingsDialog*)userdata;
+	D2DSettingsDialog* d = reinterpret_cast<D2DSettingsDialog*>(userdata);
 
-	unsigned int val = (unsigned int)(sender->GetValue() + 0.5f);
+	unsigned int val = static_cast<unsigned int>(sender->GetValue() + 0.5f);
 
 	if ( val >= d->Resolutions.size() )
 		val = d->Resolutions.size() - 1;
@@ -632,15 +626,15 @@ void D2DSettingsDialog::ResolutionSliderChanged( SV_Slider* sender, void* userda
 }
 
 void D2DSettingsDialog::ModeSliderChanged( SV_Slider* sender, void* userdata ) {
-    D2DSettingsDialog* d = (D2DSettingsDialog*)userdata;
+    D2DSettingsDialog* d = reinterpret_cast<D2DSettingsDialog*>(userdata);
 
-    int val = (int)(sender->GetValue() + 0.5f);
+    int val = static_cast<int>(sender->GetValue() + 0.5f);
     d->CurrentWindowMode = val;
 }
 
 /** Close button */
 void D2DSettingsDialog::CloseButtonPressed( SV_Button* sender, void* userdata ) {
-	D2DSettingsDialog* d = (D2DSettingsDialog*)userdata;
+	D2DSettingsDialog* d = reinterpret_cast<D2DSettingsDialog*>(userdata);
 
 	if ( d->NeedsApply() )
 		d->ApplyButtonPressed( sender, userdata );
@@ -653,7 +647,7 @@ void D2DSettingsDialog::CloseButtonPressed( SV_Button* sender, void* userdata ) 
 /** Apply button */
 void D2DSettingsDialog::ApplyButtonPressed( SV_Button* sender, void* userdata ) {
 	GothicRendererSettings& settings = Engine::GAPI->GetRendererState().RendererSettings;
-	D2DSettingsDialog* d = (D2DSettingsDialog*)userdata;
+	D2DSettingsDialog* d = reinterpret_cast<D2DSettingsDialog*>(userdata);
 
 	// Check for shader reload
 	if ( d->InitialSettings.EnableShadows != settings.EnableShadows || d->InitialSettings.EnableSoftShadows != settings.EnableSoftShadows ) {
@@ -706,7 +700,7 @@ bool D2DSettingsDialog::NeedsApply() {
 void D2DSettingsDialog::OnOpenedSettings() {
 	//InitialSettings = Engine::GAPI->GetRendererState().RendererSettings;
 
-    D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
+    D3D11GraphicsEngine* engine = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
     CurrentWindowMode = engine->GetWindowMode();
     ActiveWindowMode = CurrentWindowMode;
     modeSlider->SetValue( static_cast<float>(CurrentWindowMode) );
@@ -718,4 +712,7 @@ void D2DSettingsDialog::SetHidden( bool hidden ) {
 		OnOpenedSettings(); // Changed visibility from hidden to non-hidden
 
 	D2DDialog::SetHidden( hidden );
+    if ( hidden ) {
+        Engine::GraphicsEngine->OnUIEvent( BaseGraphicsEngine::EUIEvent::UI_ClosedSettings );
+    }
 }

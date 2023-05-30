@@ -10,8 +10,6 @@
 #include "RenderToTextureBuffer.h"
 #include "zCView.h"
 
-using namespace DirectX;
-
 const unsigned int DRAWVERTEXARRAY_BUFFER_SIZE = 4096 * sizeof( ExVertexStruct );
 const int NUM_MAX_BONES = 96;
 const unsigned int INSTANCING_BUFFER_SIZE = sizeof( VobInstanceInfo ) * 2048;
@@ -60,16 +58,14 @@ XRESULT D3D11GraphicsEngineBase::SetViewport( const ViewportInfo& viewportInfo )
     return XR_SUCCESS;
 }
 
-
 /** Returns the shadermanager */
 D3D11ShaderManager& D3D11GraphicsEngineBase::GetShaderManager() { return *ShaderManager; }
-
 
 /** Called when the game wants to clear the bound rendertarget */
 XRESULT D3D11GraphicsEngineBase::Clear( const float4& color ) {
     GetContext()->ClearDepthStencilView( DepthStencilBuffer->GetDepthStencilView().Get(), D3D11_CLEAR_DEPTH, 1.0f, 0 );
-    GetContext()->ClearRenderTargetView( HDRBackBuffer->GetRenderTargetView().Get(), (float*)&color );
-    GetContext()->ClearRenderTargetView( Backbuffer->GetRenderTargetView().Get(), (float*)&color );
+    GetContext()->ClearRenderTargetView( HDRBackBuffer->GetRenderTargetView().Get(), reinterpret_cast<const float*>(&color) );
+    GetContext()->ClearRenderTargetView( Backbuffer->GetRenderTargetView().Get(), reinterpret_cast<const float*>(&color) );
 
     return XR_SUCCESS;
 }
@@ -83,14 +79,12 @@ XRESULT D3D11GraphicsEngineBase::CreateVertexBuffer( D3D11VertexBuffer** outBuff
 /** Creates a texture object (Not registered inside) */
 XRESULT D3D11GraphicsEngineBase::CreateTexture( D3D11Texture** outTexture ) {
     *outTexture = new D3D11Texture;
-
     return XR_SUCCESS;
 }
 
 /** Creates a constantbuffer object (Not registered inside) */
 XRESULT D3D11GraphicsEngineBase::CreateConstantBuffer( D3D11ConstantBuffer** outCB, void* data, int size ) {
     *outCB = new D3D11ConstantBuffer( size, data );
-
     return XR_SUCCESS;
 }
 
@@ -359,7 +353,7 @@ XRESULT D3D11GraphicsEngineBase::DrawVertexArray( ExVertexStruct* vertices, unsi
 /** Recreates the renderstates */
 XRESULT D3D11GraphicsEngineBase::UpdateRenderStates() {
     if ( Engine::GAPI->GetRendererState().BlendState.StateDirty ) {
-        D3D11BlendStateInfo* state = (D3D11BlendStateInfo*)GothicStateCache::s_BlendStateMap[Engine::GAPI->GetRendererState().BlendState];
+        D3D11BlendStateInfo* state = static_cast<D3D11BlendStateInfo*>(GothicStateCache::s_BlendStateMap[Engine::GAPI->GetRendererState().BlendState]);
 
         if ( !state ) {
             // Create new state
@@ -371,11 +365,11 @@ XRESULT D3D11GraphicsEngineBase::UpdateRenderStates() {
         FFBlendState = state->State.Get();
 
         Engine::GAPI->GetRendererState().BlendState.StateDirty = false;
-        GetContext()->OMSetBlendState( FFBlendState.Get(), (float*)&float4( 0, 0, 0, 0 ), 0xFFFFFFFF );
+        GetContext()->OMSetBlendState( FFBlendState.Get(), reinterpret_cast<float*>(&float4( 0, 0, 0, 0 )), 0xFFFFFFFF );
     }
 
     if ( Engine::GAPI->GetRendererState().RasterizerState.StateDirty ) {
-        D3D11RasterizerStateInfo* state = (D3D11RasterizerStateInfo*)GothicStateCache::s_RasterizerStateMap[Engine::GAPI->GetRendererState().RasterizerState];
+        D3D11RasterizerStateInfo* state = static_cast<D3D11RasterizerStateInfo*>(GothicStateCache::s_RasterizerStateMap[Engine::GAPI->GetRendererState().RasterizerState]);
 
         if ( !state ) {
             // Create new state
@@ -391,7 +385,7 @@ XRESULT D3D11GraphicsEngineBase::UpdateRenderStates() {
     }
 
     if ( Engine::GAPI->GetRendererState().DepthState.StateDirty ) {
-        D3D11DepthBufferState* state = (D3D11DepthBufferState*)GothicStateCache::s_DepthBufferMap[Engine::GAPI->GetRendererState().DepthState];
+        D3D11DepthBufferState* state = static_cast<D3D11DepthBufferState*>(GothicStateCache::s_DepthBufferMap[Engine::GAPI->GetRendererState().DepthState]);
 
         if ( !state ) {
             // Create new state
@@ -465,25 +459,21 @@ void D3D11GraphicsEngineBase::SetupVS_ExPerInstanceConstantBuffer() {
 /** Sets the active pixel shader object */
 XRESULT D3D11GraphicsEngineBase::SetActivePixelShader( const std::string& shader ) {
     ActivePS = ShaderManager->GetPShader( shader );
-
     return XR_SUCCESS;
 }
 
 XRESULT D3D11GraphicsEngineBase::SetActiveVertexShader( const std::string& shader ) {
     ActiveVS = ShaderManager->GetVShader( shader );
-
     return XR_SUCCESS;
 }
 
 XRESULT D3D11GraphicsEngineBase::SetActiveHDShader( const std::string& shader ) {
     ActiveHDS = ShaderManager->GetHDShader( shader );
-
     return XR_SUCCESS;
 }
 
 XRESULT D3D11GraphicsEngineBase::SetActiveGShader( const std::string& shader ) {
     ActiveGS = ShaderManager->GetGShader( shader );
-
     return XR_SUCCESS;
 }
 
@@ -498,7 +488,6 @@ void D3D11GraphicsEngineBase::SetupPerInstanceConstantBuffer( int slot ) {
 
     VS_ExConstantBuffer_PerInstance cb = {};
     cb.World = world;
-
 
     ActiveVS->GetConstantBuffer()[1]->UpdateBuffer( &cb );
     ActiveVS->GetConstantBuffer()[1]->BindToVertexShader( slot );
@@ -547,7 +536,6 @@ XRESULT D3D11GraphicsEngineBase::DrawVertexBufferFF( D3D11VertexBuffer* vb, unsi
 
     return XR_SUCCESS;
 }
-
 
 /** Binds viewport information to the given constantbuffer slot */
 XRESULT D3D11GraphicsEngineBase::BindViewportInformation( const std::string& shader, int slot ) {

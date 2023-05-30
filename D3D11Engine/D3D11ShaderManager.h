@@ -14,6 +14,7 @@ public:
     int layout;						//Shader's input layout
     std::vector<int> cBufferSizes;	//Vector with size for each constant buffer to be created for this shader
     std::vector<D3D_SHADER_MACRO> shaderMakros;
+
     //Constructor
     ShaderInfo( std::string n, std::string fn, std::string t, int l, std::vector<D3D_SHADER_MACRO>& makros = std::vector<D3D_SHADER_MACRO>() ) {
         name = n;
@@ -41,6 +42,9 @@ class D3D11ShaderManager {
 public:
     D3D11ShaderManager();
     ~D3D11ShaderManager();
+
+    /** Compiles the shader from file and outputs error messages if needed */
+    static HRESULT CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, const std::vector<D3D_SHADER_MACRO>& makros );
 
     /** Creates list with ShaderInfos */
     XRESULT Init();

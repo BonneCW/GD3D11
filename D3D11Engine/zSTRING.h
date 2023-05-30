@@ -20,5 +20,10 @@ public:
         return (str ? str : "");
     }
 
+    int Length() const
+    {
+        return *reinterpret_cast<int*>(reinterpret_cast<DWORD>(this) + 0x0C);
+    }
+
     char data[20];
 };

@@ -7,7 +7,6 @@ ZipArchive::ZipArchive() {
     UnzipThread = nullptr;
 }
 
-
 ZipArchive::~ZipArchive() {
     if ( UnzipThread ) {
         UnzipThread->join(); // Wait for the thread to complete
@@ -19,7 +18,7 @@ ZipArchive::~ZipArchive() {
 XRESULT ZipArchive::Unzip( const std::string& zip, const std::string& target ) {
     LogInfo() << "Unzipping file: " << zip;
 
-    HZIP hz = OpenZip( (void*)zip.c_str(), 0, ZIP_FILENAME );
+    HZIP hz = OpenZip( reinterpret_cast<void*>(zip.c_str()), 0, ZIP_FILENAME );
 
     if ( !hz ) {
         LogWarn() << "Failed to open Zip-File: " << zip;
@@ -40,7 +39,7 @@ XRESULT ZipArchive::Unzip( const std::string& zip, const std::string& target ) {
             std::string t = target + "\\" + ze.name;
             LogInfo() << " - Unzipping file to: " << t;;
 
-            UnzipItem( hz, i, (void*)t.c_str(), 0, ZIP_FILENAME );
+            UnzipItem( hz, i, reinterpret_cast<void*>(t.c_str()), 0, ZIP_FILENAME );
         }
     }
 
@@ -63,7 +62,7 @@ XRESULT ZipArchive::UnzipThreaded( const std::string& zip, const std::string& ta
 void ZipArchive::UnzipThreadFunc( const std::string& zip, const std::string& target, UnzipDoneCallback callback, void* cbUserdata ) {
     LogInfo() << "Unzipping file: " << zip;
 
-    HZIP hz = OpenZip( (void*)zip.c_str(), 0, ZIP_FILENAME );
+    HZIP hz = OpenZip( reinterpret_cast<void*>(zip.c_str()), 0, ZIP_FILENAME );
 
     if ( !hz ) {
         LogWarn() << "Failed to open Zip-File: " << zip;
@@ -84,7 +83,7 @@ void ZipArchive::UnzipThreadFunc( const std::string& zip, const std::string& tar
             std::string t = target + "\\" + ze.name;
             LogInfo() << " - Unzipping file to: " << t;;
 
-            UnzipItem( hz, i, (void*)t.c_str(), 0, ZIP_FILENAME );
+            UnzipItem( hz, i, reinterpret_cast<void*>(t.c_str()), 0, ZIP_FILENAME );
 
             callback( zip, cbUserdata, i, numItems );
         }

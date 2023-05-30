@@ -5,15 +5,15 @@ class zCVobLight : public zCVob {
 public:
 
     DWORD GetLightColor() {
-        return *(DWORD*)THISPTR_OFFSET( GothicMemoryLocations::zCVobLight::Offset_LightColor );
+        return *reinterpret_cast<DWORD*>(THISPTR_OFFSET( GothicMemoryLocations::zCVobLight::Offset_LightColor ));
     }
 
     float GetLightRange() {
-        return *(float*)THISPTR_OFFSET( GothicMemoryLocations::zCVobLight::Offset_Range );
+        return *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCVobLight::Offset_Range ));
     }
 
     bool IsEnabled() {
-        return ((*(DWORD*)THISPTR_OFFSET( GothicMemoryLocations::zCVobLight::Offset_LightInfo )) & GothicMemoryLocations::zCVobLight::Mask_LightEnabled) != 0;
+        return *reinterpret_cast<DWORD*>(THISPTR_OFFSET( GothicMemoryLocations::zCVobLight::Offset_LightInfo )) & GothicMemoryLocations::zCVobLight::Mask_LightEnabled;
     }
 
     void DoAnimation() {
@@ -21,7 +21,7 @@ public:
     }
 
     bool IsStatic() {
-        int flags = *(int*)THISPTR_OFFSET( GothicMemoryLocations::zCVobLight::Offset_LightInfo );
+        int flags = *reinterpret_cast<int*>(THISPTR_OFFSET( GothicMemoryLocations::zCVobLight::Offset_LightInfo ));
         return (flags & 1) != 0;
     }
 

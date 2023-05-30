@@ -45,7 +45,7 @@ struct zCPolyStripInstance {
 class zCPolyStrip : public zCObject {
 public:
     zCPolyStripInstance* GetInstanceData() {
-        return (zCPolyStripInstance*)THISPTR_OFFSET( GothicMemoryLocations::zCPolyStrip::Offset_Material );
+        return reinterpret_cast<zCPolyStripInstance*>(THISPTR_OFFSET( GothicMemoryLocations::zCPolyStrip::Offset_Material ));
     }
 
     void SetVisibleSegments( float visibleFirst, float visibleLast ) {

@@ -6,8 +6,6 @@
 #include "SV_Panel.h"
 #include "zCTexture.h"
 
-using namespace DirectX;
-
 const float MESH_ROT_SPEED = 0.01f;
 const float ZOOM_SPEED = 0.01f;
 const float DEFAULT_FOV = 90.0f;
@@ -95,7 +93,7 @@ void SV_GMeshInfoView::UpdateView() {
 	if ( IsHidden() )
 		return;
 
-	D3D11GraphicsEngine* g = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
+	D3D11GraphicsEngine* g = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
 
 	ObjectProjMatrix = XMMatrixTranspose( XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), GetSize().height / GetSize().width, 0.01f, 10000.0f) );
 
@@ -126,7 +124,7 @@ void SV_GMeshInfoView::UpdateView() {
 	g->GetContext()->RSSetViewports( 1, &vp );
 
 	// Clear
-	g->GetContext()->ClearRenderTargetView( RT->GetRenderTargetView().Get(), (float*)&float4( 0, 0, 0, 0 ) );
+	g->GetContext()->ClearRenderTargetView( RT->GetRenderTargetView().Get(), reinterpret_cast<float*>(&float4( 0, 0, 0, 0 )) );
 	g->GetContext()->ClearDepthStencilView( DS->GetDepthStencilView().Get(), D3D11_CLEAR_DEPTH, 1.0f, 0 );
 
 	// Bind RTV
@@ -171,18 +169,21 @@ void SV_GMeshInfoView::UpdateView() {
 
 /** Draws the meshes to the buffer */
 void SV_GMeshInfoView::DrawMeshes() {
-	D3D11GraphicsEngine* g = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
+	D3D11GraphicsEngine* g = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
 
 	g->SetupVS_ExMeshDrawCall();
 	g->SetupVS_ExConstantBuffer();
 	g->SetupVS_ExPerInstanceConstantBuffer();
 
+#if ENABLE_TESSELATION > 0
 	VisualTesselationSettings* ts = nullptr;
 	if ( VisualInfo )
 		ts = &VisualInfo->TesselationInfo;
+#endif
 
 	// Draw each texture
 	for ( auto it = Meshes.cbegin(); it != Meshes.cend(); ++it ) {
+#if ENABLE_TESSELATION > 0
 		// Set up tesselation if wanted
 		if ( ts && !it->second->IndicesPNAEN.empty() && ts->buffer.VT_TesselationFactor > 0.0f ) {
 			g->Setup_PNAEN( D3D11GraphicsEngine::PNAEN_Default );
@@ -194,7 +195,9 @@ void SV_GMeshInfoView::DrawMeshes() {
 				it->first->Bind( 0 );
 				g->DrawVertexBufferIndexed( it->second->MeshVertexBuffer, it->second->MeshIndexBufferPNAEN, it->second->IndicesPNAEN.size() );
 			}
-		} else if ( VisualInfo ) {
+		} else if ( VisualInfo )
+#endif
+        {
 			g->GetContext()->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
 			g->GetContext()->DSSetShader( nullptr, nullptr, 0 );
 			g->GetContext()->HSSetShader( nullptr, nullptr, 0 );
@@ -212,7 +215,7 @@ void SV_GMeshInfoView::DrawMeshes() {
 
 /** Sets the position and size of this sub-view */
 void SV_GMeshInfoView::SetRect( const D2D1_RECT_F& rect ) {
-	D3D11GraphicsEngine* g = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
+	D3D11GraphicsEngine* g = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
 
 	D2DSubView::SetRect( rect );
 
@@ -220,10 +223,10 @@ void SV_GMeshInfoView::SetRect( const D2D1_RECT_F& rect ) {
 
 	// Create new RT
 	delete RT;
-	RT = new RenderToTextureBuffer( g->GetDevice().Get(), (UINT)std::max( 8.0f, GetSize().width ), (UINT)std::max( 8.0f, GetSize().height ), DXGI_FORMAT_R8G8B8A8_UNORM );
+	RT = new RenderToTextureBuffer( g->GetDevice().Get(), std::max<UINT>( 8, GetSize().width ), std::max<UINT>( 8, GetSize().height ), DXGI_FORMAT_R8G8B8A8_UNORM );
 
 	delete DS;
-	DS = new RenderToDepthStencilBuffer( g->GetDevice().Get(), (UINT)std::max( 8.0f, GetSize().width ), (UINT)std::max( 8.0f, GetSize().height ), DXGI_FORMAT_R32_TYPELESS, nullptr, DXGI_FORMAT_D32_FLOAT, DXGI_FORMAT_R32_FLOAT );
+	DS = new RenderToDepthStencilBuffer( g->GetDevice().Get(), std::max<UINT>( 8, GetSize().width ), std::max<UINT>( 8, GetSize().height ), DXGI_FORMAT_R32_TYPELESS, nullptr, DXGI_FORMAT_D32_FLOAT, DXGI_FORMAT_R32_FLOAT );
 }
 
 /** Processes a window-message. Return false to stop the message from going to children */
@@ -252,7 +255,7 @@ bool SV_GMeshInfoView::OnWindowMessage( HWND hWnd, unsigned int msg, WPARAM wPar
 		POINT p = D2DView::GetCursorPosition();
 
 		D2D1_RECT_F panelrect = D2D1::RectF( Panel->GetPosition().x + clientRectAbs.left, Panel->GetPosition().y + clientRectAbs.top, Panel->GetSize().width + clientRectAbs.left, Panel->GetSize().height + clientRectAbs.top );
-		if ( PointInsideRect( D2D1::Point2F( (float)p.x, (float)p.y ), panelrect ) ) {
+		if ( PointInsideRect( D2D1::Point2F( static_cast<float>(p.x), static_cast<float>(p.y) ), panelrect ) ) {
 			IsDraggingView = true;
 			LastDragPosition = p;
 			return false;
@@ -271,7 +274,7 @@ bool SV_GMeshInfoView::OnWindowMessage( HWND hWnd, unsigned int msg, WPARAM wPar
 		POINT p = D2DView::GetCursorPosition();
 
 		D2D1_RECT_F panelrect = D2D1::RectF( Panel->GetPosition().x + clientRectAbs.left, Panel->GetPosition().y + clientRectAbs.top, Panel->GetSize().width + clientRectAbs.left, Panel->GetSize().height + clientRectAbs.top );
-		if ( PointInsideRect( D2D1::Point2F( (float)p.x, (float)p.y ), panelrect ) ) {
+		if ( PointInsideRect( D2D1::Point2F( static_cast<float>(p.x), static_cast<float>(p.y) ), panelrect ) ) {
 			FOV += GET_WHEEL_DELTA_WPARAM( wParam ) * ZOOM_SPEED;
 			UpdateView();
 		}

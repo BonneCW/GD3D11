@@ -1,5 +1,4 @@
 #pragma once
-
 #include "pch.h"
 #include "ConstantBufferStructs.h"
 #include "WorldConverter.h"
@@ -14,9 +13,9 @@ struct AtmosphereSettings {
     int Samples;
     float RayleightScaleDepth;
     float3 WaveLengths;
-    DirectX::XMFLOAT3 SpherePosition;
+    XMFLOAT3 SpherePosition;
     float SphereOffsetY;
-    DirectX::XMFLOAT3 LightDirection;
+    XMFLOAT3 LightDirection;
     float SkyTimeScale;
 };
 

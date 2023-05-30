@@ -12,31 +12,20 @@ defaults:
 jobs:
   build:
     runs-on: windows-latest
-    strategy:
-      matrix:
-       include:
-         - configuration: Release_AVX
-           output_dir: Gothic2-GD3D11-#VERSION#_avx2
-         - configuration: Release_G1_AVX
-           output_dir: Gothic1-GD3D11-#VERSION#_avx
-         - configuration: Release
-           output_dir: Gothic2-GD3D11-#VERSION#
-         - configuration: Release_G1
-           output_dir: Gothic1-GD3D11-#VERSION#
-         - configuration: Spacer_NET
-           output_dir: Gothic2-GD3D11-#VERSION#_SpacerNET
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Set tag and directory name env
       run: |
         $tagName = $Env:GITHUB_REF -replace 'refs/tags/', ''
-        $dirName = "${{matrix.output_dir}}" -replace '#VERSION#', ${tagName}
+        $dirName = "GD3D11-${tagName}"
+        $shortHash = $Env:GITHUB_SHA.Substring(0, 9)
         echo "Tag: ${tagName}"
         echo "Directory: ${dirName}"
         echo "RELEASE_VERSION=${tagName}" >> $Env:GITHUB_ENV
         echo "RELEASE_DIR=${dirName}" >> $Env:GITHUB_ENV
+        echo (-join("CL=/DVERSION_NUMBER#",'\"',"${tagName}-${shortHash}",'\"')) >> $Env:GITHUB_ENV
 
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1
@@ -45,21 +34,41 @@ jobs:
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: nuget restore .
 
-    - name: Build
+    - name: Build G2 NotR AVX
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: msbuild /p:Configuration=${{matrix.configuration}} .
+      run: msbuild /p:Configuration=Release_AVX .
+
+    - name: Build G1 AVX
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: msbuild /p:Configuration=Release_G1_AVX .
+
+    - name: Build G2 NotR
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: msbuild /p:Configuration=Release .
+
+    - name: Build G1
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: msbuild /p:Configuration=Release_G1 .
+
+    - name: Build Launcher
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: msbuild /p:Configuration=Launcher .
 
     - name: Create distribution zip
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: |
         mkdir "${{env.RELEASE_DIR}}\GD3D11\shaders\CSFFT"
+        mkdir "${{env.RELEASE_DIR}}\GD3D11\Bin"
         Xcopy "D3D11Engine\Shaders\*" "${{env.RELEASE_DIR}}\GD3D11\shaders" /s
         copy "D3D11Engine\CSFFT\*.hlsl" "${{env.RELEASE_DIR}}\GD3D11\shaders\CSFFT"
-        Xcopy "blobs\data" "${{env.RELEASE_DIR}}\GD3D11\data\" /s
         Xcopy "blobs\Meshes" "${{env.RELEASE_DIR}}\GD3D11\Meshes\" /s
         Xcopy "blobs\Textures" "${{env.RELEASE_DIR}}\GD3D11\Textures\" /s
         Xcopy "blobs\libs\*" "${{env.RELEASE_DIR}}\" /s
-        copy "${{matrix.configuration}}\ddraw.dll" "${{env.RELEASE_DIR}}"
+        copy "Release_AVX\ddraw.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\g2a_avx2.dll"
+        copy "Release\ddraw.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\g2a.dll"
+        copy "Release_G1_AVX\ddraw.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\g1_avx.dll"
+        copy "Release_G1\ddraw.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\g1.dll"
+        copy "Launcher\ddraw.dll" "${{env.RELEASE_DIR}}\"
         cd "${{env.RELEASE_DIR}}"
         7z a -tzip "..\${{env.RELEASE_DIR}}.zip" -r
 

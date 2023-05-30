@@ -6,16 +6,14 @@
 #include <DirectXMesh.h>
 #include "D3D11_Helpers.h"
 
-D3D11VertexBuffer::D3D11VertexBuffer() {
-}
+D3D11VertexBuffer::D3D11VertexBuffer() {}
 
-D3D11VertexBuffer::~D3D11VertexBuffer() {
-}
+D3D11VertexBuffer::~D3D11VertexBuffer() {}
 
 /** Creates the vertexbuffer with the given arguments */
 XRESULT D3D11VertexBuffer::Init( void* initData, unsigned int sizeInBytes, EBindFlags EBindFlags, EUsageFlags usage, ECPUAccessFlags cpuAccess, const std::string& fileName, unsigned int structuredByteSize ) {
     HRESULT hr;
-    D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
+    D3D11GraphicsEngineBase* engine = reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine);
 
     if ( sizeInBytes == 0 ) {
         LogError() << "VertexBuffer size can't be 0!";
@@ -26,9 +24,9 @@ XRESULT D3D11VertexBuffer::Init( void* initData, unsigned int sizeInBytes, EBind
     // Create our own vertexbuffer
     D3D11_BUFFER_DESC bufferDesc;
     bufferDesc.ByteWidth = sizeInBytes;
-    bufferDesc.Usage = (D3D11_USAGE)usage;
-    bufferDesc.BindFlags = (D3D11_BIND_FLAG)EBindFlags;
-    bufferDesc.CPUAccessFlags = (D3D11_CPU_ACCESS_FLAG)cpuAccess;
+    bufferDesc.Usage = static_cast<D3D11_USAGE>(usage);
+    bufferDesc.BindFlags = static_cast<D3D11_USAGE>(EBindFlags);
+    bufferDesc.CPUAccessFlags = static_cast<D3D11_USAGE>(cpuAccess);
     bufferDesc.MiscFlags = 0;
     bufferDesc.StructureByteStride = structuredByteSize;
 
@@ -88,28 +86,6 @@ XRESULT D3D11VertexBuffer::UpdateBuffer( void* data, UINT size ) {
         }
         // Copy data
         memcpy( mappedData, data, bsize );
-
-        Unmap();
-
-        return XR_SUCCESS;
-    }
-
-    return XR_FAILED;
-}
-
-/** Updates the vertexbuffer with the given data */
-XRESULT D3D11VertexBuffer::UpdateBufferAligned16( void* data, UINT size ) {
-    void* mappedData;
-    UINT bsize;
-    if ( XR_SUCCESS == Map( EMapFlags::M_WRITE_DISCARD, &mappedData, &bsize ) ) {
-        if ( size ) {
-            bsize = size;
-        }
-
-        // Copy data
-        //Toolbox::X_aligned_memcpy_sse2(mappedData, data, bsize);
-        memcpy( mappedData, data, bsize );
-
         Unmap();
 
         return XR_SUCCESS;
@@ -120,25 +96,20 @@ XRESULT D3D11VertexBuffer::UpdateBufferAligned16( void* data, UINT size ) {
 
 /** Maps the buffer */
 XRESULT D3D11VertexBuffer::Map( int flags, void** dataPtr, UINT* size ) {
-    D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
-
     D3D11_MAPPED_SUBRESOURCE res;
-    if ( FAILED( engine->GetContext()->Map( VertexBuffer.Get(), 0, (D3D11_MAP)flags, 0, &res ) ) ) {
+    if ( FAILED( reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine)->GetContext()->Map( VertexBuffer.Get(), 0, static_cast<D3D11_MAP>(flags), 0, &res ) ) ) {
         return XR_FAILED;
     }
 
     *dataPtr = res.pData;
-    *size = res.DepthPitch;
+    *size = SizeInBytes;
 
     return XR_SUCCESS;
 }
 
 /** Unmaps the buffer */
 XRESULT D3D11VertexBuffer::Unmap() {
-    D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
-
-    engine->GetContext()->Unmap( VertexBuffer.Get(), 0 );
-
+    reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine)->GetContext()->Unmap( VertexBuffer.Get(), 0 );
     return XR_SUCCESS;
 }
 
@@ -152,7 +123,7 @@ XRESULT D3D11VertexBuffer::OptimizeVertices( VERTEX_INDEX* indices, byte* vertic
     return XR_SUCCESS;
 
     uint32_t* remap = new uint32_t[numVertices];
-    if ( FAILED( DirectX::OptimizeVertices( indices, numIndices / 3, numVertices, (uint32_t*)remap ) ) ) {
+    if ( FAILED( DirectX::OptimizeVertices( indices, numIndices / 3, numVertices, remap ) ) ) {
         delete[] remap;
         return XR_FAILED;
     }
@@ -168,7 +139,7 @@ XRESULT D3D11VertexBuffer::OptimizeVertices( VERTEX_INDEX* indices, byte* vertic
 
     for ( unsigned int i = 0; i < numIndices; i++ ) {
         // Remap the indices.
-        indices[i] = (VERTEX_INDEX)remap[indices[i]];
+        indices[i] = static_cast<VERTEX_INDEX>(remap[indices[i]]);
     }
 
     delete[] vxCopy;
@@ -180,10 +151,11 @@ XRESULT D3D11VertexBuffer::OptimizeVertices( VERTEX_INDEX* indices, byte* vertic
 /** Optimizes the given set of vertices */
 XRESULT D3D11VertexBuffer::OptimizeFaces( VERTEX_INDEX* indices, byte* vertices, unsigned int numIndices, unsigned int numVertices, unsigned int stride ) {
     return XR_SUCCESS;
+
     unsigned int numFaces = numIndices / 3;
     uint32_t* remap = new uint32_t[numFaces];
 
-    if ( FAILED( DirectX::OptimizeFaces( indices, numFaces, &numVertices, (uint32_t*)remap ) ) ) {
+    if ( FAILED( DirectX::OptimizeFaces( indices, numFaces, &numVertices, remap ) ) ) {
         delete[] remap;
         return XR_FAILED;
     }

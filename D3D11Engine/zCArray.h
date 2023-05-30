@@ -81,7 +81,7 @@ private:
 
         if ( this->NumInArray > 0 ) {
             for ( int i = 0; i < this->NumInArray; i++ )
-                pArray[i] = array[i];
+                pArray[i] = this->Array[i];
         };
 
         delete[] this->Array;
@@ -107,14 +107,14 @@ public:
     /** Insert description.
     */
     const T& operator [] ( const unsigned int pos ) const {
-        if ( (int)pos <= this->NumInArray )
+        if ( static_cast<const int>(pos) <= this->NumInArray )
             return this->Array[pos];
     };
 
     /** Insert description.
     */
     T& operator [] ( const unsigned int pos ) {
-        if ( (int)pos <= this->NumInArray )
+        if ( static_cast<const int>(pos) <= this->NumInArray )
             return this->Array[pos];
     };
 
@@ -173,7 +173,7 @@ public:
     /** Insert description.
     */
     unsigned int GetSize() {
-        return (unsigned int)this->NumInArray;
+        return static_cast<unsigned int>(this->NumInArray);
     };
 
     /** Insert description.

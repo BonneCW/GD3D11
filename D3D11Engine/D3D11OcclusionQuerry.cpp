@@ -14,7 +14,6 @@ D3D11OcclusionQuerry::D3D11OcclusionQuerry() {
     FrameID = 0;
 }
 
-
 D3D11OcclusionQuerry::~D3D11OcclusionQuerry() {
     for ( size_t i = 0; i < Predicates.size(); i++ ) {
         SAFE_RELEASE( Predicates[i] );
@@ -23,11 +22,11 @@ D3D11OcclusionQuerry::~D3D11OcclusionQuerry() {
 
 /** Creates a new predication-object and returns its ID */
 unsigned int D3D11OcclusionQuerry::AddPredicationObject() {
-    D3D11GraphicsEngine* g = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
+    D3D11GraphicsEngine* g = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
 
     HRESULT hr;
     Microsoft::WRL::ComPtr<ID3D11Predicate> p;
-
+    
     // Create new predication-object
     D3D11_QUERY_DESC qd;
     qd.Query = D3D11_QUERY_OCCLUSION_PREDICATE;
@@ -35,7 +34,7 @@ unsigned int D3D11OcclusionQuerry::AddPredicationObject() {
     LE( g->GetDevice()->CreatePredicate( &qd, p.GetAddressOf() ) );
 
     // Add to the end of the list and return its ID
-    Predicates.push_back( p.Get() );
+    Predicates.push_back( p.Detach() );
     return Predicates.size() - 1;
 }
 
@@ -44,7 +43,7 @@ void D3D11OcclusionQuerry::DoOcclusionForBSP( BspInfo* root ) {
     if ( !root || !root->OriginalNode )
         return;
 
-    D3D11GraphicsEngine* g = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
+    D3D11GraphicsEngine* g = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
 
     // Check if this node has it's queryID
     if ( root->OcclusionInfo.QueryID == -1 ) {
@@ -55,12 +54,9 @@ void D3D11OcclusionQuerry::DoOcclusionForBSP( BspInfo* root ) {
         CreateOcclusionNodeMeshFor( root );
     }
 
-    DirectX::XMFLOAT4 c = DirectX::XMFLOAT4( 1, 1, 1, 1 );
-
     // Check last frustum-culling state
     int clipFlags = 63;
     int fstate = zCCamera::GetCamera()->BBox3DInFrustum( root->OriginalNode->BBox3D, clipFlags );
-
 
     // If this node wasn't inside the frustum last frame, but got inside it this frame, just draw it
     // to reduce the popping in dialogs where the camera switches heavily between targets
@@ -87,7 +83,6 @@ void D3D11OcclusionQuerry::DoOcclusionForBSP( BspInfo* root ) {
     if ( !root->OcclusionInfo.VisibleLastFrame ||
         (root->OcclusionInfo.LastVisitedFrameID + VISIBLE_RECHECK_FRAME_DELAY <= FrameID && root->OcclusionInfo.VisibleLastFrame) ) {
 
-
         // Take those which have the camera inside as visible
         // Also make leafs which don't contain anything just visible so we can save the draw-call
         if ( Toolbox::PositionInsideBox( Engine::GAPI->GetCameraPosition(), root->OriginalNode->BBox3D.Min, root->OriginalNode->BBox3D.Max ) ||
@@ -99,26 +94,13 @@ void D3D11OcclusionQuerry::DoOcclusionForBSP( BspInfo* root ) {
             root->OcclusionInfo.LastVisitedFrameID = FrameID;
             return;
         }
-
-        Microsoft::WRL::ComPtr<ID3D11Predicate> p = Predicates[root->OcclusionInfo.QueryID];
-
-        // Check if there is data available from the last query
-        if ( root->OcclusionInfo.LastVisitedFrameID != 0 && // Always do the first query
-            S_OK != g->GetContext()->GetData( p.Get(), nullptr, 0, D3D11_ASYNC_GETDATA_DONOTFLUSH ) ) {
-            c = DirectX::XMFLOAT4( 0, 0, 1, 1 );
-
-            // Query is in progress and still not done, wait for it...
-            if ( !root->OcclusionInfo.VisibleLastFrame ) {
-                // Continue with the sub-nodes to see if they are visible to make sure nothing pops in
-                // Don't continue with the sub-nodes if this was visible last time we checked
-                DoOcclusionForBSP( root->Front );
-                DoOcclusionForBSP( root->Back );
-            }
-        } else {
-            // Query is done. Save the result!
-            UINT32 data;
-            g->GetContext()->GetData( p.Get(), &data, sizeof( UINT32 ), D3D11_ASYNC_GETDATA_DONOTFLUSH );
-            root->OcclusionInfo.VisibleLastFrame = data > 0; // data contains visible pixels of the object
+        
+        ID3D11Predicate* p = Predicates[root->OcclusionInfo.QueryID];
+        
+        // Query is done. Save the result!
+        UINT32 data = 0;
+        if ( g->GetContext()->GetData( p, &data, sizeof( UINT32 ), D3D11_ASYNC_GETDATA_DONOTFLUSH ) == S_OK ) {
+            root->OcclusionInfo.VisibleLastFrame = (data > 0); // data contains visible pixels of the object
 
             if ( data == 0 ) {
                 // Mark entire subtree invisible and don't waste draw-calls for it
@@ -130,33 +112,31 @@ void D3D11OcclusionQuerry::DoOcclusionForBSP( BspInfo* root ) {
                 DoOcclusionForBSP( root->Back );
             }
 
-            if ( data > 0 )
-                c = DirectX::XMFLOAT4( 0, 1, 0, 1 );
-            else
-                c = DirectX::XMFLOAT4( 1, 0, 0, 1 );
+            root->OcclusionInfo.QueryInProgress = false;
+        } else {
+            // Try to check the next nodes as well
+            DoOcclusionForBSP( root->Front );
+            DoOcclusionForBSP( root->Back );
+        }
 
+        if ( !root->OcclusionInfo.QueryInProgress ) {
             // Issue the new query
             MeshInfo* mi = root->OcclusionInfo.NodeMesh;
 
-            g->GetContext()->Begin( p.Get() );
+            g->GetContext()->Begin( p );
             g->DrawVertexBufferIndexed( mi->MeshVertexBuffer, mi->MeshIndexBuffer, mi->Indices.size() );
-            g->GetContext()->End( p.Get() );
+            g->GetContext()->End( p );
+
+            root->OcclusionInfo.QueryInProgress = true;
         }
 
         root->OcclusionInfo.LastVisitedFrameID = FrameID;
-    }
-
-    if ( !Engine::GAPI->GetRendererState().RendererSettings.DisableWatermark && root->OriginalNode->IsLeaf() ) {
-        if ( !root->OcclusionInfo.VisibleLastFrame ) {
-            //DebugVisualizeNodeMesh(root->OcclusionInfo.NodeMesh, c);
-            Engine::GraphicsEngine->GetLineRenderer()->AddAABBMinMax( root->OriginalNode->BBox3D.Min, root->OriginalNode->BBox3D.Max, c );
-        }
     }
 }
 
 /** Begins the occlusion-checks */
 void D3D11OcclusionQuerry::BeginOcclusionPass() {
-    D3D11GraphicsEngine* g = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
+    D3D11GraphicsEngine* g = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
 
     // Bind shaders and constant buffers
     g->SetupVS_ExMeshDrawCall();
@@ -228,9 +208,9 @@ void D3D11OcclusionQuerry::CreateOcclusionNodeMeshFor( BspInfo* node ) {
     node->OcclusionInfo.NodeMesh = mi;
 }
 
-void D3D11OcclusionQuerry::DebugVisualizeNodeMesh( MeshInfo* m, const DirectX::XMFLOAT4& color ) {
+void D3D11OcclusionQuerry::DebugVisualizeNodeMesh( MeshInfo* m, const XMFLOAT4& color ) {
     for ( unsigned int i = 0; i < m->Indices.size(); i += 3 ) {
-        DirectX::XMFLOAT3 tri[3];
+        XMFLOAT3 tri[3];
 
         tri[0] = *m->Vertices[m->Indices[i]].Position.toXMFLOAT3();
 

@@ -70,6 +70,9 @@
     <Filter Include="Engine\D3D11\Engine">
       <UniqueIdentifier>{ec0d93fb-3577-4853-a58f-8654d872352e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Detours">
+      <UniqueIdentifier>{cc76209d-e83c-4217-9632-b333a4ee7d49}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -397,9 +400,6 @@
     <ClInclude Include="zCQuadMark.h">
       <Filter>ZenGin\Classes</Filter>
     </ClInclude>
-    <ClInclude Include="D3D11TextureArray.h">
-      <Filter>Engine\D3D11</Filter>
-    </ClInclude>
     <ClInclude Include="D2DVobSettingsDialog.h">
       <Filter>Engine\D2D\Views</Filter>
     </ClInclude>
@@ -444,7 +444,6 @@
     <ClInclude Include="D3D11OcclusionQuerry.h">
       <Filter>Engine\D3D11</Filter>
     </ClInclude>
-    <ClInclude Include="D3D11RenderPipe.h" />
     <ClInclude Include="D3D11GraphicsEngineBase.h" />
     <ClInclude Include="D3D11GodRayEffect.h">
       <Filter>Engine\D3D11</Filter>
@@ -726,6 +725,18 @@
     <ClInclude Include="SteamOverlay.h">
       <Filter>Tools</Filter>
     </ClInclude>
+    <ClInclude Include="oCVisFX.h">
+      <Filter>ZenGin\Classes</Filter>
+    </ClInclude>
+    <ClInclude Include="D3D7\Conversions.h">
+      <Filter>D3D7</Filter>
+    </ClInclude>
+    <ClInclude Include="Detours\detours.h">
+      <Filter>Detours</Filter>
+    </ClInclude>
+    <ClInclude Include="Detours\detver.h">
+      <Filter>Detours</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
@@ -876,9 +887,6 @@
     <ClCompile Include="D3D11PFX_SMAA.cpp">
       <Filter>Engine\D3D11\PFX\Effects</Filter>
     </ClCompile>
-    <ClCompile Include="D3D11TextureArray.cpp">
-      <Filter>Engine\D3D11</Filter>
-    </ClCompile>
     <ClCompile Include="D2DVobSettingsDialog.cpp">
       <Filter>Engine\D2D\Views</Filter>
     </ClCompile>
@@ -918,7 +926,6 @@
     <ClCompile Include="D3D11OcclusionQuerry.cpp">
       <Filter>Engine\D3D11</Filter>
     </ClCompile>
-    <ClCompile Include="D3D11RenderPipe.cpp" />
     <ClCompile Include="D3D11GraphicsEngineBase.cpp" />
     <ClCompile Include="D3D11GodRayEffect.cpp">
       <Filter>Engine\D3D11</Filter>
@@ -954,6 +961,39 @@
     </ClCompile>
     <ClCompile Include="SteamOverlay.cpp">
       <Filter>Tools</Filter>
+    </ClCompile>
+    <ClCompile Include="zBinkPlayer.cpp">
+      <Filter>ZenGin\Classes</Filter>
+    </ClCompile>
+    <ClCompile Include="Detours\creatwth.cpp">
+      <Filter>Detours</Filter>
+    </ClCompile>
+    <ClCompile Include="Detours\detours.cpp">
+      <Filter>Detours</Filter>
+    </ClCompile>
+    <ClCompile Include="Detours\disasm.cpp">
+      <Filter>Detours</Filter>
+    </ClCompile>
+    <ClCompile Include="Detours\disolarm.cpp">
+      <Filter>Detours</Filter>
+    </ClCompile>
+    <ClCompile Include="Detours\disolarm64.cpp">
+      <Filter>Detours</Filter>
+    </ClCompile>
+    <ClCompile Include="Detours\disolia64.cpp">
+      <Filter>Detours</Filter>
+    </ClCompile>
+    <ClCompile Include="Detours\disolx64.cpp">
+      <Filter>Detours</Filter>
+    </ClCompile>
+    <ClCompile Include="Detours\disolx86.cpp">
+      <Filter>Detours</Filter>
+    </ClCompile>
+    <ClCompile Include="Detours\image.cpp">
+      <Filter>Detours</Filter>
+    </ClCompile>
+    <ClCompile Include="Detours\modules.cpp">
+      <Filter>Detours</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

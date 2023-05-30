@@ -14,8 +14,8 @@ enum zTCam_ClipFlags {
 
 #pragma pack (push, 1)	
 struct zTBBox3D {
-    DirectX::XMFLOAT3	Min;
-    DirectX::XMFLOAT3	Max;
+    XMFLOAT3	Min;
+    XMFLOAT3	Max;
 
     enum zTPlaneClass {
         zPLANE_INFRONT,
@@ -25,9 +25,9 @@ struct zTBBox3D {
     };
 
     int ClassifyToPlane( float planeDist, int axis ) const {
-        if ( planeDist >= ((float*)&Max)[axis] )
+        if ( planeDist >= reinterpret_cast<const float*>(&Max)[axis] )
             return zPLANE_BEHIND;
-        else if ( planeDist <= ((float*)&Max)[axis] )
+        else if ( planeDist <= reinterpret_cast<const float*>(&Max)[axis] )
             return zPLANE_INFRONT;
         else return zPLANE_SPANNING;
     }
@@ -35,7 +35,7 @@ struct zTBBox3D {
 
 struct zTPlane {
     float Distance;
-    DirectX::XMFLOAT3 Normal;
+    XMFLOAT3 Normal;
 };
 #pragma pack (pop)
 
@@ -55,13 +55,13 @@ struct zTRenderContext {
 
 struct zCRenderLight {
     int	LightType;
-    DirectX::XMFLOAT3	ColorDiffuse;
-    DirectX::XMFLOAT3	Position;
-    DirectX::XMFLOAT3	Direction;
+    XMFLOAT3	ColorDiffuse;
+    XMFLOAT3	Position;
+    XMFLOAT3	Direction;
     float Range;
     float RangeInv;
-    DirectX::XMFLOAT3 PositionLS;
-    DirectX::XMFLOAT3 DirectionLS;
+    XMFLOAT3 PositionLS;
+    XMFLOAT3 DirectionLS;
     float Dir_approxFalloff;
 };
 
@@ -73,7 +73,7 @@ private:
     int	DoPrelight;
     int	DoSmoothPrelit;
     float PreLightDist;
-    DirectX::XMFLOAT4X4 MatObjToCam;
+    XMFLOAT4X4 MatObjToCam;
 };
 
 enum zTRnd_AlphaBlendFunc {
@@ -110,10 +110,10 @@ struct zColor {
         this->dword = dword;
     }
     bool IsWhite() {
-        return dword == 4294967295;
+        return dword == 0xFFFFFFFF;
     }
     float4 ToFloat4() {
-        return float4( (float)bgra.r / 255.f, (float)bgra.g / 255.f, (float)bgra.b / 255.f, (float)bgra.alpha / 255.f );
+        return float4( static_cast<float>(bgra.r) / 255.f, static_cast<float>(bgra.g) / 255.f, static_cast<float>(bgra.b) / 255.f, static_cast<float>(bgra.alpha) / 255.f );
     }
 };
 static zColor zCOLOR_WHITE = zColor( 255, 255, 255, 255 );
@@ -148,7 +148,6 @@ public:
     T* last;
     T* root;
 };
-
 
 struct zTViewportData {
     int			xMin;

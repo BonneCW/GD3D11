@@ -11,7 +11,6 @@ namespace Toolbox {
         // Make them uppercase
         std::transform( us.begin(), us.end(), us.begin(), ::toupper );
 
-
         for ( int i = 0; i < numStrings; i++ ) {
             std::string cu = checkStrings[i];
             std::transform( cu.begin(), cu.end(), cu.begin(), ::toupper );
@@ -95,25 +94,19 @@ namespace Toolbox {
     }
 
     bool CreateDirectoryRecursive( const std::string& dirName ) {
-        unsigned int pos = 0;
-        do {
-            pos = dirName.find_first_of( "\\/", pos + 1 );
-            if ( CreateDirectory( dirName.substr( 0, pos ).c_str(), NULL ) == 0 && GetLastError() != ERROR_ALREADY_EXISTS ) {
-                return false;
-            }
-        } while ( pos != std::string::npos );
-        return true;
+        try {
+            return std::filesystem::create_directories( dirName );
+        } catch ( const std::exception& e ) {
+            return false;
+        }
     }
 
     bool FolderExists( const std::string& dirName_in ) {
-        DWORD ftyp = GetFileAttributesA( dirName_in.c_str() );
-        if ( ftyp == INVALID_FILE_ATTRIBUTES )
-            return false;  //something is wrong with your path!
-
-        if ( ftyp & FILE_ATTRIBUTE_DIRECTORY )
-            return true;   // this is a directory!
-
-        return false;    // this is not a directory!
+        try {
+            return std::filesystem::is_directory( dirName_in );
+        } catch ( const std::exception& e ) {
+            return false;
+        }
     }
 
     static std::size_t hash_value( float value ) {
@@ -136,7 +129,7 @@ namespace Toolbox {
     }
 
     /** Returns true if the given position is inside the box */
-    bool PositionInsideBox( const DirectX::XMFLOAT3& p, const DirectX::XMFLOAT3& min, const DirectX::XMFLOAT3& max ) {
+    bool PositionInsideBox( const XMFLOAT3& p, const XMFLOAT3& min, const XMFLOAT3& max ) {
         if ( p.x > min.x &&
             p.y > min.y &&
             p.z > min.z &&
@@ -149,7 +142,7 @@ namespace Toolbox {
     }
 
     /** Computes the Distance of a point to an AABB */
-    float ComputePointAABBDistance( const DirectX::XMFLOAT3& p, const DirectX::XMFLOAT3& min, const DirectX::XMFLOAT3& max ) {
+    float ComputePointAABBDistance( const XMFLOAT3& p, const XMFLOAT3& min, const XMFLOAT3& max ) {
         float dx = std::max( std::max( min.x - p.x, 0.0f ), p.x - max.x );
         float dy = std::max( std::max( min.y - p.y, 0.0f ), p.y - max.y );
         float dz = std::max( std::max( min.z - p.z, 0.0f ), p.z - max.z );
@@ -158,38 +151,38 @@ namespace Toolbox {
     }
 
     /** Computes the Normal of a triangle */
-    DirectX::FXMVECTOR ComputeNormal( const DirectX::XMFLOAT3& v0, const DirectX::XMFLOAT3& v1, const DirectX::XMFLOAT3& v2 ) {
+    FXMVECTOR ComputeNormal( const XMFLOAT3& v0, const XMFLOAT3& v1, const XMFLOAT3& v2 ) {
         FXMVECTOR Normal = XMVector3Normalize( XMVector3Cross( (XMLoadFloat3( &v1 ) - XMLoadFloat3( &v0 )), (XMLoadFloat3( &v2 ) - XMLoadFloat3( &v0 )) ) );
 
         return Normal;
     }
 
     /** Does a ray vs aabb test */
-    bool IntersectTri( const DirectX::XMFLOAT3& v0, const DirectX::XMFLOAT3& v1, const DirectX::XMFLOAT3& v2, const DirectX::XMFLOAT3& origin, const DirectX::XMFLOAT3& direction, float& u, float& v, float& t ) {
+    bool IntersectTri( const XMFLOAT3& v0, const XMFLOAT3& v1, const XMFLOAT3& v2, const XMFLOAT3& origin, const XMFLOAT3& direction, float& u, float& v, float& t ) {
         const float EPSILON = 0.00001f;
         FXMVECTOR edge1 = XMLoadFloat3( &v1 ) - XMLoadFloat3( &v0 );
         FXMVECTOR edge2 = XMLoadFloat3( &v2 ) - XMLoadFloat3( &v0 );
-        FXMVECTOR pvec = DirectX::XMVector3Cross( XMLoadFloat3( &direction ), edge2 );
+        FXMVECTOR pvec = XMVector3Cross( XMLoadFloat3( &direction ), edge2 );
         float det;
-        XMStoreFloat( &det, DirectX::XMVector3Dot( edge1, pvec ) );
+        XMStoreFloat( &det, XMVector3Dot( edge1, pvec ) );
         if ( det > -EPSILON && det < EPSILON ) return false;
 
         float invDet = 1 / det;
         FXMVECTOR tvec = XMLoadFloat3( &origin ) - XMLoadFloat3( &v0 );
-        XMStoreFloat( &u, DirectX::XMVector3Dot( tvec, pvec ) * invDet );
+        XMStoreFloat( &u, XMVector3Dot( tvec, pvec ) * invDet );
         if ( u < 0 || u > 1 ) return false;
-        FXMVECTOR qvec = DirectX::XMVector3Cross( tvec, edge1 );
+        FXMVECTOR qvec = XMVector3Cross( tvec, edge1 );
 
-        XMStoreFloat( &v, DirectX::XMVector3Dot( XMLoadFloat3( &direction ), qvec ) * invDet );
+        XMStoreFloat( &v, XMVector3Dot( XMLoadFloat3( &direction ), qvec ) * invDet );
         if ( v < 0 || u + v > 1 ) return false;
-        XMStoreFloat( &t, DirectX::XMVector3Dot( edge2, qvec ) * invDet );
+        XMStoreFloat( &t, XMVector3Dot( edge2, qvec ) * invDet );
 
         return true;
     }
 
     /** Does a ray vs aabb test */
-    bool IntersectBox( const DirectX::XMFLOAT3& min, const DirectX::XMFLOAT3& max, const DirectX::XMFLOAT3& origin, const DirectX::XMFLOAT3& direction, float& t ) {
-        DirectX::XMFLOAT3 dirfrac;
+    bool IntersectBox( const XMFLOAT3& min, const XMFLOAT3& max, const XMFLOAT3& origin, const XMFLOAT3& direction, float& t ) {
+        XMFLOAT3 dirfrac;
 
         // r.dir is unit direction vector of ray
         dirfrac.x = 1.0f / direction.x;
@@ -224,12 +217,12 @@ namespace Toolbox {
     }
 
     /** Returns whether two AABBs are intersecting or not */
-    bool AABBsOverlapping( const DirectX::XMFLOAT3& minA, const DirectX::XMFLOAT3& maxA, const DirectX::XMFLOAT3& minB, const DirectX::XMFLOAT3& maxB ) {
+    bool AABBsOverlapping( const XMFLOAT3& minA, const XMFLOAT3& maxA, const XMFLOAT3& minB, const XMFLOAT3& maxB ) {
         //Check if Box1's max is greater than Box2's min and Box1's min is less than Box2's max
         return(maxA.x > minB.x &&
-            minA.x < maxB.x&&
+            minA.x < maxB.x &&
             maxA.y > minB.y &&
-            minA.y < maxB.y&&
+            minA.y < maxB.y &&
             maxA.z > minB.z &&
             minA.z < maxB.z);
     }
@@ -246,12 +239,19 @@ namespace Toolbox {
 
     /** Returns a random number between 0 and 1 */
     float frand() {
-        return ((float)rand()) / RAND_MAX;
+        return static_cast<float>(rand()) / RAND_MAX;
     }
 
     /** Linear interpolation */
     float lerp( float a, float b, float w ) {
+#if defined(_XM_FMA3_INTRINSICS_)
+        __m128 v0 = _mm_set_ss( a );
+        __m128 v1 = _mm_set_ss( b );
+        __m128 t  = _mm_set_ss( w );
+        return _mm_cvtss_f32( _mm_fmadd_ss( t, v1, _mm_fnmadd_ss( t, v0, v0 ) ) );
+#else
         return (1.0f - w) * a + w * b;
+#endif
     }
 
     /** Converts an errorcode into a string */
@@ -292,20 +292,18 @@ namespace Toolbox {
     /** Returns the RowPitch-Size of a DDS-Image */
     unsigned int GetDDSRowPitchSize( unsigned int width, bool dxt1 ) {
         if ( dxt1 )
-            return std::max( (unsigned int)1, ((width + 3) / 4) ) * 8;
+            return std::max<unsigned int>(1, ((width + 3) / 4) ) * 8;
         else
-            return std::max( (unsigned int)1, ((width + 3) / 4) ) * 16;
+            return std::max<unsigned int>(1, ((width + 3) / 4) ) * 16;
     }
 
     /** Returns whether the given file exists */
     bool FileExists( const std::string& file ) {
-        FILE* f = fopen( file.c_str(), "rb" );
-
-        if ( f ) {
-            fclose( f );
-            return true;
+        try {
+            return std::filesystem::exists( file );
+        } catch ( const std::exception& e ) {
+            return false;
         }
-        return false;
     }
 
     /** Saves a std::string to a FILE* */
@@ -336,50 +334,6 @@ namespace Toolbox {
         static std::chrono::steady_clock::time_point s_startPoint = std::chrono::steady_clock::now();
 
         // We dont expect anyone to play for 49 Days straight!
-        return DWORD( std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - s_startPoint).count() );
-    }
-
-    /** sse2 memcpy implementation by William Chan and Google */
-    void X_aligned_memcpy_sse2( void* dest, const void* src, const unsigned long size_t ) {
-        __asm
-        {
-            mov esi, src;    //src pointer
-            mov edi, dest;   //dest pointer
-
-            mov ebx, size_t; //ebx is our counter 
-            shr ebx, 7;      //divide by 128 (8 * 128bit registers)
-
-
-        loop_copy:
-            prefetchnta 128[ESI]; //SSE2 prefetch
-            prefetchnta 160[ESI];
-            prefetchnta 192[ESI];
-            prefetchnta 224[ESI];
-
-            movdqa xmm0, 0[ESI]; //move data from src to registers
-            movdqa xmm1, 16[ESI];
-            movdqa xmm2, 32[ESI];
-            movdqa xmm3, 48[ESI];
-            movdqa xmm4, 64[ESI];
-            movdqa xmm5, 80[ESI];
-            movdqa xmm6, 96[ESI];
-            movdqa xmm7, 112[ESI];
-
-            movntdq 0[EDI], xmm0; //move data from registers to dest
-            movntdq 16[EDI], xmm1;
-            movntdq 32[EDI], xmm2;
-            movntdq 48[EDI], xmm3;
-            movntdq 64[EDI], xmm4;
-            movntdq 80[EDI], xmm5;
-            movntdq 96[EDI], xmm6;
-            movntdq 112[EDI], xmm7;
-
-            add esi, 128;
-            add edi, 128;
-            dec ebx;
-
-            jnz loop_copy; //loop please
-          //loop_copy_end:
-        }
+        return static_cast<DWORD>( std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - s_startPoint).count() );
     }
 }

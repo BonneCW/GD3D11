@@ -1,5 +1,4 @@
 #pragma once
-
 #include <d3dx11effect.h>
 #include "pch.h"
 #include "d3d11pfx_effect.h"

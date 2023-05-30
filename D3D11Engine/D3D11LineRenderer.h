@@ -10,28 +10,19 @@ public:
 
     /** Adds a line to the list */
     virtual XRESULT AddLine( const LineVertex& v1, const LineVertex& v2 );
-    virtual XRESULT AddLineDeferred( const ScreenSpaceLine& v1, const ScreenSpaceLine& v2 ) {
-        if ( DeferredLineCache.size() >= 0xFFFFFFFF ) {
-            return XR_FAILED;
-        }
-
-        DeferredLineCache.push_back( v1 );
-        DeferredLineCache.push_back( v2 );
-        return XR_SUCCESS;
-    }
+    virtual XRESULT AddLineScreenSpace( const LineVertex& v1, const LineVertex& v2 );
 
     /** Flushes the cached lines */
     virtual XRESULT Flush();
-    virtual XRESULT FlushDeferredLines();
+    virtual XRESULT FlushScreenSpace();
 
     /** Clears the line cache */
     virtual XRESULT ClearCache();
 
-
 private:
     /** Line cache */
     std::vector<LineVertex> LineCache;
-    std::vector<ScreenSpaceLine> DeferredLineCache;
+    std::vector<LineVertex> ScreenSpaceLineCache;
 
     /** Buffer to hold the lines on the GPU */
     D3D11VertexBuffer* LineBuffer;

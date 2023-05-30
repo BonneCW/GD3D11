@@ -22,17 +22,17 @@ struct zTParticle {
     zTParticle* Next;
 
 #ifdef BUILD_GOTHIC_2_6_fix
-    DirectX::XMFLOAT3 PositionLocal;
+    XMFLOAT3 PositionLocal;
 #endif
-    DirectX::XMFLOAT3 PositionWS;
-    DirectX::XMFLOAT3 Vel;
+    XMFLOAT3 PositionWS;
+    XMFLOAT3 Vel;
     float LifeSpan;
     float Alpha;
     float AlphaVel;
-    DirectX::XMFLOAT2 Size;
-    DirectX::XMFLOAT2 SizeVel;
-    DirectX::XMFLOAT3 Color;
-    DirectX::XMFLOAT3 ColorVel;
+    XMFLOAT2 Size;
+    XMFLOAT2 SizeVel;
+    XMFLOAT3 Color;
+    XMFLOAT3 ColorVel;
 
 #ifdef BUILD_GOTHIC_1_08k
     float TexAniFrame;
@@ -44,54 +44,53 @@ struct zTParticle {
 class zCParticleEmitter {
 public:
 
-
     zCTexture* GetVisTexture() {
-        return *(zCTexture**)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisTexture );
+        return *reinterpret_cast<zCTexture**>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisTexture ));
     }
 
     zTRnd_AlphaBlendFunc GetVisAlphaFunc() {
-        return *(zTRnd_AlphaBlendFunc*)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisAlphaBlendFunc );
+        return *reinterpret_cast<zTRnd_AlphaBlendFunc*>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisAlphaBlendFunc ));
     }
 
     int GetVisIsQuadPoly() {
-        return *(int*)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisIsQuadPoly );
+        return *reinterpret_cast<int*>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisIsQuadPoly ));
     }
 
     int GetVisAlignment() {
-        return *(int*)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisAlignment );
+        return *reinterpret_cast<int*>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisAlignment ));
     }
 
     int GetVisShpRender() {
-        return *(int*)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisShpRender );
+        return *reinterpret_cast<int*>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisShpRender ));
     }
 
     int GetVisShpType() {
-        return *(int*)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisShpType );
+        return *reinterpret_cast<int*>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisShpType ));
     }
 
 #ifndef BUILD_GOTHIC_1_08k
     int GetVisTexAniIsLooping() {
-        return *(int*)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisTexAniIsLooping );
+        return *reinterpret_cast<int*>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisTexAniIsLooping ));
     }
 
     float GetVisAlphaStart() {
-        return *(float*)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisAlphaStart );
+        return *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisAlphaStart ));
     }
 
     float GetAlphaDist() {
-        return *(float*)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_AlphaDist );
+        return *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_AlphaDist ));
     }
 
     zCMesh* GetVisShpMesh() {
-        return *(zCMesh**)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisShpMesh );
+        return *reinterpret_cast<zCMesh**>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisShpMesh ));
     }
 
     zCProgMeshProto* GetVisShpProgMesh() {
-        return *(zCProgMeshProto**)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisShpProgMesh );
+        return *reinterpret_cast<zCProgMeshProto**>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisShpProgMesh ));
     }
 
     zCModel* GetVisShpModel() {
-        return *(zCModel**)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisShpModel );
+        return *reinterpret_cast<zCModel**>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisShpModel ));
     }
 #else
     int GetVisTexAniIsLooping() {
@@ -107,7 +106,7 @@ public:
     }
 
     zCMesh* GetVisShpMesh() {
-        return *(zCMesh**)THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisShpMesh );
+        return *reinterpret_cast<zCMesh**>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisShpMesh ));
     }
 
     zCProgMeshProto* GetVisShpProgMesh() {
@@ -136,14 +135,14 @@ class zCParticleFX {
 public:
     /** Hooks the functions of this Class */
     static void Hook() {
-        XHook( HookedFunctions::OriginalFunctions.original_zCParticleFXDestructor, GothicMemoryLocations::zCParticleFX::Destructor, zCParticleFX::Hooked_Destructor );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCParticleFXDestructor), Hooked_Destructor );
     }
 
-    static void __fastcall Hooked_Destructor( void* thisptr, void* unknwn ) {
+    static void __fastcall Hooked_Destructor( zCParticleFX* thisptr, void* unknwn ) {
         hook_infunc
             // Notify the world
             if ( Engine::GAPI )
-                Engine::GAPI->OnParticleFXDeleted( (zCParticleFX*)thisptr );
+                Engine::GAPI->OnParticleFXDeleted( thisptr );
 
         HookedFunctions::OriginalFunctions.original_zCParticleFXDestructor( thisptr );
 
@@ -151,7 +150,7 @@ public:
     }
 
     static float SinEase( float value ) {
-        return (float)((sin( value * DirectX::XM_PI - DirectX::XM_PIDIV2 ) + 1.0) / 2.0);
+        return (sin( value * XM_PI - XM_PIDIV2 ) + 1.f) / 2.f;
     }
 
     static float SinSmooth( float value ) {
@@ -162,33 +161,31 @@ public:
     }
 
     zCMesh* GetPartMeshQuad() {
-        return *(zCMesh**)GothicMemoryLocations::zCParticleFX::OBJ_s_partMeshQuad;
+        return *reinterpret_cast<zCMesh**>(GothicMemoryLocations::zCParticleFX::OBJ_s_partMeshQuad);
     }
 
     zCParticleEmitter* GetEmitter() {
-        return *(zCParticleEmitter**)THISPTR_OFFSET( GothicMemoryLocations::zCParticleFX::Offset_Emitters );
+        return *reinterpret_cast<zCParticleEmitter**>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleFX::Offset_Emitters ));
     }
 
     zTParticle* GetFirstParticle() {
-        return *(zTParticle**)THISPTR_OFFSET( GothicMemoryLocations::zCParticleFX::Offset_FirstParticle );
+        return *reinterpret_cast<zTParticle**>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleFX::Offset_FirstParticle ));
     }
 
     void SetFirstParticle( zTParticle* particle ) {
-        *(zTParticle**)THISPTR_OFFSET( GothicMemoryLocations::zCParticleFX::Offset_FirstParticle ) = particle;
+        *reinterpret_cast<zTParticle**>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleFX::Offset_FirstParticle )) = particle;
     }
 
-
-    zCVob* GetConnectedVob()
-    {
-        return *(zCVob**)THISPTR_OFFSET( GothicMemoryLocations::zCParticleFX::Offset_ConnectedVob );
+    zCVob* GetConnectedVob() {
+        return *reinterpret_cast<zCVob**>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleFX::Offset_ConnectedVob ));
     }
 
     float GetTimeScale() {
-        return *(float*)THISPTR_OFFSET( GothicMemoryLocations::zCParticleFX::Offset_TimeScale );
+        return *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleFX::Offset_TimeScale ));
     }
 
     float* GetPrivateTotalTime() {
-        return (float*)THISPTR_OFFSET( GothicMemoryLocations::zCParticleFX::Offset_PrivateTotalTime );
+        return reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleFX::Offset_PrivateTotalTime ));
     }
 
     int UpdateParticleFX() {
@@ -199,23 +196,13 @@ public:
         reinterpret_cast<void( __fastcall* )( zCParticleFX* )>( GothicMemoryLocations::zCParticleFX::CheckDependentEmitter )( this );
     }
 
-    /*bool IsRemoved()
-    {
-        zCParticleFX* next = *(zCParticleFX **)THISPTR_OFFSET(GothicMemoryLocations::zCParticleFX::Offset_NextPFX);
-        zCParticleFX* prev = *(zCParticleFX **)THISPTR_OFFSET(GothicMemoryLocations::zCParticleFX::Offset_PrevPFX);
-
-        // The remove-function sets these two to nullptr
-        return prev == nullptr && next == nullptr;
-    }*/
-
     zCStaticPfxList* GetStaticPFXList() {
-        return (zCStaticPfxList*)GothicMemoryLocations::zCParticleFX::OBJ_s_pfxList;
+        return reinterpret_cast<zCStaticPfxList*>(GothicMemoryLocations::zCParticleFX::OBJ_s_pfxList);
     }
 
     void SetLocalTimeF( float t ) {
-        *(float*)THISPTR_OFFSET( GothicMemoryLocations::zCParticleFX::Offset_LocalFrameTimeF ) = t;
+        *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleFX::Offset_LocalFrameTimeF )) = t;
     }
-
 
     void UpdateTime() {
         SetLocalTimeF( GetTimeScale() * zCTimer::GetTimer()->frameTimeFloat );

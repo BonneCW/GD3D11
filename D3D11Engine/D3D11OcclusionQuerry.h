@@ -31,7 +31,7 @@ private:
     /** Marks the entire subtree visible */
     void MarkTreeVisible( BspInfo* root, bool visible );
 
-    void DebugVisualizeNodeMesh( MeshInfo* m, const DirectX::XMFLOAT4& color );
+    void DebugVisualizeNodeMesh( MeshInfo* m, const XMFLOAT4& color );
 
     /** Simple box predicate */
     std::vector<ID3D11Predicate*> Predicates;

@@ -15,7 +15,6 @@
 #include "D3D11PFX_GodRays.h"
 
 D3D11PfxRenderer::D3D11PfxRenderer() {
-    D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
     FX_Blur = std::make_unique<D3D11PFX_Blur>( this );
     FX_HeightFog = std::make_unique<D3D11PFX_HeightFog>( this );
     //FX_DistanceBlur = new D3D11PFX_DistanceBlur(this);
@@ -30,7 +29,6 @@ D3D11PfxRenderer::D3D11PfxRenderer() {
     }
 }
 
-
 D3D11PfxRenderer::~D3D11PfxRenderer() {
     //delete FX_DistanceBlur;
 }
@@ -42,7 +40,7 @@ XRESULT D3D11PfxRenderer::RenderDistanceBlur() {
 }
 
 /** Blurs the given texture */
-XRESULT D3D11PfxRenderer::BlurTexture( RenderToTextureBuffer* texture, bool leaveResultInD4_2, float scale, const DirectX::XMFLOAT4& colorMod, const std::string& finalCopyShader ) {
+XRESULT D3D11PfxRenderer::BlurTexture( RenderToTextureBuffer* texture, bool leaveResultInD4_2, float scale, const XMFLOAT4& colorMod, const std::string& finalCopyShader ) {
     FX_Blur->RenderBlur( texture, leaveResultInD4_2, 0.0f, scale, colorMod, finalCopyShader );
     return XR_SUCCESS;
 }
@@ -64,26 +62,16 @@ XRESULT D3D11PfxRenderer::RenderHDR() {
 
 /** Renders the SMAA-Effect */
 XRESULT D3D11PfxRenderer::RenderSMAA() {
-    D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
-    FX_SMAA->RenderPostFX( engine->GetHDRBackBuffer().GetShaderResView() );
-
+    FX_SMAA->RenderPostFX( reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine)->GetHDRBackBuffer().GetShaderResView() );
     return XR_SUCCESS;
 }
 
 /** Draws a fullscreenquad */
 XRESULT D3D11PfxRenderer::DrawFullScreenQuad() {
-    D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
+    D3D11GraphicsEngine* engine = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
     engine->UpdateRenderStates();
 
     engine->GetContext()->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
-
-    /*UINT offset = 0;
-    UINT uStride = 0;
-    ID3D11Buffer* vertexBuffer = nullptr;
-    engine->GetContext()->IASetVertexBuffers( 0, 1, &vertexBuffer, &uStride, &offset );*/
-
-    //Microsoft::WRL::ComPtr<ID3D11Buffer> cb;
-    //engine->GetContext()->VSSetConstantBuffers(0, 1, cb.GetAddressOf());
 
     //Draw the mesh
     engine->GetContext()->Draw( 3, 0 );
@@ -93,12 +81,9 @@ XRESULT D3D11PfxRenderer::DrawFullScreenQuad() {
 
 /** Unbinds texturesamplers from the pixel-shader */
 XRESULT D3D11PfxRenderer::UnbindPSResources( int num ) {
-    ID3D11ShaderResourceView** srv = new ID3D11ShaderResourceView * [num];
+    ID3D11ShaderResourceView** srv = new ID3D11ShaderResourceView*[num];
     ZeroMemory( srv, sizeof( ID3D11ShaderResourceView* ) * num );
-
-    D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
-    engine->GetContext()->PSSetShaderResources( 0, num, srv );
-
+    reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine)->GetContext()->PSSetShaderResources( 0, num, srv );
     delete[] srv;
 
     return XR_SUCCESS;
@@ -106,7 +91,7 @@ XRESULT D3D11PfxRenderer::UnbindPSResources( int num ) {
 
 /** Copies the given texture to the given RTV */
 XRESULT D3D11PfxRenderer::CopyTextureToRTV( const Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>& texture, const Microsoft::WRL::ComPtr<ID3D11RenderTargetView>& rtv, INT2 targetResolution, bool useCustomPS, INT2 offset ) {
-    D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
+    D3D11GraphicsEngine* engine = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
 
     D3D11_VIEWPORT oldVP;
     if ( targetResolution.x != 0 && targetResolution.y != 0 ) {
@@ -114,12 +99,12 @@ XRESULT D3D11PfxRenderer::CopyTextureToRTV( const Microsoft::WRL::ComPtr<ID3D11S
         engine->GetContext()->RSGetViewports( &n, &oldVP );
 
         D3D11_VIEWPORT vp;
-        vp.TopLeftX = (float)offset.x;
-        vp.TopLeftY = (float)offset.y;
+        vp.TopLeftX = static_cast<float>(offset.x);
+        vp.TopLeftY = static_cast<float>(offset.y);
         vp.MinDepth = 0.0f;
-        vp.MaxDepth = 0.0f;
-        vp.Width = (float)targetResolution.x;
-        vp.Height = (float)targetResolution.y;
+        vp.MaxDepth = 1.0f;
+        vp.Width = static_cast<float>(targetResolution.x);
+        vp.Height = static_cast<float>(targetResolution.y);
 
         engine->GetContext()->RSSetViewports( 1, &vp );
     }
@@ -159,7 +144,7 @@ XRESULT D3D11PfxRenderer::CopyTextureToRTV( const Microsoft::WRL::ComPtr<ID3D11S
 
 /** Called on resize */
 XRESULT D3D11PfxRenderer::OnResize( const INT2& newResolution ) {
-    D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
+    D3D11GraphicsEngine* engine = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
 
     // Create temp-buffer
     DXGI_FORMAT bbufferFormat = engine->GetBackBufferFormat();

@@ -48,7 +48,6 @@ struct RenderToTextureBuffer {
         //Create a render target view
         D3D11_RENDER_TARGET_VIEW_DESC DescRT = CD3D11_RENDER_TARGET_VIEW_DESC();
         DescRT.Format = (RTVFormat != DXGI_FORMAT_UNKNOWN ? RTVFormat : Desc.Format);
-        DescRT.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
         DescRT.Texture2D.MipSlice = 0;
         DescRT.Texture2DArray.ArraySize = arraySize;
 
@@ -81,6 +80,7 @@ struct RenderToTextureBuffer {
 
         DescRV.Texture2D.MipLevels = MipLevels;
         DescRV.Texture2D.MostDetailedMip = 0;
+
         LE( device->CreateShaderResourceView( Texture.Get(), &DescRV, ShaderResView.GetAddressOf() ) );
 
         if ( FAILED( hr ) ) {
@@ -170,7 +170,6 @@ struct RenderToDepthStencilBuffer {
         if ( arraySize > 1 )
             Desc.MiscFlags |= D3D11_RESOURCE_MISC_TEXTURECUBE;
 
-
         LE( device->CreateTexture2D( &Desc, nullptr, Texture.GetAddressOf() ) );
 
         if ( !Texture.Get() ) {
@@ -215,6 +214,7 @@ struct RenderToDepthStencilBuffer {
 
         DescRV.Texture2D.MipLevels = 1;
         DescRV.Texture2D.MostDetailedMip = 0;
+
         LE( device->CreateShaderResourceView( Texture.Get(), &DescRV, ShaderResView.GetAddressOf() ) );
 
         if ( FAILED( hr ) ) {

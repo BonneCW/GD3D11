@@ -13,5 +13,4 @@ D3D11GodRayEffect::D3D11GodRayEffect() {
     //QuadVS = engine->GetShaderManager().GetVShader
 }
 
-
 D3D11GodRayEffect::~D3D11GodRayEffect() {}

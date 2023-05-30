@@ -10,18 +10,13 @@
 #include "D3D11ConstantBuffer.h"
 #include "ConstantBufferStructs.h"
 
-D3D11PFX_Blur::D3D11PFX_Blur( D3D11PfxRenderer* rnd ) : D3D11PFX_Effect( rnd ) {
+D3D11PFX_Blur::D3D11PFX_Blur( D3D11PfxRenderer* rnd ) : D3D11PFX_Effect( rnd ) {}
 
-}
-
-
-D3D11PFX_Blur::~D3D11PFX_Blur() {
-
-}
+D3D11PFX_Blur::~D3D11PFX_Blur() {}
 
 /** Draws this effect to the given buffer */
-XRESULT D3D11PFX_Blur::RenderBlur( RenderToTextureBuffer* fxbuffer, bool leaveResultInD4_2, float threshold, float scale, const DirectX::XMFLOAT4& colorMod, const std::string& finalCopyShader ) {
-	D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
+XRESULT D3D11PFX_Blur::RenderBlur( RenderToTextureBuffer* fxbuffer, bool leaveResultInD4_2, float threshold, float scale, const XMFLOAT4& colorMod, const std::string& finalCopyShader ) {
+	D3D11GraphicsEngine* engine = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
 
 	// Save old rendertargets
 	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> oldRTV;

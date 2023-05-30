@@ -1,8 +1,7 @@
 #pragma once
-
 #include <string>
 
-#include <D3D11_1.h>
+#include <D3D11_4.h>
 
 #include "VertexTypes.h"
 
@@ -50,9 +49,6 @@ public:
 
     /** Updates the vertexbuffer with the given data */
     XRESULT UpdateBuffer( void* data, UINT size = 0 );
-
-    /** Updates the vertexbuffer with the given data */
-    XRESULT UpdateBufferAligned16( void* data, UINT size = 0 );
 
     /** Maps the buffer */
     XRESULT Map( int flags, void** dataPtr, UINT* size );

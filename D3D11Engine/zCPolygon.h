@@ -96,27 +96,27 @@ public:
     }
 
     zCVertex** getVertices() const {
-        return *(zCVertex***)(((char*)this) + GothicMemoryLocations::zCPolygon::Offset_VerticesArray);
+        return *reinterpret_cast<zCVertex***>(THISPTR_OFFSET( GothicMemoryLocations::zCPolygon::Offset_VerticesArray ));
     }
 
     zCVertFeature** getFeatures() const {
-        return *(zCVertFeature***)(((char*)this) + GothicMemoryLocations::zCPolygon::Offset_FeaturesArray);
+        return *reinterpret_cast<zCVertFeature***>(THISPTR_OFFSET( GothicMemoryLocations::zCPolygon::Offset_FeaturesArray ));
     }
 
     unsigned char GetNumPolyVertices() const {
-        return *(unsigned char*)THISPTR_OFFSET( GothicMemoryLocations::zCPolygon::Offset_NumPolyVertices );
+        return *reinterpret_cast<unsigned char*>(THISPTR_OFFSET( GothicMemoryLocations::zCPolygon::Offset_NumPolyVertices ));
     }
 
     PolyFlags* GetPolyFlags() const {
-        return (PolyFlags*)THISPTR_OFFSET( GothicMemoryLocations::zCPolygon::Offset_PolyFlags );
+        return reinterpret_cast<PolyFlags*>(THISPTR_OFFSET( GothicMemoryLocations::zCPolygon::Offset_PolyFlags ));
     }
 
     zCMaterial* GetMaterial() const {
-        return *(zCMaterial**)(((char*)this) + GothicMemoryLocations::zCPolygon::Offset_Material);
+        return *reinterpret_cast<zCMaterial**>(THISPTR_OFFSET( GothicMemoryLocations::zCPolygon::Offset_Material ));
     }
 
     void SetMaterial( zCMaterial* material ) {
-        *(zCMaterial**)(((char*)this) + GothicMemoryLocations::zCPolygon::Offset_Material) = material;
+        *reinterpret_cast<zCMaterial**>(THISPTR_OFFSET( GothicMemoryLocations::zCPolygon::Offset_Material )) = material;
     }
 
     float3 GetLightStatAtPos(float3& position) {
@@ -126,11 +126,11 @@ public:
     }
 
     zCLightmap* GetLightmap() const {
-        return *(zCLightmap**)(((char*)this) + GothicMemoryLocations::zCPolygon::Offset_Lightmap);
+        return *reinterpret_cast<zCLightmap**>(THISPTR_OFFSET( GothicMemoryLocations::zCPolygon::Offset_Lightmap ));
     }
 
     void SetLightmap( zCLightmap* lightmap ) {
-        *(zCLightmap**)(((char*)this) + GothicMemoryLocations::zCPolygon::Offset_Lightmap) = lightmap;
+        *reinterpret_cast<zCLightmap**>(THISPTR_OFFSET( GothicMemoryLocations::zCPolygon::Offset_Lightmap )) = lightmap;
     }
 
     char data[56];

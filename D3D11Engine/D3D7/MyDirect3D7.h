@@ -4,7 +4,6 @@
 #include "MyDirect3DVertexBuffer7.h"
 #include "../Engine.h"
 
-
 class MyDirect3D7 : public IDirect3D7 {
 public:
 	MyDirect3D7( IDirect3D7* direct3d7 ) {
@@ -22,14 +21,12 @@ public:
 
 	ULONG STDMETHODCALLTYPE AddRef() {
 		DebugWrite( "MyDirect3D7::AddRef\n" );
-		RefCount++;
-		return RefCount;
+		return ++RefCount;
 	}
 
 	ULONG STDMETHODCALLTYPE Release() {
 		DebugWrite( "MyDirect3D7::Release\n" );
-		RefCount--;
-		if ( 0 == RefCount ) {
+		if ( --RefCount == 0 ) {
 			delete this;
 			return 0;
 		}
@@ -53,8 +50,7 @@ public:
 		DebugWrite( "MyDirect3D7::CreateVertexBuffer\n" );
 
 		// Fake a vertexbuffer
-		MyDirect3DVertexBuffer7* buff = new MyDirect3DVertexBuffer7( *lpVBDesc );
-		*lplpD3DVertexBuffer = buff;
+		*lplpD3DVertexBuffer = new MyDirect3DVertexBuffer7( *lpVBDesc );
 
 		return S_OK;
 	}
@@ -144,9 +140,13 @@ public:
 		devDesc.dwVertexProcessingCaps = (D3DVTXPCAPS_TEXGEN|D3DVTXPCAPS_MATERIALSOURCE7|D3DVTXPCAPS_DIRECTIONALLIGHTS|D3DVTXPCAPS_POSITIONALLIGHTS|D3DVTXPCAPS_LOCALVIEWER);
 
 		// Pass it to the callback function
-        char desc[256] = "DirectX11";
         char name[256] = "DirectX11";
-		(*lpEnumDevicesCallback)(desc, name, &devDesc, lpUserArg);
+        if ( Engine::GraphicsEngine ) {
+            (*lpEnumDevicesCallback)(const_cast<char*>(Engine::GraphicsEngine->GetGraphicsDeviceName().c_str()), name, &devDesc, lpUserArg);
+        } else {
+            char desc[256] = "DirectX11";
+            (*lpEnumDevicesCallback)(desc, name, &devDesc, lpUserArg);
+        }
 		return S_OK;
 	}
 

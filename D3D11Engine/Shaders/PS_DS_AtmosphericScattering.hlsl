@@ -36,13 +36,13 @@ SamplerState SS_Linear : register( s0 );
 SamplerState SS_samMirror : register( s1 );
 SamplerComparisonState SS_Comp : register( s2 );
 Texture2D	TX_Diffuse : register( t0 );
-Texture2D	TX_Nrm_SI_SP : register( t1 );
+Texture2D	TX_Nrm : register( t1 );
 Texture2D	TX_Depth : register( t2 );
 Texture2D	TX_Shadowmap : register( t3 );
 Texture2D	TX_RainShadowmap : register( t4 );
 TextureCube	TX_ReflectionCube : register( t5 );
 Texture2D	TX_Distortion : register( t6 );
-
+Texture2D	TX_SI_SP : register( t7 );
 
 //--------------------------------------------------------------------------------------
 // Input / Output structures
@@ -303,18 +303,19 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	float vertLighting = diffuse.a;
 	
 	// Get the second GBuffer
-	float4 gb2 = TX_Nrm_SI_SP.Sample(SS_Linear, uv);
+	float4 gb2 = TX_Nrm.Sample(SS_Linear, uv);
 	
 	// If we dont have a normal, just return the diffuse color
-	if(abs(gb2.x + gb2.y) < 0.001f)
+	if(gb2.w < 0.001f)
 		return float4(diffuse.rgb, 1);
 	
 	// Decode the view-space normal back
-	float3 normal = normalize(DecodeNormal(gb2.xy));
+	float3 normal = normalize(gb2.xyz);
 	
 	// Get specular parameters
-	float specIntensity = gb2.z;
-	float specPower = gb2.w;
+	float4 gb3 = TX_SI_SP.Sample(SS_Linear, uv);
+	float specIntensity = gb3.x;
+	float specPower = gb3.y;
 	
 	// Reconstruct VS World Position from depth
 	float expDepth = TX_Depth.Sample(SS_Linear, uv).r;
@@ -362,7 +363,7 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 #endif
 	// Compute specular lighting
 	
-	float3 H = normalize(SQ_LightDirectionVS + V );
+	float3 H = normalize(SQ_LightDirectionVS + V);
 	float spec = CalcBlinnPhongLighting(normal, H);
 	float specMod = pow(dot(float3(0.333f,0.333f,0.333f), diffuse.rgb), 2);
 	
@@ -396,7 +397,6 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	// Run scattering
 	litPixel = ApplyAtmosphericScatteringGround(wsPosition, litPixel.rgb);
 	
-
 	
 	// Fix indoor stuff
 	//litPixel = lerp(diffuse * vertLighting, litPixel, vertLighting < 0.9f ? 0 : 1);

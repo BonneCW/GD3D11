@@ -57,7 +57,6 @@ int ComputeFVFSize( DWORD fvf ) {
 		normalinc = size;
 		size += 3 * sizeof( float );
 		test &= ~D3DFVF_NORMAL;
-
 	}
 	if ( (fvf & D3DFVF_DIFFUSE) == D3DFVF_DIFFUSE ) {
 		size += sizeof( D3DCOLOR );
@@ -75,7 +74,6 @@ int ComputeFVFSize( DWORD fvf ) {
 		texcoordinc = size;
 		size += 2 * sizeof( float ) * 2;
 		test &= ~D3DFVF_TEX2;
-
 	} else if ( (fvf & D3DFVF_TEX3) == D3DFVF_TEX3 ) {
 		texcoordinc = size;
 		size += 2 * sizeof( float ) * 3;
@@ -88,7 +86,6 @@ int ComputeFVFSize( DWORD fvf ) {
 		texcoordinc = size;
 		size += 2 * sizeof( float ) * 5;
 		test &= ~D3DFVF_TEX5;
-		LogInfo() << "FVF Contains: D3DFVF_TEX5";
 	} else if ( (fvf & D3DFVF_TEX6) == D3DFVF_TEX6 ) {
 		texcoordinc = size;
 		size += 2 * sizeof( float ) * 6;

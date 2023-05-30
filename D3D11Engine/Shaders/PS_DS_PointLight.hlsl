@@ -29,8 +29,9 @@ cbuffer DS_PointLightConstantBuffer : register( b0 )
 SamplerState SS_Linear : register( s0 );
 SamplerState SS_samMirror : register( s1 );
 Texture2D	TX_Diffuse : register( t0 );
-Texture2D	TX_Nrm_SI_SP : register( t1 );
+Texture2D	TX_Nrm : register( t1 );
 Texture2D	TX_Depth : register( t2 );
+Texture2D	TX_SI_SP : register( t7 );
 
 //--------------------------------------------------------------------------------------
 // Input / Output structures
@@ -103,14 +104,15 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	float4 diffuse = TX_Diffuse.Sample(SS_Linear, uv);
 	
 	// Get the second GBuffer
-	float4 gb2 = TX_Nrm_SI_SP.Sample(SS_Linear, uv);
+	float4 gb2 = TX_Nrm.Sample(SS_Linear, uv);
 	
 	// Decode the view-space normal back
-	float3 normal = normalize(DecodeNormal(gb2.xy));
+	float3 normal = normalize(gb2.xyz);
 	
 	// Get specular parameters
-	float specIntensity = gb2.z;
-	float specPower = gb2.w;
+	float4 gb3 = TX_SI_SP.Sample(SS_Linear, uv);
+	float specIntensity = gb3.x;
+	float specPower = gb3.y;
 	
 	// Reconstruct VS World Position from depth
 	float expDepth = TX_Depth.Sample(SS_Linear, uv).r;

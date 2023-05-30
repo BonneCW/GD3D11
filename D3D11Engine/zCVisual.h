@@ -1,5 +1,4 @@
 #pragma once
-
 #include "Engine.h"
 #include "GothicAPI.h"
 #include "HookedFunctions.h"
@@ -18,14 +17,14 @@ public:
 
     /** Hooks the functions of this Class */
     static void Hook() {
-        XHook( HookedFunctions::OriginalFunctions.original_zCVisualDestructor, GothicMemoryLocations::zCVisual::Destructor, zCVisual::Hooked_Destructor );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCVisualDestructor), Hooked_Destructor );
     }
 
-    static void __fastcall Hooked_Destructor( void* thisptr, void* unknwn ) {
+    static void __fastcall Hooked_Destructor( zCVisual* thisptr, void* unknwn ) {
         hook_infunc
             // Notify the world
             if ( Engine::GAPI )
-                Engine::GAPI->OnVisualDeleted( (zCVisual*)thisptr );
+                Engine::GAPI->OnVisualDeleted( thisptr );
 
         HookedFunctions::OriginalFunctions.original_zCVisualDestructor( thisptr );
         hook_outfunc
@@ -78,9 +77,9 @@ private:
     }
 
     const zSTRING* __GetFileExtension( int i ) {
-        int* vtbl = (int*)((int*)this)[0];
+        DWORD* vtbl = reinterpret_cast<DWORD*>(*reinterpret_cast<DWORD*>(this));
 
-        zCVisualGetFileExtension fn = (zCVisualGetFileExtension)vtbl[GothicMemoryLocations::zCVisual::VTBL_GetFileExtension];
+        zCVisualGetFileExtension fn = reinterpret_cast<zCVisualGetFileExtension>(vtbl[GothicMemoryLocations::zCVisual::VTBL_GetFileExtension]);
         return fn( this, i );
     }
 };

@@ -42,7 +42,7 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 		distUV = uv;
 	}
 
-	float4 scene = TX_Scene.Sample(SS_Linear, distUV);
+	float3 scene = TX_Scene.Sample(SS_Linear, distUV);
 	
 	// Alpha is just the luminance of the rendered particles
 	float alpha = dot(color.rgb, float3(0.333f, 0.333f, 0.333f)) * 2.0f;

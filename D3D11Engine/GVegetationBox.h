@@ -1,15 +1,12 @@
 #pragma once
 #include "pch.h"
 
-
 class GMeshSimple;
 class D3D11Texture;
 class D3D11ConstantBuffer;
 class D3D11VertexBuffer;
 class zCTexture;
 struct MeshInfo;
-
-
 
 class GVegetationBox {
 public:
@@ -23,8 +20,8 @@ public:
     };
 
     /** Initializes the vegetationbox */
-    XRESULT InitVegetationBox( const DirectX::XMFLOAT3& min,
-        const DirectX::XMFLOAT3& max,
+    XRESULT InitVegetationBox( const XMFLOAT3& min,
+        const XMFLOAT3& max,
         const std::string& vegetationMesh,
         float density,
         float maxSize,
@@ -38,10 +35,10 @@ public:
         zCTexture* meshTexture = nullptr );
 
     /** Draws this vegetation box */
-    void RenderVegetation( const DirectX::XMFLOAT3& eye );
+    void RenderVegetation( const XMFLOAT3& eye );
 
     /** Returns true if the given position is inside the box */
-    bool PositionInsideBox( const DirectX::XMFLOAT3& p );
+    bool PositionInsideBox( const XMFLOAT3& p );
 
     /** Sets bounding box rendering */
     void SetRenderBoundingBox( bool value );
@@ -50,14 +47,14 @@ public:
     MeshInfo* GetWorldMeshPart() { return MeshPart; }
 
     /** Visualizes the grass-meshes */
-    void VisualizeGrass( const DirectX::XMFLOAT4& color = DirectX::XMFLOAT4( 1, 1, 1, 1 ) );
+    void VisualizeGrass( const XMFLOAT4& color = XMFLOAT4( 1, 1, 1, 1 ) );
 
     /** Returns the boundingbox of this */
-    void GetBoundingBox( DirectX::XMFLOAT3* bbMin, DirectX::XMFLOAT3* bbMax );
-    void SetBoundingBox( const DirectX::XMFLOAT3& bbMin, const DirectX::XMFLOAT3& bbMax );
+    void GetBoundingBox( XMFLOAT3* bbMin, XMFLOAT3* bbMax );
+    void SetBoundingBox( const XMFLOAT3& bbMin, const XMFLOAT3& bbMax );
 
     /** Removes all vegetation in range of the given position */
-    void RemoveVegetationAt( const DirectX::XMFLOAT3& position, float range );
+    void RemoveVegetationAt( const XMFLOAT3& position, float range );
 
     /** Refits the bounding-box around the grass-meshes. If there are none, the box will be set to 0. */
     void RefitBoundingBox();
@@ -84,18 +81,18 @@ public:
     float GetDensity();
 private:
     /** Puts trasformation for the given spots */
-    void InitSpotsRandom( const std::vector<DirectX::XMFLOAT3>& trisInside, EShape shape = S_None, float density = 1.0f );
+    void InitSpotsRandom( const std::vector<XMFLOAT3>& trisInside, EShape shape = S_None, float density = 1.0f );
 
-    std::vector<DirectX::XMFLOAT3> TrisInside;
-    std::vector<DirectX::XMFLOAT4X4> VegetationSpots;
+    std::vector<XMFLOAT3> TrisInside;
+    std::vector<XMFLOAT4X4> VegetationSpots;
     GMeshSimple* VegetationMesh;
     zCTexture* MeshTexture;
     MeshInfo* MeshPart;
     EShape Shape;
     float Density;
 
-    DirectX::XMFLOAT3 BoxMin;
-    DirectX::XMFLOAT3 BoxMax;
+    XMFLOAT3 BoxMin;
+    XMFLOAT3 BoxMax;
     D3D11Texture* VegetationTexture;
     D3D11VertexBuffer* InstancingBuffer;
     D3D11ConstantBuffer* GrassCB;

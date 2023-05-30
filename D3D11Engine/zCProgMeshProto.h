@@ -55,23 +55,23 @@ class zCProgMeshProto : public zCVisual {
 public:
 
     zCArrayAdapt<float3>* GetPositionList() {
-        return (zCArrayAdapt<float3>*)THISPTR_OFFSET( GothicMemoryLocations::zCProgMeshProto::Offset_PositionList );
+        return reinterpret_cast<zCArrayAdapt<float3>*>(THISPTR_OFFSET( GothicMemoryLocations::zCProgMeshProto::Offset_PositionList ));
     }
 
     zCArrayAdapt<float3>* GetNormalsList() {
-        return (zCArrayAdapt<float3>*)THISPTR_OFFSET( GothicMemoryLocations::zCProgMeshProto::Offset_NormalsList );
+        return reinterpret_cast<zCArrayAdapt<float3>*>(THISPTR_OFFSET( GothicMemoryLocations::zCProgMeshProto::Offset_NormalsList ));
     }
 
     zCSubMesh* GetSubmesh( int n ) {
-        return (zCSubMesh*)(((char*)GetSubmeshes()) + zCSubMesh::CLASS_SIZE * n);
+        return reinterpret_cast<zCSubMesh*>(reinterpret_cast<DWORD>(GetSubmeshes()) + zCSubMesh::CLASS_SIZE * n);
     }
 
     zCSubMesh* GetSubmeshes() {
-        return *(zCSubMesh**)(((char*)this) + (GothicMemoryLocations::zCProgMeshProto::Offset_Submeshes));
+        return *reinterpret_cast<zCSubMesh**>(THISPTR_OFFSET( GothicMemoryLocations::zCProgMeshProto::Offset_Submeshes ));
     }
 
     int GetNumSubmeshes() {
-        return *(int*)(((char*)this) + (GothicMemoryLocations::zCProgMeshProto::Offset_NumSubmeshes));
+        return *reinterpret_cast<int*>(THISPTR_OFFSET( GothicMemoryLocations::zCProgMeshProto::Offset_NumSubmeshes ));
     }
 
     /** Constructs a readable mesh from the data given in the progmesh */

@@ -108,7 +108,7 @@ private:
             __cpuid( cpui.data(), 0 );
             nIds_ = cpui[0];
 
-            for ( int i = 0; i <= nIds_; ++i )             {
+            for ( int i = 0; i <= nIds_; ++i ) {
                 __cpuidex( cpui.data(), i, 0 );
                 data_.push_back( cpui );
             }
@@ -120,20 +120,20 @@ private:
             *reinterpret_cast<int*>(vendor + 4) = data_[0][3];
             *reinterpret_cast<int*>(vendor + 8) = data_[0][2];
             vendor_ = vendor;
-            if ( vendor_ == "GenuineIntel" )             {
+            if ( vendor_ == "GenuineIntel" ) {
                 isIntel_ = true;
-            }             else if ( vendor_ == "AuthenticAMD" )             {
+            } else if ( vendor_ == "AuthenticAMD" ) {
                 isAMD_ = true;
             }
 
             // load bitset with flags for function 0x00000001
-            if ( nIds_ >= 1 )             {
+            if ( nIds_ >= 1 ) {
                 f_1_ECX_ = data_[1][2];
                 f_1_EDX_ = data_[1][3];
             }
 
             // load bitset with flags for function 0x00000007
-            if ( nIds_ >= 7 )             {
+            if ( nIds_ >= 7 ) {
                 f_7_EBX_ = data_[7][1];
                 f_7_ECX_ = data_[7][2];
             }
@@ -146,19 +146,19 @@ private:
             char brand[0x40];
             memset( brand, 0, sizeof( brand ) );
 
-            for ( int i = 0x80000000; i <= nExIds_; ++i )             {
+            for ( int i = 0x80000000; i <= nExIds_; ++i ) {
                 __cpuidex( cpui.data(), i, 0 );
                 extdata_.push_back( cpui );
             }
 
             // load bitset with flags for function 0x80000001
-            if ( nExIds_ >= 0x80000001 )             {
+            if ( nExIds_ >= 0x80000001 ) {
                 f_81_ECX_ = extdata_[1][2];
                 f_81_EDX_ = extdata_[1][3];
             }
 
             // Interpret CPU brand string if reported
-            if ( nExIds_ >= 0x80000004 )             {
+            if ( nExIds_ >= 0x80000004 ) {
                 memcpy( brand, extdata_[2].data(), sizeof( cpui ) );
                 memcpy( brand + 16, extdata_[3].data(), sizeof( cpui ) );
                 memcpy( brand + 32, extdata_[4].data(), sizeof( cpui ) );
@@ -187,8 +187,7 @@ private:
 const InstructionSet::InstructionSet_Internal InstructionSet::CPU_Rep;
 
 // Print out supported instruction set extensions
-void LogInstructionSet()
-{
+void LogInstructionSet() {
     auto& outstream = std::cout;
 
     auto support_message = [&outstream]( std::string isa_feature, bool is_supported ) {

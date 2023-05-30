@@ -1,5 +1,4 @@
 #pragma once
-
 #include "BaseGraphicsEngine.h"
 #include "d2ddialog.h"
 #include "GothicGraphicsState.h"

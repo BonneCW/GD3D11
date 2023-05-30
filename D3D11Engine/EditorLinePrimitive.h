@@ -57,17 +57,17 @@ public:
     HRESULT CreateSolidBoxPrimitive( float4& Color, float Extends );
 
     /** Creates a grid of lines (1x1)*/
-    HRESULT CreateLineGrid( int LinesX, int LinesY, DirectX::XMFLOAT2* Middle, const float4& Color );
+    HRESULT CreateLineGrid( int LinesX, int LinesY, XMFLOAT2* Middle, const float4& Color );
 
     /** Sets the shader to render with */
     void SetShader( std::shared_ptr<D3D11PShader> Shader );
     void SetSolidShader( std::shared_ptr<D3D11PShader> SolidShader );
 
     /** Sets the transforms */
-    void XM_CALLCONV SetLocation( DirectX::FXMVECTOR NewLoc );
-    void XM_CALLCONV SetRotation( DirectX::FXMVECTOR NewRotation );
-    void XM_CALLCONV SetScale( DirectX::FXMVECTOR NewScale );
-    void XM_CALLCONV SetWorldMatrix( DirectX::XMMATRIX World, DirectX::FXMVECTOR Loc, DirectX::FXMVECTOR Rot, DirectX::GXMVECTOR Scale );
+    void XM_CALLCONV SetLocation( FXMVECTOR NewLoc );
+    void XM_CALLCONV SetRotation( FXMVECTOR NewRotation );
+    void XM_CALLCONV SetScale( FXMVECTOR NewScale );
+    void XM_CALLCONV SetWorldMatrix( XMMATRIX World, FXMVECTOR Loc, FXMVECTOR Rot, GXMVECTOR Scale );
 
     /** Renders the primitive */
     HRESULT RenderPrimitive( int Pass = -1 );
@@ -78,17 +78,17 @@ public:
     }
 
     /** Intersects the whole primitive. If hit, it returns a distance other than -1 */
-    float XM_CALLCONV IntersectPrimitive( DirectX::FXMVECTOR RayOrigin, DirectX::FXMVECTOR RayDirection, float Epsilon = 0.01 );
+    float XM_CALLCONV IntersectPrimitive( FXMVECTOR RayOrigin, FXMVECTOR RayDirection, float Epsilon = 0.01 );
 
-    bool XM_CALLCONV IntersectTriangle( DirectX::FXMVECTOR orig, DirectX::FXMVECTOR dir,
-        DirectX::FXMVECTOR v0, DirectX::GXMVECTOR v1, DirectX::HXMVECTOR v2,
+    bool XM_CALLCONV IntersectTriangle( FXMVECTOR orig, FXMVECTOR dir,
+        FXMVECTOR v0, GXMVECTOR v1, HXMVECTOR v2,
         FLOAT* t, FLOAT* u, FLOAT* v );
 
     /** Puts the color into the Normal and TexCoord channels */
     static void EncodeColor( LineVertex* vx, const float4& Color );
 
-    GETSET( DirectX::XMFLOAT4X4, RotationMatrix );
-    GETSET( DirectX::XMFLOAT3, RotationMatrixAngles );
+    GETSET( XMFLOAT4X4, RotationMatrix );
+    GETSET( XMFLOAT3, RotationMatrixAngles );
 
 
     GET( std::shared_ptr<D3D11PShader>, PrimShader );
@@ -104,9 +104,7 @@ private:
     void RecalcTransforms();
 
     /** Intersects only one line segment */
-    float IntersectLineSegment( DirectX::FXMVECTOR rayOrigin, DirectX::FXMVECTOR rayVec, DirectX::FXMVECTOR lineStart, DirectX::GXMVECTOR lineEnd, float Epsilon );
-
-
+    float IntersectLineSegment( FXMVECTOR rayOrigin, FXMVECTOR rayVec, FXMVECTOR lineStart, GXMVECTOR lineEnd, float Epsilon );
 
     /** Renders a vertexbuffer with the given shader */
     void RenderVertexBuffer( const Microsoft::WRL::ComPtr<ID3D11Buffer>& VB, UINT NumVertices, D3D11PShader* Shader, D3D11_PRIMITIVE_TOPOLOGY Topology, int Pass = -1 );
@@ -116,29 +114,28 @@ private:
     UINT NumVertices;
 
     /** Vertex buffer */
-    Microsoft::WRL::ComPtr <ID3D11Buffer> PrimVB;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> PrimVB;
 
     /** Primitives shaders */
     std::shared_ptr<D3D11PShader> PrimShader;
     std::shared_ptr<D3D11PShader> SolidPrimShader;
 
-
     /** Solid vertices we have */
     LineVertex* SolidVertices;
     UINT NumSolidVertices;
-    Microsoft::WRL::ComPtr <ID3D11Buffer> SolidPrimVB;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> SolidPrimVB;
 
     /** Transforms */
-    DirectX::XMFLOAT3 Location;
-    DirectX::XMFLOAT3 Rotation;
-    DirectX::XMFLOAT3 Scale;
+    XMFLOAT3 Location;
+    XMFLOAT3 Rotation;
+    XMFLOAT3 Scale;
 
     /** Transform matrix */
-    DirectX::XMFLOAT4X4 WorldMatrix;
+    XMFLOAT4X4 WorldMatrix;
 
     /* Matrix for rotation and it's angles */
-    DirectX::XMFLOAT4X4 RotationMatrix;
-    DirectX::XMFLOAT3 RotationMatrixAngles;
+    XMFLOAT4X4 RotationMatrix;
+    XMFLOAT3 RotationMatrixAngles;
 
     /** If true, ignore drawcalls */
     bool bHidden;

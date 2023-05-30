@@ -1,5 +1,4 @@
 #pragma once
-
 #include "AntTweakBar.h"
 #include "GothicAPI.h"
 

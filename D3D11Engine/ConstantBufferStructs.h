@@ -4,7 +4,7 @@
 
 /** Actual instance data for a vob */
 struct VobInstanceInfo {
-    DirectX::XMFLOAT4X4 world;
+    XMFLOAT4X4 world;
     DWORD color;
 
     // General purpose slots
@@ -23,9 +23,6 @@ struct VobInstanceRemapInfo {
 
     DWORD InstanceRemapIndex;
 };
-
-
-
 
 #pragma pack (push, 1)	
 struct SkyConstantBuffer {
@@ -99,12 +96,12 @@ struct PerObjectState {
 };
 
 struct PFXVS_ConstantBuffer {
-    DirectX::XMFLOAT4X4 PFXVS_InvProj;
+    XMFLOAT4X4 PFXVS_InvProj;
 };
 
 struct HeightfogConstantBuffer {
-    DirectX::XMFLOAT4X4 InvProj;
-    DirectX::XMFLOAT4X4 InvView;
+    XMFLOAT4X4 InvProj;
+    XMFLOAT4X4 InvView;
     float3 CameraPosition;
     float HF_FogHeight;
 
@@ -158,30 +155,30 @@ struct DS_PointLightConstantBuffer {
     float2 PL_ViewportSize;
     float2 PL_Pad2;
 
-    DirectX::XMFLOAT4X4 PL_InvProj; // Optimize out!
-    DirectX::XMFLOAT4X4 PL_InvView;
+    XMFLOAT4X4 PL_InvProj; // Optimize out!
+    XMFLOAT4X4 PL_InvView;
 
     float3 PL_LightScreenPos;
     float PL_Pad3;
 };
 
 struct DS_ScreenQuadConstantBuffer {
-    DirectX::XMFLOAT4X4 SQ_InvProj; // Optimize out!
-    DirectX::XMFLOAT4X4 SQ_InvView;
-    DirectX::XMFLOAT4X4 SQ_View;
+    XMFLOAT4X4 SQ_InvProj; // Optimize out!
+    XMFLOAT4X4 SQ_InvView;
+    XMFLOAT4X4 SQ_View;
 
-    DirectX::XMFLOAT4X4 SQ_RainViewProj;
+    XMFLOAT4X4 SQ_RainViewProj;
 
     float3 SQ_LightDirectionVS;
     float SQ_ShadowmapSize;
 
     float4 SQ_LightColor;
 
-    DirectX::XMFLOAT4X4 SQ_ShadowView;
-    DirectX::XMFLOAT4X4 SQ_ShadowProj;
+    XMFLOAT4X4 SQ_ShadowView;
+    XMFLOAT4X4 SQ_ShadowProj;
 
-    DirectX::XMFLOAT4X4 SQ_RainView;
-    DirectX::XMFLOAT4X4 SQ_RainProj;
+    XMFLOAT4X4 SQ_RainView;
+    XMFLOAT4X4 SQ_RainProj;
 
     //float2 SQ_ProjAB;
     //float2 SQ_Pad2;
@@ -214,23 +211,23 @@ struct AdvanceRainConstantBuffer {
 };
 
 struct VS_ExConstantBuffer_PerFrame {
-    DirectX::XMFLOAT4X4 View;
-    DirectX::XMFLOAT4X4 Projection;
-    DirectX::XMFLOAT4X4 ViewProj;
+    XMFLOAT4X4 View;
+    XMFLOAT4X4 Projection;
+    XMFLOAT4X4 ViewProj;
 };
 
 struct ParticlePointShadingConstantBuffer {
-    DirectX::XMFLOAT4X4 View;
-    DirectX::XMFLOAT4X4 Projection;
+    XMFLOAT4X4 View;
+    XMFLOAT4X4 Projection;
 };
 
 struct VS_ExConstantBuffer_PerInstance {
-    DirectX::XMFLOAT4X4 World;
+    XMFLOAT4X4 World;
     float4 Color;
 };
 
 struct VS_ExConstantBuffer_PerInstanceNode {
-    DirectX::XMFLOAT4X4 World;
+    XMFLOAT4X4 World;
     float4 Color;
     float Fatness;
     float Scaling;
@@ -238,7 +235,7 @@ struct VS_ExConstantBuffer_PerInstanceNode {
 };
 
 struct VS_ExConstantBuffer_PerInstanceSkeletal {
-    DirectX::XMFLOAT4X4 World;
+    XMFLOAT4X4 World;
     float4 PI_ModelColor;
     float PI_ModelFatness;
     float3 PI_Pad1;
@@ -266,8 +263,8 @@ struct DefaultHullShaderConstantBuffer {
 };
 
 struct CubemapGSConstantBuffer {
-    DirectX::XMFLOAT4X4 PCR_View[6]; // View matrices for cube map rendering
-    DirectX::XMFLOAT4X4 PCR_ViewProj[6];
+    XMFLOAT4X4 PCR_View[6]; // View matrices for cube map rendering
+    XMFLOAT4X4 PCR_ViewProj[6];
 };
 
 struct ParticleGSInfoConstantBuffer {
@@ -278,7 +275,7 @@ struct ParticleGSInfoConstantBuffer {
 };
 
 struct PNAENConstantBuffer {
-    DirectX::XMFLOAT4X4    f4x4Projection;           // Projection matrix 
+    XMFLOAT4X4    f4x4Projection;           // Projection matrix 
     float4      f4Eye;                    // Eye 
     float4      f4TessFactors;            // Tessellation factors 
                                             // x=Edge  
@@ -291,7 +288,7 @@ struct PNAENConstantBuffer {
 };
 
 struct RefractionInfoConstantBuffer {
-    DirectX::XMFLOAT4X4 RI_Projection;
+    XMFLOAT4X4 RI_Projection;
     float2 RI_ViewportSize;
     float RI_Time;
     float RI_Far;

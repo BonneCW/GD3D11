@@ -18,6 +18,6 @@ public:
     void DrawInventory( zCWorld* world, zCCamera& camera );
 
 private:
-    std::map<zCWorld*, std::list<VobInfo*>> InventoryVobs;
+    std::map<zCWorld*, std::unique_ptr<VobInfo>> InventoryVobs;
 };
 

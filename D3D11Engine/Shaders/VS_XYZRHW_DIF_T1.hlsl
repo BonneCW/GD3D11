@@ -41,9 +41,6 @@ float4 TransformXYZRHW(float4 xyzrhw)
 	ndc.y = 1 - ((2 * (xyzrhw.y - V_ViewportPos.y)) / V_ViewportSize.y);
 	ndc.z = xyzrhw.z;
 	
-	// Remove the stupid half-pixel offset from pre D3D10
-	ndc.xy -= 0.5f / V_ViewportSize;
-	
 	// Convert to clip-space. rhw is actually 1/w ("reciprocal"). So to undo the devide by w, devide by the given 1/w.
 	float actualW = 1.0f / xyzrhw.w;
 	float3 clipSpace = ndc.xyz * actualW;

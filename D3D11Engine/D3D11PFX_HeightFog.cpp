@@ -12,16 +12,13 @@
 #include "GothicAPI.h"
 #include "GSky.h"
 
-using namespace DirectX;
-
 D3D11PFX_HeightFog::D3D11PFX_HeightFog( D3D11PfxRenderer* rnd ) : D3D11PFX_Effect( rnd ) {}
-
 
 D3D11PFX_HeightFog::~D3D11PFX_HeightFog() {}
 
 /** Draws this effect to the given buffer */
 XRESULT D3D11PFX_HeightFog::Render( RenderToTextureBuffer* fxbuffer ) {
-	D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
+	D3D11GraphicsEngine* engine = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
 
 	// Save old rendertargets
 	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> oldRTV;
@@ -56,7 +53,7 @@ XRESULT D3D11PFX_HeightFog::Render( RenderToTextureBuffer* fxbuffer ) {
 	cb.HF_WeightZNear = std::max( 0.0f, WORLD_SECTION_SIZE * ((secScale - 0.5f) * 0.7f) - (ffar - fnear) ); // Keep distance from original fog but scale the near-fog up to section draw distance
 	cb.HF_WeightZFar = WORLD_SECTION_SIZE * ((secScale - 0.5f) * 0.8f);
 
-	float atmoMax = 83200.0f; // TODO: Calculate!	
+	float atmoMax = 83200.0f; // TODO: Calculate!
 	float atmoMin = 27799.9922f;
 
 	cb.HF_WeightZFar = std::min( cb.HF_WeightZFar, atmoMax );
@@ -94,7 +91,7 @@ XRESULT D3D11PFX_HeightFog::Render( RenderToTextureBuffer* fxbuffer ) {
 
 	// Color
 	XMFLOAT3 FogColorMod;
-	XMStoreFloat3( &FogColorMod, DirectX::XMVectorLerpV( color, XMLoadFloat3( &Engine::GAPI->GetRendererState().RendererSettings.RainFogColor ), XMVectorSet( std::min( 1.0f, rain * 2.0f ), std::min( 1.0f, rain * 2.0f ), std::min( 1.0f, rain * 2.0f ), 0 ) ) ); // Scale color faster here, so it looks better on light rain
+	XMStoreFloat3( &FogColorMod, XMVectorLerpV( color, XMLoadFloat3( &Engine::GAPI->GetRendererState().RendererSettings.RainFogColor ), XMVectorSet( std::min( 1.0f, rain * 2.0f ), std::min( 1.0f, rain * 2.0f ), std::min( 1.0f, rain * 2.0f ), 0 ) ) ); // Scale color faster here, so it looks better on light rain
 	cb.HF_FogColorMod = FogColorMod;
 	// Raining Density, only when not in fogzone
 	cb.HF_GlobalDensity = Toolbox::lerp( cb.HF_GlobalDensity, Engine::GAPI->GetRendererState().RendererSettings.RainFogDensity, rain * (1.0f - Engine::GAPI->GetFogOverride()) );
@@ -122,7 +119,6 @@ XRESULT D3D11PFX_HeightFog::Render( RenderToTextureBuffer* fxbuffer ) {
 
 	// Copy
 	FxRenderer->DrawFullScreenQuad();
-
 
 	// Restore rendertargets
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv;

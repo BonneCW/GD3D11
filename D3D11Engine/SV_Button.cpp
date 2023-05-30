@@ -111,7 +111,7 @@ bool SV_Button::OnWindowMessage( HWND hWnd, unsigned int msg, WPARAM wParam, LPA
     case WM_LBUTTONDOWN:
     {
         POINT p = D2DView::GetCursorPosition();
-        if ( PointInsideRect( D2D1::Point2F( (float)p.x, (float)p.y ), clientRectAbs ) ) {
+        if ( PointInsideRect( D2D1::Point2F( static_cast<float>(p.x), static_cast<float>(p.y) ), clientRectAbs ) ) {
             SetPressed( true );
             return false;
         }
@@ -121,7 +121,7 @@ bool SV_Button::OnWindowMessage( HWND hWnd, unsigned int msg, WPARAM wParam, LPA
     case WM_LBUTTONUP:
         if ( IsPressed ) {
             POINT p = D2DView::GetCursorPosition();
-            if ( PointInsideRect( D2D1::Point2F( (float)p.x, (float)p.y ), clientRectAbs ) ) {
+            if ( PointInsideRect( D2D1::Point2F( static_cast<float>(p.x), static_cast<float>(p.y) ), clientRectAbs ) ) {
                 // Button callback here
                 if ( PressedCallback )
                     PressedCallback( this, PressedUserdata );

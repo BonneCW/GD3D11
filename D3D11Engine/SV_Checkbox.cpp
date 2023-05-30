@@ -120,7 +120,7 @@ bool SV_Checkbox::OnWindowMessage( HWND hWnd, unsigned int msg, WPARAM wParam, L
     case WM_LBUTTONDOWN:
     {
         POINT p = D2DView::GetCursorPosition();
-        if ( PointInsideRect( D2D1::Point2F( (float)p.x, (float)p.y ), clientRectAbs ) ) {
+        if ( PointInsideRect( D2D1::Point2F( static_cast<float>(p.x), static_cast<float>(p.y) ), clientRectAbs ) ) {
             auto oldVal = GetChecked();
             SetChecked( !GetChecked() );
             if ( CheckedChangedCallback ) {

@@ -10,17 +10,17 @@ public:
 
     /** Hooks the functions of this Class */
     static void Hook() {
-        XHook( GothicMemoryLocations::zCRndD3D::DrawLineZ, hooked_zCRndD3DDrawLineZ );
-        XHook( GothicMemoryLocations::zCRndD3D::DrawLine, hooked_zCRndD3DDrawLine );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCRnd_D3D_DrawLineZ), hooked_zCRndD3DDrawLineZ );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCRnd_D3D_DrawLine), hooked_zCRndD3DDrawLine );
 
-        XHook( HookedFunctions::OriginalFunctions.original_zCRnd_D3D_DrawPoly, GothicMemoryLocations::zCRndD3D::DrawPoly, hooked_zCRndD3DDrawPoly );
-        XHook( HookedFunctions::OriginalFunctions.original_zCRnd_D3D_DrawPolySimple, GothicMemoryLocations::zCRndD3D::DrawPolySimple, hooked_zCRndD3DDrawPolySimple );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCRnd_D3D_DrawPoly), hooked_zCRndD3DDrawPoly );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCRnd_D3D_DrawPolySimple), hooked_zCRndD3DDrawPolySimple );
 
-        XHook( GothicMemoryLocations::zCRndD3D::CacheInSurface, hooked_zCSurfaceCache_D3DCacheInSurface );
-        XHook( GothicMemoryLocations::zCRndD3D::CacheOutSurface, hooked_zCSurfaceCache_D3DCacheOutSurface );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCRnd_D3D_CacheInSurface), hooked_zCSurfaceCache_D3DCacheInSurface );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCRnd_D3D_CacheOutSurface), hooked_zCSurfaceCache_D3DCacheOutSurface );
 
-        XHook( GothicMemoryLocations::zCRndD3D::RenderScreenFade, hooked_zCCameraRenderScreenFade );
-        XHook( GothicMemoryLocations::zCRndD3D::RenderCinemaScope, hooked_zCCameraRenderCinemaScope );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCRnd_D3D_RenderScreenFade), hooked_zCCameraRenderScreenFade );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCRnd_D3D_RenderCinemaScope), hooked_zCCameraRenderCinemaScope );
     }
 
     /** Disable caching surfaces to let engine create new surfaces for every textures */
@@ -33,25 +33,26 @@ public:
     }
 
     /** Draws a straight line from xyz1 to xyz2 */
-    static void __fastcall hooked_zCRndD3DDrawLineZ( void* thisptr, void* unknwn, float x1, float y1, float z1, float x2, float y2, float z2, zColor color ) {
-        // TODO: Implement occlusion culling for the lines.
-        // TODO: Find out why lines are flickering
-
-        auto lineRenderer = Engine::GraphicsEngine->GetLineRenderer();
-        if ( lineRenderer ) {
-            lineRenderer->AddLineDeferred( ScreenSpaceLine( XMFLOAT3( x1, y1, z1 ), color.dword ), ScreenSpaceLine( XMFLOAT3( x2, y2, z2 ), color.dword ) );
-        }
-    }
-
-    static void __fastcall hooked_zCRndD3DDrawLine( void* thisptr, void* unknwn, float x1, float y1, float x2, float y2, zColor color ) {
-        // TODO: Find out why lines are flickering
-
+    static void __fastcall hooked_zCRndD3DDrawLineZ( void* thisptr, void* unknwn, float x1, float y1, float z1VSInv, float x2, float y2, float z2VSInv, zColor color ) {
         if ( color.bgra.alpha == 0 ) {
             color.bgra.alpha = 255;
         }
         auto lineRenderer = Engine::GraphicsEngine->GetLineRenderer();
         if ( lineRenderer ) {
-            lineRenderer->AddLineDeferred( ScreenSpaceLine( XMFLOAT3( x1, y1, 0 ), color.dword ), ScreenSpaceLine( XMFLOAT3( x2, y2, 0 ), color.dword ) );
+            auto& proj = Engine::GAPI->GetProjectionMatrix();
+            float actualz1 = proj._33 + proj._34 * z1VSInv;
+            float actualz2 = proj._33 + proj._34 * z2VSInv;
+            lineRenderer->AddLineScreenSpace( LineVertex( XMFLOAT3( x1, y1, actualz1 ), color.dword, z1VSInv ), LineVertex( XMFLOAT3( x2, y2, actualz2 ), color.dword, z2VSInv ) );
+        }
+    }
+
+    static void __fastcall hooked_zCRndD3DDrawLine( void* thisptr, void* unknwn, float x1, float y1, float x2, float y2, zColor color ) {
+        if ( color.bgra.alpha == 0 ) {
+            color.bgra.alpha = 255;
+        }
+        auto lineRenderer = Engine::GraphicsEngine->GetLineRenderer();
+        if ( lineRenderer ) {
+            lineRenderer->AddLineScreenSpace( LineVertex( XMFLOAT3( x1, y1, 1.f ), color.dword, 1.f ), LineVertex( XMFLOAT3( x2, y2, 1.f ), color.dword, 1.f ) );
         }
     }
 
@@ -72,7 +73,7 @@ public:
 
         hook_infunc
             //LogInfo() << "Draw Poly Return Adress: " << _ReturnAddress();		
-            void* polyStripReturnPointer = (void*)GothicMemoryLocations::zCPolyStrip::RenderDrawPolyReturn;
+            void* polyStripReturnPointer = reinterpret_cast<void*>(GothicMemoryLocations::zCPolyStrip::RenderDrawPolyReturn);
         if ( _ReturnAddress() != polyStripReturnPointer ) {
             HookedFunctions::OriginalFunctions.original_zCRnd_D3D_DrawPoly( thisptr, poly );
         }
@@ -99,18 +100,13 @@ public:
 
     void ResetRenderState() {
         // Set render state values to some absurd high value so that they will be changed by engine for sure
-        *(DWORD*)THISPTR_OFFSET( GothicMemoryLocations::zCRndD3D::Offset_BoundTexture + ( /*TEX0*/0 * 4) ) = 0x00000000;
-        *(DWORD*)THISPTR_OFFSET( GothicMemoryLocations::zCRndD3D::Offset_RenderState + ( /*D3DRENDERSTATE_ALPHABLENDENABLE*/27 * 4 ) ) = 0xFFFFFFFF;
-        *(DWORD*)THISPTR_OFFSET( GothicMemoryLocations::zCRndD3D::Offset_RenderState + ( /*D3DRENDERSTATE_SRCBLEND*/19 * 4 ) ) = 0xFFFFFFFF;
-        *(DWORD*)THISPTR_OFFSET( GothicMemoryLocations::zCRndD3D::Offset_RenderState + ( /*D3DRENDERSTATE_DESTBLEND*/20 * 4 ) ) = 0xFFFFFFFF;
+        *reinterpret_cast<DWORD*>(THISPTR_OFFSET( GothicMemoryLocations::zCRndD3D::Offset_BoundTexture + ( /*TEX0*/0 * 4) )) = 0x00000000;
+        *reinterpret_cast<DWORD*>(THISPTR_OFFSET( GothicMemoryLocations::zCRndD3D::Offset_RenderState + ( /*D3DRENDERSTATE_ALPHABLENDENABLE*/27 * 4 ) )) = 0xFFFFFFFF;
+        *reinterpret_cast<DWORD*>(THISPTR_OFFSET( GothicMemoryLocations::zCRndD3D::Offset_RenderState + ( /*D3DRENDERSTATE_SRCBLEND*/19 * 4 ) )) = 0xFFFFFFFF;
+        *reinterpret_cast<DWORD*>(THISPTR_OFFSET( GothicMemoryLocations::zCRndD3D::Offset_RenderState + ( /*D3DRENDERSTATE_DESTBLEND*/20 * 4 ) )) = 0xFFFFFFFF;
     }
 
-    /*float GetGammaValue()
-    {
-        return reinterpret_cast<float( __fastcall* )( zCRndD3D* )>( GothicMemoryLocations::zCRndD3D::Vid_GetGammaCorrection )( this );
-    }*/
-
     static zCRndD3D* GetRenderer() {
-        return *(zCRndD3D**)GothicMemoryLocations::GlobalObjects::zRenderer;
+        return *reinterpret_cast<zCRndD3D**>(GothicMemoryLocations::GlobalObjects::zRenderer);
     }
 };

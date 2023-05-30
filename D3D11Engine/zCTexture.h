@@ -20,42 +20,31 @@ class zCTexture {
 public:
     /** Hooks the functions of this Class */
     static void Hook() {
-        //XHook(HookedFunctions::OriginalFunctions.original_zCTex_D3DXTEX_BuildSurfaces, GothicMemoryLocations::zCTexture::XTEX_BuildSurfaces, zCTexture::hooked_XTEX_BuildSurfaces);
-        XHook( HookedFunctions::OriginalFunctions.ofiginal_zCTextureLoadResourceData, GothicMemoryLocations::zCTexture::LoadResourceData, zCTexture::hooked_LoadResourceData );
+        //DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCTex_D3DXTEX_BuildSurfaces), hooked_XTEX_BuildSurfaces );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.ofiginal_zCTextureLoadResourceData), hooked_LoadResourceData );
 
         zCTextureCacheHack::NumNotCachedTexturesInFrame = 0;
         zCTextureCacheHack::ForceCacheIn = false;
     }
 
-    static int __fastcall hooked_LoadResourceData( void* thisptr ) {
-        Engine::GAPI->SetBoundTexture( 7, (zCTexture*)thisptr ); // Slot 7 is reserved for this
+    static int __fastcall hooked_LoadResourceData( zCTexture* thisptr ) {
+        Engine::GAPI->SetBoundTexture( 7, thisptr ); // Slot 7 is reserved for this
         // TODO: Figure out why some DTX1a Textures crash this
         int ret = HookedFunctions::OriginalFunctions.ofiginal_zCTextureLoadResourceData( thisptr );
 
         Engine::GAPI->SetBoundTexture( 7, nullptr ); // Slot 7 is reserved for this
 
-        /*if (ret)
-        {
-            zCTexture * tx = (zCTexture *)thisptr;
-            MyDirectDrawSurface7 * srf = tx->GetSurface();
-
-            if (srf)
-            {
-                //LogInfo() << "Loading " << tx->GetNameWithoutExt();
-                srf->LoadAdditionalResources(tx);
-            }
-        }*/
-
         return ret;
     }
 
-
+    /*
     static int __fastcall hooked_XTEX_BuildSurfaces( void* thisptr, void* unknwn, int iVal ) {
         // Notify the texture and load resources
         int ret = HookedFunctions::OriginalFunctions.original_zCTex_D3DXTEX_BuildSurfaces( thisptr, iVal );
 
         return ret;
     }
+    */
 
     const char* GetName() {
         return __GetName().ToChar();
@@ -73,7 +62,7 @@ public:
     }
 
     MyDirectDrawSurface7* GetSurface() {
-        return *(MyDirectDrawSurface7**)THISPTR_OFFSET( GothicMemoryLocations::zCTexture::Offset_Surface );
+        return *reinterpret_cast<MyDirectDrawSurface7**>(THISPTR_OFFSET( GothicMemoryLocations::zCTexture::Offset_Surface ));
     }
 
     void Bind( int slot = 0 ) {
@@ -88,8 +77,7 @@ public:
     }
 
     zTResourceCacheState GetCacheState() {
-        unsigned char state = *(unsigned char*)THISPTR_OFFSET( GothicMemoryLocations::zCTexture::Offset_CacheState );
-
+        unsigned char state = *reinterpret_cast<unsigned char*>(THISPTR_OFFSET( GothicMemoryLocations::zCTexture::Offset_CacheState ));
         return (zTResourceCacheState)(state & GothicMemoryLocations::zCTexture::Mask_CacheState);
     }
 
@@ -145,14 +133,9 @@ public:
     }
 
     bool HasAlphaChannel() {
-        unsigned char flags = *(unsigned char*)THISPTR_OFFSET( GothicMemoryLocations::zCTexture::Offset_Flags );
+        unsigned char flags = *reinterpret_cast<unsigned char*>(THISPTR_OFFSET( GothicMemoryLocations::zCTexture::Offset_Flags ));
         return (flags & GothicMemoryLocations::zCTexture::Mask_FlagHasAlpha) != 0;
     }
-
-    /*void Release()
-    {
-        reinterpret_cast<void( __fastcall* )( zCTexture* )>( GothicMemoryLocations::zCObject::Release )( this );
-    }*/
 
 private:
     const zSTRING& __GetName() {

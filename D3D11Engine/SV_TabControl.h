@@ -1,5 +1,4 @@
 #pragma once
-
 #include <map>
 
 #include "d2dsubview.h"

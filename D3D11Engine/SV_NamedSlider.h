@@ -1,5 +1,4 @@
 #pragma once
-
 #include "d2dsubview.h"
 
 class SV_Label;

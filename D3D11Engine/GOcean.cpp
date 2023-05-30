@@ -7,7 +7,6 @@
 #include "GothicAPI.h"
 #include <assert.h>
 #include "GSky.h"
-using namespace DirectX;
 
 const int FRESNEL_TEX_SIZE = 256;
 
@@ -16,7 +15,6 @@ GOcean::GOcean() {
     FFTOceanSimulator = nullptr;
 }
 
-
 GOcean::~GOcean() {
     delete PlaneMesh;
     delete FFTOceanSimulator;
@@ -24,7 +22,7 @@ GOcean::~GOcean() {
 
 /** Initializes the ocean */
 XRESULT GOcean::InitOcean() {
-    D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
+    D3D11GraphicsEngine* engine = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
 
     PlaneMesh = new GMesh;
     if ( XR_SUCCESS != PlaneMesh->LoadMesh( "system\\GD3D11\\Meshes\\PlaneSubdiv.3ds" ) ) {
@@ -73,7 +71,7 @@ void GOcean::Draw() {
     if ( Patches.empty() )
         return;
 
-    D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
+    D3D11GraphicsEngine* engine = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
 
     engine->SetDefaultStates();
     FFTOceanSimulator->updateDisplacementMap( Engine::GAPI->GetTimeSeconds() );
@@ -123,13 +121,13 @@ void GOcean::CreateFresnelMap( Microsoft::WRL::ComPtr<ID3D11Device1> pd3dDevice 
     DWORD* buffer = new DWORD[FRESNEL_TEX_SIZE];
     const float waterrefract = 1.33f;
     for ( int i = 0; i < FRESNEL_TEX_SIZE; i++ ) {
-        float cos_a = i / (FLOAT)FRESNEL_TEX_SIZE;
+        float cos_a = i / static_cast<float>(FRESNEL_TEX_SIZE);
         // Using water's refraction index 1.33
         float fresnelPreComp;
-        DirectX::XMStoreFloat( &fresnelPreComp, DirectX::XMFresnelTerm( DirectX::XMLoadFloat( &cos_a ), DirectX::XMLoadFloat( &waterrefract ) ) );
-        DWORD fresnel = (DWORD)(fresnelPreComp * 255);
+        XMStoreFloat( &fresnelPreComp, XMFresnelTerm( XMLoadFloat( &cos_a ), XMLoadFloat( &waterrefract ) ) );
+        DWORD fresnel = static_cast<DWORD>(fresnelPreComp * 255);
 
-        DWORD sky_blend = (DWORD)(powf( 1 / (1 + cos_a), SkyBlending ) * 255);
+        DWORD sky_blend = static_cast<DWORD>(powf( 1 / (1 + cos_a), SkyBlending ) * 255);
 
         buffer[i] = (sky_blend << 8) | fresnel;
     }
@@ -172,10 +170,10 @@ WaterPatchInfo& GOcean::AddWaterPatchAt( int x, int y ) {
 
 /** Returns a vector of the patch locations */
 void GOcean::GetPatchLocations( std::vector<XMFLOAT3>& patchLocations ) {
-    for ( const auto& it : Patches ) {
-        patchLocations.push_back( XMFLOAT3( (float)(it.first.first * OCEAN_PATCH_SIZE),
-            (float)(it.second.PatchHeight),
-            (float)(it.first.second * OCEAN_PATCH_SIZE) ) );
+    for ( const auto& [coords, patchInfo] : Patches ) {
+        patchLocations.push_back( XMFLOAT3( static_cast<float>(coords.first * OCEAN_PATCH_SIZE),
+            static_cast<float>(patchInfo.PatchHeight),
+            static_cast<float>(coords.second * OCEAN_PATCH_SIZE) ) );
     }
 }
 
@@ -197,14 +195,14 @@ XRESULT GOcean::SavePatches( const std::string& file ) {
     int count = Patches.size();
     fwrite( &count, sizeof( count ), 1, f );
 
-    for ( std::map<std::pair<int, int>, WaterPatchInfo>::iterator it = Patches.begin(); it != Patches.end(); it++ ) {
-        INT2 xz = INT2( it->first.first, it->first.second );
+    for ( const auto& [coords, patchInfo] : Patches ) {
+        INT2 xz = { coords.first, coords.second };
 
         // Write xz-coord
         fwrite( &xz, sizeof( xz ), 1, f );
 
         // Write info-struct
-        fwrite( &it->second, sizeof( WaterPatchInfo ), 1, f );
+        fwrite( &patchInfo, sizeof( WaterPatchInfo ), 1, f );
     }
 
     fclose( f );

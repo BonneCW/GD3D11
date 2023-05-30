@@ -17,7 +17,7 @@ extern "C"
         - Position: Pointer to the vector to draw the cross at
         - Size: Size of the cross. (About 25 is the size of a human head) */
     __declspec(dllexport) void __cdecl GDX_AddPointLocator( float3* position, float size ) {
-        Engine::GraphicsEngine->GetLineRenderer()->AddPointLocator( *position->toXMFLOAT3(), size, DirectX::XMFLOAT4( 1, 0, 0, 1 ) );
+        Engine::GraphicsEngine->GetLineRenderer()->AddPointLocator( *position->toXMFLOAT3(), size, XMFLOAT4( 1, 0, 0, 1 ) );
     }
 
     /** Sets the fog-color to use when not in fog-zone */
@@ -69,7 +69,7 @@ extern "C"
 
     /** Callback for the messageboxes */
     static void MB_Callback( ED2D_MB_ACTION action, void* userdata ) {
-        int* id = (int*)userdata;
+        int* id = reinterpret_cast<int*>(userdata);
 
 #ifndef BUILD_SPACER
         // Call script-callback
@@ -85,7 +85,7 @@ extern "C"
         - Type: 0 = OK, 1 = YES/NO
         - Callback: Script-Function ID to use as a callback. */
     __declspec(dllexport) void __cdecl GDX_OpenMessageBox( zSTRING* message, zSTRING* caption, int type, int callbackID ) {
-        D3D11GraphicsEngine* g = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
+        D3D11GraphicsEngine* g = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
 
         // Initialize the UI-Framework. Will do nothing if already done
         g->CreateMainUIView();

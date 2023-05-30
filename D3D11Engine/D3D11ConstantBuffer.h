@@ -27,4 +27,3 @@ private:
     int OriginalSize; // Buffersize must be a multiple of 16
     bool BufferDirty;
 };
-

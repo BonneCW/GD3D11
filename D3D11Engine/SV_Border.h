@@ -1,5 +1,4 @@
 #pragma once
-
 #include "D2DSubView.h"
 
 class SV_Border : public D2DSubView {

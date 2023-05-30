@@ -1,5 +1,4 @@
 #pragma once
-
 #include <map>
 #include <string>
 #include <unordered_map>
@@ -7,8 +6,6 @@
 #include <Windows.h>
 
 #include "Types.h"
-
-using namespace DirectX;
 
 /** Misc. tools */
 enum zTCam_ClipType;
@@ -99,23 +96,23 @@ namespace Toolbox {
     }
 
     FORCEINLINE
-        float XMVector3LengthFloat( DirectX::FXMVECTOR vector ) {
-        float len; DirectX::XMStoreFloat( &len, DirectX::XMVector3Length( vector ) );
+        float XMVector3LengthFloat( FXMVECTOR vector ) {
+        float len; XMStoreFloat( &len, XMVector3Length( vector ) );
         return len;
     }
     FORCEINLINE
-        float XMVector3LengthSqFloat( DirectX::FXMVECTOR vector ) {
-        float len; DirectX::XMStoreFloat( &len, DirectX::XMVector3LengthSq( vector ) );
+        float XMVector3LengthSqFloat( FXMVECTOR vector ) {
+        float len; XMStoreFloat( &len, XMVector3LengthSq( vector ) );
         return len;
     }
     FORCEINLINE
-        float XMVector2LengthFloat( DirectX::FXMVECTOR vector ) {
-        float len; DirectX::XMStoreFloat( &len, DirectX::XMVector2Length( vector ) );
+        float XMVector2LengthFloat( FXMVECTOR vector ) {
+        float len; XMStoreFloat( &len, XMVector2Length( vector ) );
         return len;
     }
     FORCEINLINE
-        float XMVector2LengthSqFloat( DirectX::FXMVECTOR vector ) {
-        float len; DirectX::XMStoreFloat( &len, DirectX::XMVector2LengthSq( vector ) );
+        float XMVector2LengthSqFloat( FXMVECTOR vector ) {
+        float len; XMStoreFloat( &len, XMVector2LengthSq( vector ) );
         return len;
     }
     /** Checks whether a given boundingbox is inside the given frustum. The index in "cache" is tested first, if it isn't set to -1 */
@@ -133,7 +130,7 @@ namespace Toolbox {
     void hash_combine( std::size_t& seed, DWORD value );
 
     /** Returns true if the given position is inside the box */
-    bool PositionInsideBox( const DirectX::XMFLOAT3& p, const DirectX::XMFLOAT3& min, const DirectX::XMFLOAT3& max );
+    bool PositionInsideBox( const XMFLOAT3& p, const XMFLOAT3& min, const XMFLOAT3& max );
 
     /** Converts an errorcode into a string */
     std::string MakeErrorString( XRESULT code );
@@ -160,28 +157,25 @@ namespace Toolbox {
     std::string ToMultiByte( const std::wstring& str );
 
     /** Returns whether two AABBs are intersecting or not */
-    bool AABBsOverlapping( const DirectX::XMFLOAT3& minA, const DirectX::XMFLOAT3& maxA, const DirectX::XMFLOAT3& minB, const DirectX::XMFLOAT3& maxB );
+    bool AABBsOverlapping( const XMFLOAT3& minA, const XMFLOAT3& maxA, const XMFLOAT3& minB, const XMFLOAT3& maxB );
 
     /** Does a ray vs aabb test */
-    bool IntersectBox( const DirectX::XMFLOAT3& min, const DirectX::XMFLOAT3& max, const DirectX::XMFLOAT3& origin, const DirectX::XMFLOAT3& direction, float& t );
+    bool IntersectBox( const XMFLOAT3& min, const XMFLOAT3& max, const XMFLOAT3& origin, const XMFLOAT3& direction, float& t );
 
     /** Does a ray vs aabb test */
-    bool IntersectTri( const DirectX::XMFLOAT3& v0, const DirectX::XMFLOAT3& v1, const DirectX::XMFLOAT3& v2, const DirectX::XMFLOAT3& origin, const DirectX::XMFLOAT3& direction, float& u, float& v, float& t );
+    bool IntersectTri( const XMFLOAT3& v0, const XMFLOAT3& v1, const XMFLOAT3& v2, const XMFLOAT3& origin, const XMFLOAT3& direction, float& u, float& v, float& t );
 
     /** Computes the normal of a triangle */
-    DirectX::FXMVECTOR ComputeNormal( const DirectX::XMFLOAT3& v0, const DirectX::XMFLOAT3& v1, const DirectX::XMFLOAT3& v2 );
+    FXMVECTOR ComputeNormal( const XMFLOAT3& v0, const XMFLOAT3& v1, const XMFLOAT3& v2 );
 
     /** Computes the distance of a point to an AABB */
-    float ComputePointAABBDistance( const DirectX::XMFLOAT3& p, const DirectX::XMFLOAT3& min, const DirectX::XMFLOAT3& max );
+    float ComputePointAABBDistance( const XMFLOAT3& p, const XMFLOAT3& min, const XMFLOAT3& max );
 
     /** Returns whether the given file exists */
     bool FileExists( const std::string& file );
 
     /** Saves a std::string to a FILE* */
     void SaveStringToFILE( FILE* f, const std::string& str );
-
-    /** sse2 memcpy implementation by William Chan and Google */
-    void X_aligned_memcpy_sse2( void* dest, const void* src, const unsigned long size_t );
 
     /** Loads a std::string from a FILE* */
     std::string LoadStringFromFILE( FILE* f );

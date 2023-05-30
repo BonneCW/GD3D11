@@ -11,6 +11,14 @@
 #include "Engine.h"
 #include "Threadpool.h"
 
+#include "D3D11GraphicsEngineBase.h"
+#include <d3dcompiler.h>
+
+// Patch HLSL-Compiler for http://support.microsoft.com/kb/2448404
+#if D3DX_VERSION == 0xa2b
+#pragma ruledisable 0x0802405f
+#endif
+
 const int NUM_MAX_BONES = 96;
 
 D3D11ShaderManager::D3D11ShaderManager() {
@@ -19,6 +27,50 @@ D3D11ShaderManager::D3D11ShaderManager() {
 
 D3D11ShaderManager::~D3D11ShaderManager() {
     DeleteShaders();
+}
+
+//--------------------------------------------------------------------------------------
+// Find and compile the specified shader
+//--------------------------------------------------------------------------------------
+HRESULT D3D11ShaderManager::CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, const std::vector<D3D_SHADER_MACRO>& makros ) {
+    HRESULT hr = S_OK;
+
+    char dir[260];
+    GetCurrentDirectoryA( 260, dir );
+    SetCurrentDirectoryA( Engine::GAPI->GetStartDirectory().c_str() );
+
+    DWORD dwShaderFlags = 0;
+#if defined(DEBUG) || defined(_DEBUG)
+    // Set the D3DCOMPILE_DEBUG flag to embed debug information in the shaders.
+    // Setting this flag improves the shader debugging experience, but still allows 
+    // the shaders to be optimized and to run exactly the way they will run in 
+    // the release configuration of this program.
+    //dwShaderFlags |= D3DCOMPILE_DEBUG;
+#else
+    dwShaderFlags |= D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+#endif
+
+    // Construct makros
+    std::vector<D3D_SHADER_MACRO> m;
+    D3D11GraphicsEngineBase::ConstructShaderMakroList( m );
+
+    // Push these to the front
+    m.insert( m.begin(), makros.begin(), makros.end() );
+
+    Microsoft::WRL::ComPtr<ID3DBlob> pErrorBlob;
+    hr = D3DCompileFromFile( Toolbox::ToWideChar( szFileName ).c_str(), &m[0], D3D_COMPILE_STANDARD_FILE_INCLUDE, szEntryPoint, szShaderModel, dwShaderFlags, 0, ppBlobOut, &pErrorBlob );
+    if ( FAILED( hr ) ) {
+        LogInfo() << "Shader compilation failed!";
+        if ( pErrorBlob.Get() ) {
+            LogErrorBox() << reinterpret_cast<char*>(pErrorBlob->GetBufferPointer()) << "\n\n (You can ignore the next error from Gothic about too small video memory!)";
+        }
+
+        SetCurrentDirectoryA( dir );
+        return hr;
+    }
+
+    SetCurrentDirectoryA( dir );
+    return S_OK;
 }
 
 /** Creates list with ShaderInfos */
@@ -43,6 +95,7 @@ XRESULT D3D11ShaderManager::Init() {
     Shaders.back().cBufferSizes.push_back( sizeof( VS_ExConstantBuffer_PerFrame ) );
     Shaders.back().cBufferSizes.push_back( sizeof( VS_ExConstantBuffer_PerInstanceNode ) );
 
+#if ENABLE_TESSELATION > 0
     Shaders.push_back( ShaderInfo( "VS_PNAEN", "VS_PNAEN.hlsl", "v", 1 ) );
     Shaders.back().cBufferSizes.push_back( sizeof( VS_ExConstantBuffer_PerFrame ) );
     Shaders.back().cBufferSizes.push_back( sizeof( VS_ExConstantBuffer_PerInstance ) );
@@ -50,6 +103,7 @@ XRESULT D3D11ShaderManager::Init() {
     Shaders.push_back( ShaderInfo( "VS_PNAEN_Instanced", "VS_PNAEN_Instanced.hlsl", "v", 10 ) );
     Shaders.back().cBufferSizes.push_back( sizeof( VS_ExConstantBuffer_PerFrame ) );
     Shaders.back().cBufferSizes.push_back( sizeof( VS_ExConstantBuffer_PerInstance ) );
+#endif
 
     Shaders.push_back( ShaderInfo( "VS_Decal", "VS_Decal.hlsl", "v", 1 ) );
     Shaders.back().cBufferSizes.push_back( sizeof( VS_ExConstantBuffer_PerFrame ) );
@@ -89,23 +143,24 @@ XRESULT D3D11ShaderManager::Init() {
     Shaders.push_back( ShaderInfo( "VS_ExSkeletal", "VS_ExSkeletal.hlsl", "v", 3 ) );
     Shaders.back().cBufferSizes.push_back( sizeof( VS_ExConstantBuffer_PerFrame ) );
     Shaders.back().cBufferSizes.push_back( sizeof( VS_ExConstantBuffer_PerInstanceSkeletal ) );
-    Shaders.back().cBufferSizes.push_back( NUM_MAX_BONES * sizeof( DirectX::XMFLOAT4X4 ) );
+    Shaders.back().cBufferSizes.push_back( NUM_MAX_BONES * sizeof( XMFLOAT4X4 ) );
 
     Shaders.push_back( ShaderInfo( "VS_ExSkeletalVN", "VS_ExSkeletalVN.hlsl", "v", 3 ) );
     Shaders.back().cBufferSizes.push_back( sizeof( VS_ExConstantBuffer_PerFrame ) );
     Shaders.back().cBufferSizes.push_back( sizeof( VS_ExConstantBuffer_PerInstanceSkeletal ) );
-    Shaders.back().cBufferSizes.push_back( NUM_MAX_BONES * sizeof( DirectX::XMFLOAT4X4 ) );
+    Shaders.back().cBufferSizes.push_back( NUM_MAX_BONES * sizeof( XMFLOAT4X4 ) );
 
     Shaders.push_back( ShaderInfo( "VS_ExSkeletalCube", "VS_ExSkeletalCube.hlsl", "v", 3 ) );
     Shaders.back().cBufferSizes.push_back( sizeof( VS_ExConstantBuffer_PerFrame ) );
     Shaders.back().cBufferSizes.push_back( sizeof( VS_ExConstantBuffer_PerInstanceSkeletal ) );
-    Shaders.back().cBufferSizes.push_back( NUM_MAX_BONES * sizeof( DirectX::XMFLOAT4X4 ) );
+    Shaders.back().cBufferSizes.push_back( NUM_MAX_BONES * sizeof( XMFLOAT4X4 ) );
 
-
+#if ENABLE_TESSELATION > 0
     Shaders.push_back( ShaderInfo( "VS_PNAEN_Skeletal", "VS_PNAEN_Skeletal.hlsl", "v", 3 ) );
     Shaders.back().cBufferSizes.push_back( sizeof( VS_ExConstantBuffer_PerFrame ) );
     Shaders.back().cBufferSizes.push_back( sizeof( VS_ExConstantBuffer_PerInstanceSkeletal ) );
-    Shaders.back().cBufferSizes.push_back( NUM_MAX_BONES * sizeof( DirectX::XMFLOAT4X4 ) );
+    Shaders.back().cBufferSizes.push_back( NUM_MAX_BONES * sizeof( XMFLOAT4X4 ) );
+#endif
 
     Shaders.push_back( ShaderInfo( "VS_TransformedEx", "VS_TransformedEx.hlsl", "v", 1 ) );
     Shaders.back().cBufferSizes.push_back( 2 * sizeof( float2 ) );
@@ -134,6 +189,9 @@ XRESULT D3D11ShaderManager::Init() {
     Shaders.push_back( ShaderInfo( "VS_Lines", "VS_Lines.hlsl", "v", 6 ) );
     Shaders.back().cBufferSizes.push_back( sizeof( VS_ExConstantBuffer_PerFrame ) );
     Shaders.back().cBufferSizes.push_back( sizeof( VS_ExConstantBuffer_PerInstance ) );
+
+    Shaders.push_back( ShaderInfo( "VS_Lines_XYZRHW", "VS_Lines_XYZRHW.hlsl", "v", 6 ) );
+    Shaders.back().cBufferSizes.push_back( 2 * sizeof( float2 ) );
 
     Shaders.push_back( ShaderInfo( "PS_Lines", "PS_Lines.hlsl", "p" ) );
     Shaders.push_back( ShaderInfo( "PS_LinesSel", "PS_LinesSel.hlsl", "p" ) );
@@ -217,7 +275,7 @@ XRESULT D3D11ShaderManager::Init() {
     Shaders.push_back( ShaderInfo( "PS_PFX_LumConvert", "PS_PFX_LumConvert.hlsl", "p" ) );
     Shaders.push_back( ShaderInfo( "PS_PFX_LumAdapt", "PS_PFX_LumAdapt.hlsl", "p" ) );
     Shaders.back().cBufferSizes.push_back( sizeof( LumAdaptConstantBuffer ) );
-
+        
     D3D_SHADER_MACRO m;
     std::vector<D3D_SHADER_MACRO> makros;
 
@@ -297,12 +355,15 @@ XRESULT D3D11ShaderManager::Init() {
     m.Name = "ALPHATEST";
     m.Definition = "0";
     makros.push_back( m );
-
+    
     Shaders.push_back( ShaderInfo( "PS_Diffuse", "PS_Diffuse.hlsl", "p", makros ) );
     Shaders.back().cBufferSizes.push_back( sizeof( GothicGraphicsState ) );
     Shaders.back().cBufferSizes.push_back( sizeof( AtmosphereConstantBuffer ) );
     Shaders.back().cBufferSizes.push_back( sizeof( MaterialInfo::Buffer ) );
     Shaders.back().cBufferSizes.push_back( sizeof( PerObjectState ) );
+
+    Shaders.push_back( ShaderInfo( "PS_PortalDiffuse", "PS_PortalDiffuse.hlsl", "p" ) ); //forest portals, doors, etc.
+    Shaders.push_back( ShaderInfo( "PS_WaterfallFoam", "PS_WaterfallFoam.hlsl", "p" ) );     //foam on at the base of waterfalls
 
     makros.clear();
 
@@ -464,11 +525,10 @@ XRESULT D3D11ShaderManager::Init() {
         Shaders.back().cBufferSizes.push_back( sizeof( DefaultHullShaderConstantBuffer ) );
         Shaders.back().cBufferSizes.push_back( sizeof( OceanSettingsConstantBuffer ) );
 
+#if ENABLE_TESSELATION > 0
         Shaders.push_back( ShaderInfo( "PNAEN_Tesselation", "PNAEN_Tesselation.hlsl", "hd" ) );
         Shaders.back().cBufferSizes.push_back( sizeof( PNAENConstantBuffer ) );
-
-        Shaders.push_back( ShaderInfo( "Water_Tesselation", "Water_Tesselation.hlsl", "hd" ) );
-        Shaders.back().cBufferSizes.push_back( sizeof( VisualTesselationSettings::Buffer ) );
+#endif
     }
 
     return XR_SUCCESS;
@@ -589,18 +649,23 @@ XRESULT D3D11ShaderManager::CompileShader( const ShaderInfo& si ) {
 
 /** Loads/Compiles Shaderes from list */
 XRESULT D3D11ShaderManager::LoadShaders() {
-    size_t numThreads = std::thread::hardware_concurrency();
+    // Temporarily disable multi-core shader compilation
+
+    /*size_t numThreads = std::thread::hardware_concurrency();
     if ( numThreads > 1 ) {
         numThreads = numThreads - 1;
     }
     auto compilationTP = std::make_unique<ThreadPool>( numThreads );
     LogInfo() << "Compiling/Reloading shaders with " << compilationTP->getNumThreads() << " threads";
+    */
+    LogInfo() << "Compiling/Reloading shaders";
     for ( const ShaderInfo& si : Shaders ) {
-        compilationTP->enqueue( [this, si]() { CompileShader( si ); } );
+        CompileShader( si );
+        // compilationTP->enqueue( [this, si]() { CompileShader( si ); } );
     }
 
     // Join all threads (call Threadpool destructor)
-    compilationTP.reset();
+    // compilationTP.reset();
 
     return XR_SUCCESS;
 }
@@ -624,19 +689,18 @@ XRESULT D3D11ShaderManager::OnFrameStart() {
 
 /** Deletes all shaders */
 XRESULT D3D11ShaderManager::DeleteShaders() {
-    for ( auto vIter = VShaders.begin(); vIter != VShaders.end(); vIter++ ) {
-        vIter->second.reset();
+    for ( auto& [k, shader] : VShaders ) {
+        shader.reset();
     }
+    for ( auto& [k, shader] : PShaders ) {
+        shader.reset();
+    }
+    for ( auto& [k, shader] : HDShaders ) {
+        shader.reset();
+    }
+
     VShaders.clear();
-
-    for ( auto pIter = PShaders.begin(); pIter != PShaders.end(); pIter++ ) {
-        pIter->second.reset();
-    }
     PShaders.clear();
-
-    for ( auto hdIter = HDShaders.begin(); hdIter != HDShaders.end(); hdIter++ ) {
-        hdIter->second.reset();
-    }
     HDShaders.clear();
 
     return XR_SUCCESS;
@@ -652,6 +716,7 @@ ShaderInfo D3D11ShaderManager::GetShaderInfo( const std::string& shader, bool& o
     ok = false;
     return ShaderInfo( "", "", "" );
 }
+
 void D3D11ShaderManager::UpdateShaderInfo( ShaderInfo& shader ) {
     for ( size_t i = 0; i < Shaders.size(); i++ ) {
         if ( Shaders[i].name == shader.name ) {

@@ -20,7 +20,7 @@ public:
         } else {
             depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
         }
-        depthStencilDesc.DepthFunc = (D3D11_COMPARISON_FUNC)ds.DepthBufferCompareFunc;
+        depthStencilDesc.DepthFunc = static_cast<D3D11_COMPARISON_FUNC>(ds.DepthBufferCompareFunc);
 
         // Stencil test parameters
         depthStencilDesc.StencilEnable = false;
@@ -39,7 +39,7 @@ public:
         depthStencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
         depthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
 
-        ((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetDevice()->CreateDepthStencilState( &depthStencilDesc, State.ReleaseAndGetAddressOf() );
+        reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine)->GetDevice()->CreateDepthStencilState( &depthStencilDesc, State.ReleaseAndGetAddressOf() );
     }
 
     virtual ~D3D11DepthBufferState() {}
@@ -64,15 +64,15 @@ public:
             D3D11_COLOR_WRITE_ENABLE_GREEN |
             D3D11_COLOR_WRITE_ENABLE_ALPHA) : 0;
 
-        blendDesc.RenderTarget[0].SrcBlend = (D3D11_BLEND)bs.SrcBlend;
-        blendDesc.RenderTarget[0].DestBlend = (D3D11_BLEND)bs.DestBlend;
-        blendDesc.RenderTarget[0].BlendOp = (D3D11_BLEND_OP)bs.BlendOp;
-        blendDesc.RenderTarget[0].SrcBlendAlpha = (D3D11_BLEND)bs.SrcBlendAlpha;
-        blendDesc.RenderTarget[0].DestBlendAlpha = (D3D11_BLEND)bs.DestBlendAlpha;
-        blendDesc.RenderTarget[0].BlendOpAlpha = (D3D11_BLEND_OP)bs.BlendOpAlpha;
+        blendDesc.RenderTarget[0].SrcBlend = static_cast<D3D11_BLEND>(bs.SrcBlend);
+        blendDesc.RenderTarget[0].DestBlend = static_cast<D3D11_BLEND>(bs.DestBlend);
+        blendDesc.RenderTarget[0].BlendOp = static_cast<D3D11_BLEND_OP>(bs.BlendOp);
+        blendDesc.RenderTarget[0].SrcBlendAlpha = static_cast<D3D11_BLEND>(bs.SrcBlendAlpha);
+        blendDesc.RenderTarget[0].DestBlendAlpha = static_cast<D3D11_BLEND>(bs.DestBlendAlpha);
+        blendDesc.RenderTarget[0].BlendOpAlpha = static_cast<D3D11_BLEND_OP>(bs.BlendOpAlpha);
         blendDesc.RenderTarget[0].BlendEnable = bs.BlendEnabled;
 
-        ((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetDevice()->CreateBlendState( &blendDesc, State.GetAddressOf() );
+        reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine)->GetDevice()->CreateBlendState( &blendDesc, State.ReleaseAndGetAddressOf() );
     }
 
     virtual ~D3D11BlendStateInfo() {}
@@ -88,7 +88,7 @@ public:
         Values = rs;
 
         D3D11_RASTERIZER_DESC rasterizerDesc;
-        rasterizerDesc.CullMode = (D3D11_CULL_MODE)rs.CullMode;
+        rasterizerDesc.CullMode = static_cast<D3D11_CULL_MODE>(rs.CullMode);
 
         if ( rs.Wireframe )
             rasterizerDesc.FillMode = D3D11_FILL_WIREFRAME;
@@ -104,7 +104,7 @@ public:
         rasterizerDesc.MultisampleEnable = false;
         rasterizerDesc.AntialiasedLineEnable = true;
 
-        ((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetDevice()->CreateRasterizerState( &rasterizerDesc, State.GetAddressOf() );
+        reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine)->GetDevice()->CreateRasterizerState( &rasterizerDesc, State.ReleaseAndGetAddressOf() );
     }
 
     virtual ~D3D11RasterizerStateInfo() {}

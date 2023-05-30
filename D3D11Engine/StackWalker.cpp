@@ -1492,6 +1492,24 @@ void StackWalker::OnDbgHelpErr(LPCSTR szFuncName, DWORD gle, DWORD64 addr)
   OnOutput(buffer);
 }
 
+BOOL GetWindowVersionEx( POSVERSIONINFOW lpVersionInformation )
+{
+    typedef int( __stdcall* tGetVersionEx )(POSVERSIONINFOW);
+    if ( HMODULE ntdllModule = GetModuleHandleA( "ntdll.dll" ) ) {
+        tGetVersionEx fGetVersionEx = (tGetVersionEx)GetProcAddress( ntdllModule, "RtlGetVersion" );
+        if ( fGetVersionEx ) {
+            return fGetVersionEx( lpVersionInformation ) == 0;
+        }
+    }
+    if ( HMODULE kernel32Module = GetModuleHandleA( "kernel32.dll" ) ) {
+        tGetVersionEx fGetVersionEx = (tGetVersionEx)GetProcAddress( kernel32Module, "GetVersionExW" );
+        if ( fGetVersionEx ) {
+            return static_cast<BOOL>(fGetVersionEx( lpVersionInformation ));
+        }
+    }
+    return FALSE;
+}
+
 void StackWalker::OnSymInit(LPCSTR szSearchPath, DWORD symOptions, LPCSTR szUserName)
 {
   CHAR   buffer[STACKWALK_MAX_NAMELEN];
@@ -1505,36 +1523,28 @@ void StackWalker::OnSymInit(LPCSTR szSearchPath, DWORD symOptions, LPCSTR szUser
   OnOutput(buffer);
   // Also display the OS-version
 #if _MSC_VER <= 1200
-  OSVERSIONINFOA ver;
-  ZeroMemory(&ver, sizeof(OSVERSIONINFOA));
+  OSVERSIONINFOW ver;
+  ZeroMemory(&ver, sizeof(OSVERSIONINFOW));
   ver.dwOSVersionInfoSize = sizeof(ver);
-  if (GetVersionExA(&ver) != FALSE)
+  if ( GetWindowVersionEx(&ver) != FALSE)
   {
-    _snprintf_s(buffer, maxLen, "OS-Version: %d.%d.%d (%s)", ver.dwMajorVersion,
+    _snprintf_s(buffer, maxLen, "OS-Version: %d.%d.%d (%ws)", ver.dwMajorVersion,
                 ver.dwMinorVersion, ver.dwBuildNumber, ver.szCSDVersion);
     buffer[STACKWALK_MAX_NAMELEN - 1] = 0;
     OnOutput(buffer);
   }
 #else
-  OSVERSIONINFOEXA ver;
-  ZeroMemory(&ver, sizeof(OSVERSIONINFOEXA));
+  OSVERSIONINFOEXW ver;
+  ZeroMemory(&ver, sizeof(OSVERSIONINFOEXW));
   ver.dwOSVersionInfoSize = sizeof(ver);
-#if _MSC_VER >= 1900
-#pragma warning(push)
-#pragma warning(disable: 4996)
-#pragma warning(disable: 28159)
-#endif
-  if (GetVersionExA((OSVERSIONINFOA*)&ver) != FALSE)
+  if ( GetWindowVersionEx((OSVERSIONINFOW*)&ver) != FALSE)
   {
-    _snprintf_s(buffer, maxLen, "OS-Version: %u.%u.%u (%s) 0x%x-0x%x", ver.dwMajorVersion,
+    _snprintf_s(buffer, maxLen, "OS-Version: %u.%u.%u (%ws) 0x%x-0x%x", ver.dwMajorVersion,
                 ver.dwMinorVersion, ver.dwBuildNumber, ver.szCSDVersion, ver.wSuiteMask,
                 ver.wProductType);
     buffer[STACKWALK_MAX_NAMELEN - 1] = 0;
     OnOutput(buffer);
   }
-#if _MSC_VER >= 1900
-#pragma warning(pop)
-#endif
 #endif
 }
 

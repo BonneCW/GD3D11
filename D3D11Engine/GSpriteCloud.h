@@ -7,16 +7,16 @@ public:
     ~GSpriteCloud();
 
     /** Initializes this cloud */
-    void CreateCloud( const DirectX::XMFLOAT3& size, int numSprites = 10 );
+    void CreateCloud( const XMFLOAT3& size, int numSprites = 10 );
 
     /** Returns the sprite world matrices */
-    const std::vector<DirectX::XMFLOAT4X4>& GetWorldMatrices();
+    const std::vector<XMFLOAT4X4>& GetWorldMatrices();
 
 protected:
     /** World matrices for the sprites */
-    std::vector<DirectX::XMFLOAT3> Sprites;
+    std::vector<XMFLOAT3> Sprites;
 
     /** Sprite positions as world matrices */
-    std::vector<DirectX::XMFLOAT4X4> SpriteWorldMatrices;
+    std::vector<XMFLOAT4X4> SpriteWorldMatrices;
 };
 

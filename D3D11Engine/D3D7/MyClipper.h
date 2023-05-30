@@ -1,10 +1,11 @@
+#pragma once
 #include "../pch.h"
 #include <ddraw.h>
 
 class MyClipper : public IDirectDrawClipper {
 public:
 	MyClipper() {
-		refCount = 0;
+		refCount = 1;
 	}
 
 	/*** IUnknown methods ***/
@@ -13,13 +14,11 @@ public:
 	}
 
 	ULONG __stdcall AddRef() {
-		refCount++;
-		return refCount;
+		return ++refCount;
 	}
 
 	ULONG __stdcall Release() {
-		refCount--;
-		if ( !refCount ) {
+		if ( --refCount == 0 ) {
 			delete this;
 			return 0;
 		}
@@ -51,7 +50,6 @@ public:
 
 	HRESULT __stdcall SetHWnd( THIS_ DWORD x, HWND handle ) {
 		hWnd = handle;
-
 		return S_OK;
 	}
 

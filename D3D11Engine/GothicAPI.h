@@ -28,7 +28,7 @@ struct BspInfo {
         OcclusionInfo.LastVisitedFrameID = 0;
         OcclusionInfo.QueryID = -1;
         OcclusionInfo.QueryInProgress = false;
-        OcclusionInfo.LastCameraClipType = 0;
+        OcclusionInfo.LastCameraClipType = ZTCAM_CLIPTYPE_OUT;
 
         OcclusionInfo.NodeMesh = nullptr;
     }
@@ -55,12 +55,12 @@ struct BspInfo {
 
     /** Occlusion info for this node */
     struct OcclusionInfo_s {
-        unsigned int LastVisitedFrameID;
-        bool VisibleLastFrame;
-        int QueryID;
-        bool QueryInProgress;
         MeshInfo* NodeMesh;
+        unsigned int LastVisitedFrameID;
         int LastCameraClipType;
+        int QueryID;
+        bool VisibleLastFrame;
+        bool QueryInProgress;
     } OcclusionInfo;
 
     // Original bsp-node
@@ -71,10 +71,10 @@ struct BspInfo {
 
 
 struct CameraReplacement {
-    DirectX::XMFLOAT4X4 ViewReplacement;
-    DirectX::XMFLOAT4X4 ProjectionReplacement;
-    DirectX::XMFLOAT3 PositionReplacement;
-    DirectX::XMFLOAT3 LookAtReplacement;
+    XMFLOAT4X4 ViewReplacement;
+    XMFLOAT4X4 ProjectionReplacement;
+    XMFLOAT3 PositionReplacement;
+    XMFLOAT3 LookAtReplacement;
 };
 
 /** Version of this struct */
@@ -84,7 +84,9 @@ struct MaterialInfo {
     enum EMaterialType {
         MT_None,
         MT_Water,
-        MT_Ocean
+        MT_Ocean,
+        MT_Portal,
+        MT_WaterfallFoam
     };
 
     MaterialInfo() {
@@ -132,8 +134,10 @@ struct MaterialInfo {
     EMaterialType MaterialType;
     Buffer buffer;
 
+#if ENABLE_TESSELATION > 0
     /** Base tesselationsettings for this texture. Can be overwritten by ZEN-Resources */
     VisualTesselationSettings TextureTesselationSettings;
+#endif
 };
 
 struct ParticleFrameData {
@@ -295,26 +299,29 @@ public:
     void XM_CALLCONV SetProjTransformXM( const XMMATRIX proj );
 
     /** Gets the Projection matrix */
-    DirectX::XMFLOAT4X4 GetProjTransform();
+    XMFLOAT4X4 GetProjTransform();
 
     /** Sets the world matrix */
-    void XM_CALLCONV  SetWorldTransformXM( DirectX::XMMATRIX world, bool transpose = false );
+    void XM_CALLCONV  SetWorldTransformXM( XMMATRIX world, bool transpose = false );
 
 
     /** Sets the world matrix */
-    void XM_CALLCONV SetViewTransformXM( DirectX::XMMATRIX view, bool transpose = false );
+    void XM_CALLCONV SetViewTransformXM( XMMATRIX view, bool transpose = false );
 
     /** Sets the world matrix */
-    void SetViewTransform( const DirectX::XMFLOAT4X4& view, bool transpose = false );
+    void SetViewTransform( const XMFLOAT4X4& view, bool transpose = false );
 
     /** Sets the world matrix */
-    void SetWorldViewTransform( const DirectX::XMFLOAT4X4& world, const DirectX::XMFLOAT4X4& view );
+    void SetWorldViewTransform( const XMFLOAT4X4& world, const XMFLOAT4X4& view );
 
     /** Sets the world matrix */
-    void XM_CALLCONV SetWorldViewTransform( DirectX::XMMATRIX world, DirectX::CXMMATRIX view );
+    void XM_CALLCONV SetWorldViewTransform( XMMATRIX world, CXMMATRIX view );
 
     /** Sets the world matrix */
     void ResetWorldTransform();
+
+    /** Gets if player is NOT in dialog */
+    int DialogFinished();
 
     /** Sets the world matrix */
     void ResetViewTransform();
@@ -331,11 +338,13 @@ public:
     /** Removes the given quadmark */
     void RemoveQuadMark( zCQuadMark* mark );
 
+#if ENABLE_TESSELATION > 0
     /** Saves all sections information */
     void SaveSectionInfos();
 
     /** Loads all sections information */
     void LoadSectionInfos();
+#endif
 
     /** Returns wether the camera is underwater or not */
     bool IsUnderWater();
@@ -357,40 +366,39 @@ public:
     std::list<SkeletalVobInfo*>& GetAnimatedSkeletalMeshVobs();
 
     /** Returns the current cameraposition */
-    DirectX::XMFLOAT3 GetCameraPosition();
-    DirectX::FXMVECTOR XM_CALLCONV GetCameraPositionXM();
+    XMFLOAT3 GetCameraPosition();
+    FXMVECTOR XM_CALLCONV GetCameraPositionXM();
 
     /** Returns the view matrix */
-    void GetViewMatrix( DirectX::XMFLOAT4X4* view );
-    DirectX::XMMATRIX XM_CALLCONV GetViewMatrixXM();
+    void GetViewMatrix( XMFLOAT4X4* view );
+    XMMATRIX XM_CALLCONV GetViewMatrixXM();
 
     /** Returns the view matrix */
-    void GetInverseViewMatrixXM( DirectX::XMFLOAT4X4* invView );
+    void GetInverseViewMatrixXM( XMFLOAT4X4* invView );
 
     /** Returns the projection-matrix */
-    DirectX::XMFLOAT4X4& GetProjectionMatrix();
+    XMFLOAT4X4& GetProjectionMatrix();
 
     /** Unprojects a pixel-position on the screen */
-    void XM_CALLCONV UnprojectXM( DirectX::FXMVECTOR p, DirectX::XMVECTOR& worldPos, DirectX::XMVECTOR& worldDir );
-
-    /** Unprojects a pixel-position on the screen */
-    void XM_CALLCONV GothicAPI::UnprojectLinesIntoLineVerticies( const std::vector<ScreenSpaceLine>& lines, std::vector<LineVertex>& lineVerticies );
+    void XM_CALLCONV UnprojectXM( FXMVECTOR p, XMVECTOR& worldPos, XMVECTOR& worldDir );
 
     /** Unprojects the current cursor, returns it's direction in world-space */
-    DirectX::XMVECTOR XM_CALLCONV UnprojectCursorXM();
+    XMVECTOR XM_CALLCONV UnprojectCursorXM();
 
     /** Traces the worldmesh and returns the hit-location */
-    bool TraceWorldMesh( const DirectX::XMFLOAT3& origin, const DirectX::XMFLOAT3& dir, DirectX::XMFLOAT3& hit, std::string* hitTextureName = nullptr, DirectX::XMFLOAT3* hitTriangle = nullptr, MeshInfo** hitMesh = nullptr, zCMaterial** hitMaterial = nullptr );
+    bool TraceWorldMesh( const XMFLOAT3& origin, const XMFLOAT3& dir, XMFLOAT3& hit, std::string* hitTextureName = nullptr, XMFLOAT3* hitTriangle = nullptr, MeshInfo** hitMesh = nullptr, zCMaterial** hitMaterial = nullptr );
 
     /** Traces vobs with static mesh visual */
-    VobInfo* TraceStaticMeshVobsBB( const DirectX::XMFLOAT3& origin, const DirectX::XMFLOAT3& dir, DirectX::XMFLOAT3& hit, zCMaterial** hitMaterial = nullptr );
-    SkeletalVobInfo* TraceSkeletalMeshVobsBB( const DirectX::XMFLOAT3& origin, const DirectX::XMFLOAT3& dir, DirectX::XMFLOAT3& hit );
+    VobInfo* TraceStaticMeshVobsBB( const XMFLOAT3& origin, const XMFLOAT3& dir, XMFLOAT3& hit, zCMaterial** hitMaterial = nullptr );
+    SkeletalVobInfo* TraceSkeletalMeshVobsBB( const XMFLOAT3& origin, const XMFLOAT3& dir, XMFLOAT3& hit );
 
     /** Traces a visual info. Returns -1 if not hit, distance otherwise */
-    float TraceVisualInfo( const DirectX::XMFLOAT3& origin, const DirectX::XMFLOAT3& dir, BaseVisualInfo* visual, zCMaterial** hitMaterial = nullptr );
+    float TraceVisualInfo( const XMFLOAT3& origin, const XMFLOAT3& dir, BaseVisualInfo* visual, zCMaterial** hitMaterial = nullptr );
 
+#if ENABLE_TESSELATION > 0
     /** Applies tesselation-settings for all mesh-parts using the given info */
     void ApplyTesselationSettingsForAllMeshPartsUsing( MaterialInfo* info, int amount = 1 );
+#endif
 
     /** Returns the GSky-Object */
     GSky* GetSky() const;
@@ -542,7 +550,7 @@ public:
     HWND GetOutputWindow() { return OutputWindow; }
 
     /** Spawns a vegetationbox at the camera */
-    GVegetationBox* SpawnVegetationBoxAt( const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3& min = DirectX::XMFLOAT3( -1000, -500, -1000 ), const DirectX::XMFLOAT3& max = DirectX::XMFLOAT3( 1000, 500, 1000 ), float density = 1.0f, const std::string& restrictByTexture = "" );
+    GVegetationBox* SpawnVegetationBoxAt( const XMFLOAT3& position, const XMFLOAT3& min = XMFLOAT3( -1000, -500, -1000 ), const XMFLOAT3& max = XMFLOAT3( 1000, 500, 1000 ), float density = 1.0f, const std::string& restrictByTexture = "" );
 
     /** Adds a vegetationbox to the world */
     void AddVegetationBox( GVegetationBox* box );
@@ -554,7 +562,7 @@ public:
     void RemoveVegetationBox( GVegetationBox* box );
 
     /** Teleports the player to the given location */
-    void SetPlayerPosition( const DirectX::XMFLOAT3& pos );
+    void SetPlayerPosition( const XMFLOAT3& pos );
 
     /** Returns the player-vob */
     zCVob* GetPlayerVob();
@@ -598,12 +606,6 @@ public:
     /** Returns the wetness of the scene. Lasts longer than RainFXWeight */
     float GetSceneWetness();
 
-    /** Loads the FixBink value from SystemPack.ini */
-    void LoadFixBinkValue();
-
-    /** Saves the window resolution to Gothic.ini */
-    void SaveWindowResolution();
-
     /** Saves the users settings from the menu */
     XRESULT SaveMenuSettings( const std::string& file );
 
@@ -644,7 +646,7 @@ public:
     float GetBrightnessValue();
 
     /** Returns the sections intersecting the given boundingboxes */
-    void GetIntersectingSections( const DirectX::XMFLOAT3& min, const DirectX::XMFLOAT3& max, std::vector<WorldMeshSectionInfo*>& sections );
+    void GetIntersectingSections( const XMFLOAT3& min, const XMFLOAT3& max, std::vector<WorldMeshSectionInfo*>& sections );
 
     /** Generates zCPolygons for the loaded sections */
     void CreatezCPolygonsForSections();
@@ -657,6 +659,7 @@ public:
 
     /** Loads the data out of a zCModel and stores it in the cache */
     SkeletalMeshVisualInfo* LoadzCModelData( zCModel* model );
+    SkeletalMeshVisualInfo* LoadzCModelData( oCNPC* npc );
 
     /** Prints a message to the screen for the given amount of time */
     void PrintMessageTimed( const INT2& position, const std::string& strMessage, float time = 3000.0f, DWORD color = 0xFFFFFFFF );
@@ -670,6 +673,10 @@ public:
     void SetCanClearVobsByVisual( bool enabled = true ) {
         _canClearVobsByVisual = enabled;
     }
+
+    /** Get sky timescale variable */
+    float GetSkyTimeScale();
+
 private:
     /** Collects polygons in the given AABB */
     void CollectPolygonsInAABBRec( BspInfo* base, const zTBBox3D& bbox, std::vector<zCPolygon*>& list );
@@ -746,9 +753,10 @@ private:
 
     /** Map for skeletal mesh visuals */
     std::unordered_map<std::string, SkeletalMeshVisualInfo*> SkeletalMeshVisuals;
+    std::unordered_map<oCNPC*, SkeletalMeshVisualInfo*> SkeletalMeshNpcs;
 
     /** Set of all vobs we registered by now */
-    std::set<zCVob*> RegisteredVobs;
+    std::unordered_set<zCVob*> RegisteredVobs;
 
     /** List of dynamically added vobs */
     std::list<VobInfo*> DynamicallyAddedVobs;

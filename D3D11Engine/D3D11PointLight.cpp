@@ -9,13 +9,9 @@
 #include "WorldConverter.h"
 #include "ThreadPool.h"
 
-using namespace DirectX;
-
 const float LIGHT_COLORCHANGE_POS_MOD = 0.1f;
 
-
 D3D11PointLight::D3D11PointLight( VobLightInfo* info, bool dynamicLight ) {
-    D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
     LightInfo = info;
     DynamicLight = dynamicLight;
 
@@ -37,7 +33,6 @@ D3D11PointLight::D3D11PointLight( VobLightInfo* info, bool dynamicLight ) {
     DrawnOnce = false;
 }
 
-
 D3D11PointLight::~D3D11PointLight() {
     // Make sure we are out of the init-queue
     while ( !InitDone );
@@ -45,8 +40,8 @@ D3D11PointLight::~D3D11PointLight() {
     DepthCubemap.reset();
     ViewMatricesCB.reset();
 
-    for ( auto it = WorldMeshCache.begin(); it != WorldMeshCache.end(); it++ ) {
-        SAFE_DELETE( it->second );
+    for ( auto& [k, mesh] : WorldMeshCache ) {
+        SAFE_DELETE( mesh );
     }
 }
 
@@ -57,9 +52,9 @@ bool D3D11PointLight::NotYetDrawn() {
 
 /** Initializes the resources of this light */
 void D3D11PointLight::InitResources() {
-    D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
+    D3D11GraphicsEngineBase* engine = reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine);
 
-    Engine::GAPI->EnterResourceCriticalSection();
+    //Engine::GAPI->EnterResourceCriticalSection();
 
     // Create texture-cube for this light
     DepthCubemap = std::make_unique<RenderToDepthStencilBuffer>( engine->GetDevice().Get(),
@@ -86,7 +81,12 @@ void D3D11PointLight::InitResources() {
 
     InitDone = true;
 
-    Engine::GAPI->LeaveResourceCriticalSection();
+    //Engine::GAPI->LeaveResourceCriticalSection();
+}
+
+/** Returns if this light is inited already */
+bool D3D11PointLight::IsInited() {
+    return InitDone.load();
 }
 
 /** Returns if this light needs an update */
@@ -113,8 +113,7 @@ void D3D11PointLight::RenderCubemap( bool forceUpdate ) {
 
     //if (!GetAsyncKeyState('X'))
     //	return;
-    D3D11GraphicsEngineBase* engineBase = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
-    D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)engineBase; // TODO: Remove and use newer system!
+    D3D11GraphicsEngine* engine = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine); // TODO: Remove and use newer system!
 
     if ( !NeedsUpdate() && !WantsUpdate() ) {
         if ( !forceUpdate )
@@ -169,7 +168,6 @@ void D3D11PointLight::RenderCubemap( bool forceUpdate ) {
     float zNear = 15.0f;
     float zFar = LightInfo->Vob->GetLightRange() * 2.0f;
 
-
     XMMATRIX proj = XMMatrixPerspectiveFovLH( XM_PIDIV2, 1.0f, zNear, zFar );
     proj = XMMatrixTranspose( proj );
 
@@ -203,8 +201,7 @@ void D3D11PointLight::RenderCubemap( bool forceUpdate ) {
 
 /** Renders all cubemap faces at once, using the geometry shader */
 void D3D11PointLight::RenderFullCubemap() {
-    D3D11GraphicsEngineBase* engineBase = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
-    D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)engineBase; // TODO: Remove and use newer system!
+    D3D11GraphicsEngine* engine = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine); // TODO: Remove and use newer system!
 
     // Disable shadows for NPCs
     // TODO: Only for the player himself, because his shadows look ugly when using a torch
@@ -229,9 +226,8 @@ void D3D11PointLight::RenderFullCubemap() {
 }
 
 /** Renders the scene with the given view-proj-matrices */
-void D3D11PointLight::RenderCubemapFace( const DirectX::XMFLOAT4X4& view, const DirectX::XMFLOAT4X4& proj, UINT faceIdx ) {
-    D3D11GraphicsEngineBase* engineBase = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
-    D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)engineBase; // TODO: Remove and use newer system!
+void D3D11PointLight::RenderCubemapFace( const XMFLOAT4X4& view, const XMFLOAT4X4& proj, UINT faceIdx ) {
+    D3D11GraphicsEngine* engine = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine); // TODO: Remove and use newer system!
     CameraReplacement cr;
     XMStoreFloat3( &cr.PositionReplacement, LightInfo->Vob->GetPositionWorldXM() );
     cr.ProjectionReplacement = proj;
@@ -241,7 +237,7 @@ void D3D11PointLight::RenderCubemapFace( const DirectX::XMFLOAT4X4& view, const 
     Engine::GAPI->SetCameraReplacementPtr( &cr );
 
     if ( engine->GetDummyCubeRT() )
-        engine->GetContext()->ClearRenderTargetView( engine->GetDummyCubeRT()->GetRTVCubemapFace( faceIdx ).Get(), (float*)&float4( 0, 0, 0, 0 ) );
+        engine->GetContext()->ClearRenderTargetView( engine->GetDummyCubeRT()->GetRTVCubemapFace( faceIdx ).Get(), reinterpret_cast<float*>(&float4( 0, 0, 0, 0 )) );
 
     // Disable shadows for NPCs
     // TODO: Only for the player himself, because his shadows look ugly when using a torch
@@ -265,13 +261,13 @@ void D3D11PointLight::OnRenderLight() {
     if ( !InitDone )
         return;
 
-    DepthCubemap->BindToPixelShader( ((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetContext().Get(), 3 );
+    DepthCubemap->BindToPixelShader( reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine)->GetContext(), 3 );
 }
 
 /** Called when a vob got removed from the world */
 void D3D11PointLight::OnVobRemovedFromWorld( BaseVobInfo* vob ) {
     // Wait for cache initialization to finish first
-    Engine::GAPI->EnterResourceCriticalSection();
+    //Engine::GAPI->EnterResourceCriticalSection();
 
     // See if we have this vob registered
     if ( std::find( VobCache.begin(), VobCache.end(), vob ) != VobCache.end()
@@ -279,7 +275,8 @@ void D3D11PointLight::OnVobRemovedFromWorld( BaseVobInfo* vob ) {
         // Clear cache, if so
         VobCache.clear();
         SkeletalVobCache.clear();
+        DrawnOnce = false;
     }
 
-    Engine::GAPI->LeaveResourceCriticalSection();
+    //Engine::GAPI->LeaveResourceCriticalSection();
 }

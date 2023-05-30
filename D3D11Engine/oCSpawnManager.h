@@ -13,21 +13,20 @@ public:
 
     /** Hooks the functions of this Class */
     static void Hook() {
-        XHook( HookedFunctions::OriginalFunctions.original_oCSpawnManagerSpawnNpc, GothicMemoryLocations::oCSpawnManager::SpawnNpc, oCSpawnManager::hooked_oCSpawnManagerSpawnNpc );
-        //XHook(HookedFunctions::OriginalFunctions.original_oCSpawnManagerCheckInsertNpc, GothicMemoryLocations::oCSpawnManager::CheckInsertNpc, oCSpawnManager::hooked_oCSpawnManagerCheckInsertNpc);
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_oCSpawnManagerSpawnNpc), hooked_oCSpawnManagerSpawnNpc );
 
-        // TODO: #8
-        //XHook(HookedFunctions::OriginalFunctions.original_oCSpawnManagerCheckRemoveNpc, GothicMemoryLocations::oCSpawnManager::CheckRemoveNpc, oCSpawnManager::hooked_oCSpawnManagerCheckRemoveNpc);
+        //DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_oCSpawnManagerCheckInsertNpc), hooked_oCSpawnManagerCheckInsertNpc );
+        //DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_oCSpawnManagerCheckRemoveNpc), hooked_oCSpawnManagerCheckRemoveNpc );
     }
 
     /** Reads config stuff */
-    static void __fastcall hooked_oCSpawnManagerSpawnNpc( void* thisptr, void* unknwn, oCNPC* npc, const DirectX::XMFLOAT3& position, float f ) {
+    static void __fastcall hooked_oCSpawnManagerSpawnNpc( zCVob* thisptr, void* unknwn, oCNPC* npc, const XMFLOAT3& position, float f ) {
         hook_infunc
             HookedFunctions::OriginalFunctions.original_oCSpawnManagerSpawnNpc( thisptr, npc, position, f );
 
         if ( npc->GetSleepingMode() != 0 || npc->IsAPlayer() ) {
-            Engine::GAPI->OnRemovedVob( (zCVob*)npc, ((zCVob*)npc)->GetHomeWorld() );
-            Engine::GAPI->OnAddVob( (zCVob*)npc, ((zCVob*)npc)->GetHomeWorld() );
+            Engine::GAPI->OnRemovedVob( npc, npc->GetHomeWorld() );
+            Engine::GAPI->OnAddVob( npc, npc->GetHomeWorld() );
         }
         hook_outfunc
     }

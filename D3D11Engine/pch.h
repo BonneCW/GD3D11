@@ -5,7 +5,7 @@
 #include <Windows.h>
 #include <wrl/client.h>
 #include <chrono>
-#include <d3d11_1.h>
+#include <d3d11_4.h>
 #include <DirectXMath.h>
 #include <future>
 #include <list>
@@ -16,10 +16,13 @@
 #include <signal.h>
 #include <unordered_map>
 #include <unordered_set>
+#include <filesystem>
 
 #include "Logger.h"
 #include "Types.h"
 #include "VertexTypes.h"
+
+using namespace DirectX;
 
 #if _MSC_VER < 1900
 ;
@@ -27,7 +30,12 @@
 #define stdext std
 #endif
 
-#define VERSION_NUMBER "17.8-dev1"
+#define ENABLE_TESSELATION 0
+
+#ifndef VERSION_NUMBER
+#define VERSION_NUMBER "17.8-dev11"
+#endif
+
 __declspec(selectany) const char* VERSION_NUMBER_STR = VERSION_NUMBER;
 
 extern bool FeatureLevel10Compatibility;
@@ -58,12 +66,12 @@ inline unsigned short quantizeHalfFloat( float v )
     union { float f; unsigned int ui; } u = { v };
     unsigned int ui = u.ui;
 
-    int s = (ui >> 16) & 0x8000;
+    int s = ( ui >> 16 ) & 0x8000;
     int em = ui & 0x7fffffff;
 
-    int h = (em - (112 << 23) + (1 << 12)) >> 13;
-    h = (em < (113 << 23)) ? 0 : h;
-    h = (em >= (143 << 23)) ? 0x7c00 : h;
-    h = (em > ( 255 << 23 )) ? 0x7e00 : h;
-    return (unsigned short)(s | h);
+    int h = ( em - ( 112 << 23 ) + ( 1 << 12 ) ) >> 13;
+    h = ( em < ( 113 << 23 ) ) ? 0 : h;
+    h = ( em >= ( 143 << 23 ) ) ? 0x7c00 : h;
+    h = ( em > ( 255 << 23 ) ) ? 0x7e00 : h;
+    return static_cast<unsigned short>(s | h);
 }

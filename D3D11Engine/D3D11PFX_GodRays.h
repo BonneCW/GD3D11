@@ -1,5 +1,6 @@
 #pragma once
 #include "d3d11pfx_effect.h"
+
 class D3D11PFX_GodRays :
     public D3D11PFX_Effect {
 public:

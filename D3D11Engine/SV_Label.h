@@ -1,5 +1,4 @@
 #pragma once
-
 #include "d2dsubview.h"
 
 #include <dwrite_1.h>

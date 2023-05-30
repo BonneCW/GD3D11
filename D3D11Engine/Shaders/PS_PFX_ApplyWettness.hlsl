@@ -55,7 +55,7 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	float3 V = normalize(-vsPosition);
 	
 	// Decode the view-space normal back
-	float3 normal = normalize(DecodeNormal(gb2.xy));
+	float3 normal = normalize(gb2.xyz);
 	
 	float fresnel = pow(1.0f - max(0.0f, dot(normal, V)), 10.0f);
 	litPixel += lerp(fresnel * litPixel * 0.5f, 0.0f, sun);

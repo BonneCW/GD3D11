@@ -31,6 +31,20 @@ struct ddraw_dll {
     FARPROC	GetSurfaceFromDC;
     FARPROC	RegisterSpecialCase;
     FARPROC	ReleaseDDThreadLock;
+
+    FARPROC	GDX_AddPointLocator;
+    FARPROC	GDX_SetFogColor;
+    FARPROC	GDX_SetFogDensity;
+    FARPROC	GDX_SetFogHeight;
+    FARPROC	GDX_SetFogHeightFalloff;
+    FARPROC	GDX_SetSunColor;
+    FARPROC	GDX_SetSunStrength;
+    FARPROC	GDX_SetShadowStrength;
+    FARPROC	GDX_SetShadowAOStrength;
+    FARPROC	GDX_SetWorldAOStrength;
+    FARPROC	GDX_OpenMessageBox;
+
+    FARPROC	UpdateCustomFontMultiplier;
 } ddraw;
 
 __declspec(naked) void FakeAcquireDDThreadLock() { _asm { jmp[ddraw.AcquireDDThreadLock] } }
@@ -55,6 +69,25 @@ __declspec(naked) void FakeGetOLEThunkData() { _asm { jmp[ddraw.GetOLEThunkData]
 __declspec(naked) void FakeGetSurfaceFromDC() { _asm { jmp[ddraw.GetSurfaceFromDC] } }
 __declspec(naked) void FakeRegisterSpecialCase() { _asm { jmp[ddraw.RegisterSpecialCase] } }
 __declspec(naked) void FakeReleaseDDThreadLock() { _asm { jmp[ddraw.ReleaseDDThreadLock] } }
+
+__declspec(naked) void FakeGDX_AddPointLocator() { _asm { jmp[ddraw.GDX_AddPointLocator] } }
+__declspec(naked) void FakeGDX_SetFogColor() { _asm { jmp[ddraw.GDX_SetFogColor] } }
+__declspec(naked) void FakeGDX_SetFogDensity() { _asm { jmp[ddraw.GDX_SetFogDensity] } }
+__declspec(naked) void FakeGDX_SetFogHeight() { _asm { jmp[ddraw.GDX_SetFogHeight] } }
+__declspec(naked) void FakeGDX_SetFogHeightFalloff() { _asm { jmp[ddraw.GDX_SetFogHeightFalloff] } }
+__declspec(naked) void FakeGDX_SetSunColor() { _asm { jmp[ddraw.GDX_SetSunColor] } }
+__declspec(naked) void FakeGDX_SetSunStrength() { _asm { jmp[ddraw.GDX_SetSunStrength] } }
+__declspec(naked) void FakeGDX_SetShadowStrength() { _asm { jmp[ddraw.GDX_SetShadowStrength] } }
+__declspec(naked) void FakeGDX_SetShadowAOStrength() { _asm { jmp[ddraw.GDX_SetShadowAOStrength] } }
+__declspec(naked) void FakeGDX_SetWorldAOStrength() { _asm { jmp[ddraw.GDX_SetWorldAOStrength] } }
+__declspec(naked) void FakeGDX_OpenMessageBox() { _asm { jmp[ddraw.GDX_OpenMessageBox] } }
+
+__declspec(naked) void FakeUpdateCustomFontMultiplier() { _asm { jmp[ddraw.UpdateCustomFontMultiplier] } }
+
+
+extern "C" HMODULE WINAPI FakeGDX_Module() {
+    return ddraw.dll;
+}
 
 BOOL APIENTRY DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
     if ( reason == DLL_PROCESS_ATTACH ) {
@@ -135,6 +168,7 @@ BOOL APIENTRY DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
         PathRemoveFileSpecA( executablePath );
 
         ddraw.dll = nullptr;
+        bool showLoadingInfo = true;
         switch ( foundExecutable ) {
             case GOTHIC2A_EXECUTABLE: {
                 if ( haveAVX2 && !ddraw.dll ) {
@@ -199,10 +233,20 @@ BOOL APIENTRY DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
                 }
             }
             break;
+
+            default: {
+                MessageBoxA( nullptr, "GD3D11 Renderer doesn't work with your Gothic executable.", "Gothic GD3D11", MB_ICONERROR );
+                showLoadingInfo = false;
+            }
+            break;
         }
 
         if ( !ddraw.dll ) {
-            MessageBoxA( nullptr, "GD3D11 Renderer doesn't work with your Gothic executable.", "Gothic GD3D11", MB_ICONERROR );
+            if ( showLoadingInfo ) {
+                char buffer[32];
+                sprintf_s(buffer, "0x%x", GetLastError());
+                MessageBoxA( nullptr, (std::string( "GD3D11 Renderer couldn't be loaded.\nAccess Denied(" ) + std::string( buffer ) + std::string( ")." )).c_str(), "Gothic GD3D11", MB_ICONERROR );
+            }
             
             char ddrawPath[MAX_PATH];
             GetSystemDirectoryA( ddrawPath, MAX_PATH );
@@ -234,6 +278,20 @@ BOOL APIENTRY DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
         ddraw.GetSurfaceFromDC = GetProcAddress( ddraw.dll, "GetSurfaceFromDC" );
         ddraw.RegisterSpecialCase = GetProcAddress( ddraw.dll, "RegisterSpecialCase" );
         ddraw.ReleaseDDThreadLock = GetProcAddress( ddraw.dll, "ReleaseDDThreadLock" );
+
+        ddraw.GDX_AddPointLocator = GetProcAddress( ddraw.dll, "GDX_AddPointLocator" );
+        ddraw.GDX_SetFogColor = GetProcAddress( ddraw.dll, "GDX_SetFogColor" );
+        ddraw.GDX_SetFogDensity = GetProcAddress( ddraw.dll, "GDX_SetFogDensity" );
+        ddraw.GDX_SetFogHeight = GetProcAddress( ddraw.dll, "GDX_SetFogHeight" );
+        ddraw.GDX_SetFogHeightFalloff = GetProcAddress( ddraw.dll, "GDX_SetFogHeightFalloff" );
+        ddraw.GDX_SetSunColor = GetProcAddress( ddraw.dll, "GDX_SetSunColor" );
+        ddraw.GDX_SetSunStrength = GetProcAddress( ddraw.dll, "GDX_SetSunStrength" );
+        ddraw.GDX_SetShadowStrength = GetProcAddress( ddraw.dll, "GDX_SetShadowStrength" );
+        ddraw.GDX_SetShadowAOStrength = GetProcAddress( ddraw.dll, "GDX_SetShadowAOStrength" );
+        ddraw.GDX_SetWorldAOStrength = GetProcAddress( ddraw.dll, "GDX_SetWorldAOStrength" );
+        ddraw.GDX_OpenMessageBox = GetProcAddress( ddraw.dll, "GDX_OpenMessageBox" );
+        ddraw.UpdateCustomFontMultiplier = GetProcAddress( ddraw.dll, "UpdateCustomFontMultiplier" );
+        
     } else if ( reason == DLL_PROCESS_DETACH ) {
         FreeLibrary( ddraw.dll );
     }

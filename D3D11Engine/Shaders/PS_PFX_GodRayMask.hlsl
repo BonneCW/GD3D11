@@ -26,9 +26,9 @@ struct PS_INPUT
 float4 PSMain( PS_INPUT Input ) : SV_TARGET
 {
 	float4 color = TX_Texture0.Sample(SS_Linear, Input.vTexcoord);
-	float2 gb2 = TX_Texture1.Sample(SS_Linear, Input.vTexcoord); // If this has the length of 0 (normals), it's part of the sky
+	float4 gb2 = TX_Texture1.Sample(SS_Linear, Input.vTexcoord);
 	
-	if(abs(gb2.x + gb2.y) < 0.001f)
+	if(gb2.w < 0.001f)
 		return color;
 	
 	return float4(0,0,0,0);

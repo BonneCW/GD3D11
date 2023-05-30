@@ -11,37 +11,11 @@ public:
 
     /** Hooks the functions of this Class */
     static void Hook() {
-        XHook( HookedFunctions::OriginalFunctions.original_zCThreadSuspendThread, GothicMemoryLocations::zCThread::SuspendThread, zCThread::hooked_SuspendThread );
-
-        //ThreadSleeping = false;
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCThreadSuspendThread), hooked_SuspendThread );
     }
 
     /** Reads config stuff */
-    static int __fastcall hooked_SuspendThread( void* thisptr, void* unknwn ) {
-        //hook_infunc
-        //Engine::GAPI->EnterResourceCriticalSection(); // Protect the game from running into a deadlock
-        //Sleep(0);
-        //Engine::GAPI->LeaveResourceCriticalSection();
-
-        /*if (!zCResourceManager::GetResourceManagerMutex().try_lock())
-        {
-            LogInfo() << "Trying to suspend res-thread while doing work! This would result in a deadlock.";
-
-            zCResourceManager::GetResourceManagerMutex().lock();
-        }
-
-        Sleep(0);
-        zCResourceManager::GetResourceManagerMutex().unlock();*/
-
-        /*ThreadSleeping = true;
-        int r = HookedFunctions::OriginalFunctions.original_zCThreadSuspendThread(thisptr);
-        ThreadSleeping = false;
-
-        hook_outfunc
-
-        return r;*/
-
-        zCThread* t = (zCThread*)thisptr;
+    static int __fastcall hooked_SuspendThread( zCThread* t, void* unknwn ) {
         int* suspCount = t->GetSuspendCounter();
 
         if ( (*suspCount) > 0 )
@@ -56,6 +30,6 @@ public:
     }
 
     int* GetSuspendCounter() {
-        return (int*)THISPTR_OFFSET( GothicMemoryLocations::zCThread::Offset_SuspendCount );
+        return reinterpret_cast<int*>(THISPTR_OFFSET( GothicMemoryLocations::zCThread::Offset_SuspendCount ));
     }
 };

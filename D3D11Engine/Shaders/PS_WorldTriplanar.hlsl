@@ -75,8 +75,10 @@ DEFERRED_PS_OUTPUT PSMain( PS_INPUT Input ) : SV_TARGET
 	output.vDiffuse = float4(tex, Input.vDiffuse.y);
 	//output.vDiffuse = 1.0f;	
 	//output.vDiffuse.rgb = bump;
-	output.vNrm_SI_SP.xy = EncodeNormal(normalize(bump));
-	output.vNrm_SI_SP.z = MI_SpecularIntensity;
-	output.vNrm_SI_SP.w = MI_SpecularPower;
+	output.vNrm.xyz = normalize(bump);
+	output.vNrm.w = 1.0f;
+	
+	output.vSI_SP.x = MI_SpecularIntensity;
+	output.vSI_SP.y = MI_SpecularPower;
 	return output;
 }

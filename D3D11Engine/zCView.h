@@ -9,7 +9,6 @@
 class zCViewDraw {
 public:
     static void Hook() {
-        //XHook( HookedFunctions::OriginalFunctions.original_zCViewDrawGetScreen, GothicMemoryLocations::zCViewDraw::GetScreen, GetScreen );
     }
     
     static zCViewDraw& GetScreen() {
@@ -27,18 +26,20 @@ public:
     /** Hooks the functions of this Class */
     static void Hook() {
         zCViewDraw::Hook();
+
         DWORD dwProtect;
+        if ( VirtualProtect( reinterpret_cast<void*>(GothicMemoryLocations::zCView::REPL_SetMode_ModechangeStart),
+            GothicMemoryLocations::zCView::REPL_SetMode_ModechangeEnd
+            - GothicMemoryLocations::zCView::REPL_SetMode_ModechangeStart,
+            PAGE_EXECUTE_READWRITE, &dwProtect ) ) {
+            // Replace the actual mode-change in zCView::SetVirtualMode. Only do the UI-Changes.
+            REPLACE_RANGE( GothicMemoryLocations::zCView::REPL_SetMode_ModechangeStart, GothicMemoryLocations::zCView::REPL_SetMode_ModechangeEnd - 1, INST_NOP );
+        }
 
-        VirtualProtect( (void*)GothicMemoryLocations::zCView::SetMode, 0x1B9, PAGE_EXECUTE_READWRITE, &dwProtect ); // zCView::SetMode
-
-        // Replace the actual mode-change in zCView::SetVirtualMode. Only do the UI-Changes.
-        REPLACE_RANGE( GothicMemoryLocations::zCView::REPL_SetMode_ModechangeStart, GothicMemoryLocations::zCView::REPL_SetMode_ModechangeEnd - 1, INST_NOP );
-
-#if BUILD_GOTHIC_2_6_fix
-        // .text:007A62A0; void __thiscall zCView::BlitText(zCView * __hidden this)
-        XHook( HookedFunctions::OriginalFunctions.original_zCViewBlitText, GothicMemoryLocations::zCView::BlitText, hooked_BlitText );
-        XHook( HookedFunctions::OriginalFunctions.original_zCViewPrint, GothicMemoryLocations::zCView::Print, hooked_Print );
-        //XHook( HookedFunctions::OriginalFunctions.original_zCViewBlit, GothicMemoryLocations::zCView::Blit, hooked_Blit );
+#if (defined(BUILD_GOTHIC_1_08k) && !defined(BUILD_1_12F)) || defined(BUILD_GOTHIC_2_6_fix)
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCViewBlitText), hooked_BlitText );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCViewPrint), hooked_Print );
+        //DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCViewBlit), hooked_Blit );
 #endif
     }
 
@@ -52,7 +53,7 @@ public:
             ( GothicMemoryLocations::zCView::SetMode )( x, y, bpp, nullptr );
     }
 
-#if BUILD_GOTHIC_2_6_fix
+#if (defined(BUILD_GOTHIC_1_08k) && !defined(BUILD_1_12F)) || defined(BUILD_GOTHIC_2_6_fix)
     /*
     static void __fastcall hooked_Blit(_zCView* thisptr, void* unknwn) {
 
@@ -93,11 +94,14 @@ public:
         // Instantly blit Viewport/global-screen
         if ( (thisptr->viewID == 1)
             || (thisptr == GetScreen()) ) {
-            Engine::GraphicsEngine->DrawString(
-                s.ToChar(),
-                static_cast<float>(thisptr->pposx + thisptr->nax( x )),
-                static_cast<float>(thisptr->pposy + thisptr->nay( y )),
-                thisptr->font, thisptr->fontColor );
+            int len = s.Length();
+            if ( len > 0 ) {
+                Engine::GraphicsEngine->DrawString(
+                    std::string(s.ToChar(), len),
+                    static_cast<float>(thisptr->pposx + thisptr->nax( x )),
+                    static_cast<float>(thisptr->pposy + thisptr->nay( y )),
+                    thisptr->font, thisptr->fontColor );
+            }
         } else {
             // create a textview for later blitting
             thisptr->CreateText( x, y, s );
@@ -131,12 +135,15 @@ public:
             x = static_cast<float>(thisptr->pposx + thisptr->nax( text->posx ));
             y = static_cast<float>(thisptr->pposy + thisptr->nay( text->posy ));
 
-            if ( !thisptr->font ) continue;
+            if ( !text->font ) continue;
 
-            Engine::GraphicsEngine->DrawString( text->text.ToChar(), x, y, text->font, fontColor );
+            int len = text->text.Length();
+            if ( len > 0 ) {
+                Engine::GraphicsEngine->DrawString( std::string(text->text.ToChar(), len), x, y, text->font, fontColor );
+            }
         }
     }
-    static _zCView* GetScreen() { return *(_zCView**)GothicMemoryLocations::GlobalObjects::screen; }
+    static _zCView* GetScreen() { return *reinterpret_cast<_zCView**>(GothicMemoryLocations::GlobalObjects::screen); }
 
 #endif
 

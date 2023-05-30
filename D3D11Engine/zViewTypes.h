@@ -9,7 +9,6 @@ class zFont;
 struct zColor;
 class _zCView;
 
-
 class zCViewFont {
 public:
     zTRnd_AlphaBlendFunc FuncAlphaBlend;
@@ -18,7 +17,6 @@ public:
     int Alpha;
     int EnabledBlend;
 };
-
 
 class zCViewText {
 public:
@@ -34,7 +32,6 @@ public:
     int colored;
 };
 
-
 class _zCView {
 public:
     int vtbl;
@@ -46,7 +43,9 @@ public:
         VIEW_FX_MAX
     } zTViewFX;
 
+#ifdef BUILD_GOTHIC_2_6_fix
     int m_bFillZ;
+#endif
     _zCView* next;
     int viewID;
     int flags;
@@ -107,31 +106,37 @@ public:
     }
 
     int _zCView::rnd2( float x ) const {
-        if ( x > 0 ) return (int)(x + 0.5);
-        else return (int)(x - 0.5);
-    }
-    int _zCView::nax( int x ) const {
-        return rnd2( (float)(x * psizex) / 8192 );
+        if ( x > 0 ) return static_cast<int>(x + 0.5);
+        else return static_cast<int>(x - 0.5);
     }
 
+    int _zCView::nax( int x ) const {
+        return rnd2( static_cast<float>(x * psizex) / 8192.f );
+    }
     int _zCView::nay( int y ) const {
-        return rnd2( (float)(y * psizey) / 8192 );
+        return rnd2( static_cast<float>(y * psizey) / 8192.f );
     }
 
     int _zCView::anx( int x ) const {
-        return rnd2( (float)(x * 8192) / psizex );
+        return rnd2( static_cast<float>(x * 8192) / psizex );
     }
     int _zCView::any( int x ) const {
-        return rnd2( (float)(x * 8192) / psizey );
+        return rnd2( static_cast<float>(x * 8192) / psizey );
     }
 
     void _zCView::CheckAutoScroll() {
-        // TODO: G1 addresses!
+#if defined(BUILD_GOTHIC_1_08k) && !defined(BUILD_1_12F)
+        reinterpret_cast<void( __fastcall* )( _zCView* )>( 0x006FC480 )( this );
+#elif defined(BUILD_GOTHIC_2_6_fix)
         reinterpret_cast<void( __fastcall* )( _zCView* )>( 0x007A5F60 )( this );
+#endif
     }
     void _zCView::CheckTimedText() {
-        // TODO: G1 addresses!
+#if defined(BUILD_GOTHIC_1_08k) && !defined(BUILD_1_12F)
+        reinterpret_cast<void( __fastcall* )( _zCView* )>( 0x006FE0E0 )( this );
+#elif defined(BUILD_GOTHIC_2_6_fix)
         reinterpret_cast<void( __fastcall* )( _zCView* )>( 0x007A7C50 )( this );
+#endif
     }
 
     void _zCView::PrintChars( int x, int y, const zSTRING& str ) {

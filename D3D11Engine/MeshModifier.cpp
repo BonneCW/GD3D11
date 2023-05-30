@@ -46,9 +46,7 @@ typedef OpenMesh::Decimater::ModRoundnessT<MyMesh>::Handle HModRoundnessT;
 
 */
 
-
 MeshModifier::MeshModifier() {}
-
 
 MeshModifier::~MeshModifier() {}
 
@@ -64,10 +62,10 @@ static void PutVertexData(MyMesh& mesh, const std::vector<ExVertexStruct> & inVe
     for(unsigned int i=0;i<inVertices.size();i++)
     {
         ExVertexStructOM om;
-        om.Position = *(OpenMesh::Vec3f *)&inVertices[i].Position;
-        om.Normal = *(OpenMesh::Vec3f *)&inVertices[i].Normal;
-        om.TexCoord = *(OpenMesh::Vec2f *)&inVertices[i].TexCoord;
-        om.Color = *(OpenMesh::Vec1ui *)&inVertices[i].Color;
+        om.Position = *reinterpret_cast<OpenMesh::Vec3f*>(&inVertices[i].Position);
+        om.Normal = *reinterpret_cast<OpenMesh::Vec3f*>(&inVertices[i].Normal);
+        om.TexCoord = *reinterpret_cast<OpenMesh::Vec2f*>(&inVertices[i].TexCoord);
+        om.Color = *reinterpret_cast<OpenMesh::Vec1ui*>(&inVertices[i].Color);
 
         OpenMesh::VertexHandle vh = mesh.add_vertex(om.Position);
         mesh.set_normal(vh, om.Normal);
@@ -92,10 +90,10 @@ static void PullVertexData(MyMesh& mesh, std::vector<ExVertexStruct> & outVertic
     for (MyMesh::VertexIter v_it=mesh.vertices_begin(); v_it!=mesh.vertices_end(); ++v_it)
     {
         ExVertexStruct v;
-        v.Position = *(float3 *)&mesh.point(*v_it);
-        v.Color = *(DWORD *)&mesh.color(*v_it);
-        v.Normal = *(float3 *)&mesh.normal(*v_it);
-        v.TexCoord = *(float2 *)&mesh.texcoord2D(*v_it);
+        v.Position = *reinterpret_cast<float3*>(&mesh.point(*v_it));
+        v.Color = *reinterpret_cast<DWORD*>(&mesh.color(*v_it));
+        v.Normal = *reinterpret_cast<float3*>(&mesh.normal(*v_it));
+        v.TexCoord = *reinterpret_cast<float2*>(&mesh.texcoord2D(*v_it));
 
         // Check if this is a boundry vertex
         if (mesh.is_boundary(*v_it))
@@ -295,6 +293,7 @@ struct PNAENKeyHasher {
     }*/
 };
 
+#if ENABLE_TESSELATION > 0
 void MeshModifier::ComputePNAENIndices( const std::vector<ExVertexStruct>& inVertices, const std::vector<unsigned short>& inIndices, std::vector<VERTEX_INDEX>& outIndices ) {
     std::vector<unsigned int> ix;
     std::vector<unsigned int> out;
@@ -393,6 +392,7 @@ void MeshModifier::ComputePNAENIndices( const std::vector<ExVertexStruct>& inVer
         }
     }
 }
+#endif
 
 // Helper struct which defines == for ExVertexStruct
 struct Vertex {
@@ -474,6 +474,7 @@ struct Float3KeyHasher {
     }
 };
 
+#if ENABLE_TESSELATION > 0
 void MeshModifier::ComputePNAEN18Indices( std::vector<ExVertexStruct>& inVertices, const std::vector<unsigned short>& inIndices, std::vector<VERTEX_INDEX>& outIndices, bool detectBorders, bool softNormals ) {
     std::vector<unsigned int> ix;
     std::vector<unsigned int> out;
@@ -509,7 +510,7 @@ void MeshModifier::ComputePNAEN18Indices( std::vector<ExVertexStruct>& inVertice
     for ( auto it = VertexMap.begin(); it != VertexMap.end(); it++ ) {
         std::vector<ExVertexStruct*>& vx = it->second.second;
 
-        DirectX::XMFLOAT3 nrm = DirectX::XMFLOAT3( 0, 0, 0 );
+        XMFLOAT3 nrm = XMFLOAT3( 0, 0, 0 );
         XMVECTOR XMV_nrm = XMVectorZero();
         if ( softNormals ) {
             // Average normal of all adj. vertices			
@@ -715,15 +716,15 @@ void MeshModifier::ComputePNAEN18Indices( std::vector<ExVertexStruct>& inVertice
         }
     }
 }
-
+#endif
 
 bool TexcoordSame( float2 a, float2 b ) {
     if ( (abs( a.x - b.x ) > 0.001f &&
         abs( (a.x + 1) - b.x ) > 0.001f &&
         abs( (a.x - 1) - b.x ) > 0.001f) ||
         (abs( a.y - b.y ) > 0.001f &&
-            abs( (a.y + 1) - b.y ) > 0.001f &&
-            abs( (a.y - 1) - b.y ) > 0.001f) )
+        abs( (a.y + 1) - b.y ) > 0.001f &&
+        abs( (a.y - 1) - b.y ) > 0.001f) )
         return false;
 
     return true;
@@ -731,8 +732,6 @@ bool TexcoordSame( float2 a, float2 b ) {
 
 /** Computes smooth normals for the given mesh */
 void MeshModifier::ComputeSmoothNormals( std::vector<ExVertexStruct>& inVertices ) {
-
-
     // Map to store adj. vertices
     std::unordered_map<Vertex, std::vector<ExVertexStruct*>, VertexKeyHasher> VertexMap;
 
@@ -744,29 +743,27 @@ void MeshModifier::ComputeSmoothNormals( std::vector<ExVertexStruct>& inVertices
     }
 
     // Run through all the adj. vertices and average the normals between them
-    for ( auto it = VertexMap.begin(); it != VertexMap.end(); it++ ) {
-        std::vector<ExVertexStruct*>& vx = it->second;
+    for ( auto& [k, vx] : VertexMap ) {
         // Average all face normals
-        DirectX::XMFLOAT3 avgNormal;
+        XMFLOAT3 avgNormal;
         XMVECTOR XMV_avgNormal = XMVectorZero();
-        for ( unsigned int i = 0; i < vx.size(); i++ ) {
-            XMV_avgNormal += XMLoadFloat3( vx[i]->Normal.toXMFLOAT3() );
+        for ( ExVertexStruct* vert : vx ) {
+            XMV_avgNormal += XMLoadFloat3( vert->Normal.toXMFLOAT3() );
         }
-        XMV_avgNormal /= (float)vx.size();
+        XMV_avgNormal /= static_cast<float>(vx.size());
         XMStoreFloat3( &avgNormal, XMV_avgNormal );
         // Lerp between the average and the face normal for every vertex
-        for ( unsigned int i = 0; i < vx.size(); i++ ) {
+        for ( ExVertexStruct* vert : vx ) {
             // Find out if we are a corner/border vertex
-            vx[i]->TexCoord2.x = 1.0f;
-            for ( unsigned int n = 0; n < vx.size(); n++ ) {
-                if ( !TexcoordSame( vx[i]->TexCoord, vx[n]->TexCoord ) ) {
-                    vx[i]->TexCoord2.x = 0.0f;
+            vert->TexCoord2.x = 1.0f;
+            for ( ExVertexStruct* vert2 : vx ) {
+                if ( !TexcoordSame( vert->TexCoord, vert2->TexCoord ) ) {
+                    vert->TexCoord2.x = 0.0f;
                     break;
                 }
             }
 
-            vx[i]->Normal = avgNormal;
-            //&vx[i]->Normal.toXMFLOAT3() = DirectX::XMVectorLerpV(&avgNormal, &vx[i]->Normal.toXMFLOAT3(), 0.7f);
+            vert->Normal = avgNormal;
         }
     }
 }
@@ -777,7 +774,6 @@ void MeshModifier::FillIndexArrayFor( unsigned int numVertices, std::vector<unsi
         outIndices.push_back( i );
     }
 }
-
 
 /** Fills an index array for a non-indexed mesh */
 void MeshModifier::FillIndexArrayFor( unsigned int numVertices, std::vector<VERTEX_INDEX>& outIndices ) {

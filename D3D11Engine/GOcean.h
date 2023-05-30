@@ -39,7 +39,7 @@ public:
     WaterPatchInfo& AddWaterPatchAt( int x, int y );
 
     /** Returns a vector of the patch locations */
-    void GetPatchLocations( std::vector<DirectX::XMFLOAT3>& patchLocations );
+    void GetPatchLocations( std::vector<XMFLOAT3>& patchLocations );
 
     /** Clears all patches */
     void ClearPatches();
@@ -63,8 +63,6 @@ protected:
     /** Fresnel map */
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> FresnelMapSRV;
     Microsoft::WRL::ComPtr<ID3D11Texture1D> FresnelMap;
-
-
 
     /** Map of where the waterpatches are */
     std::map<std::pair<int, int>, WaterPatchInfo> Patches;

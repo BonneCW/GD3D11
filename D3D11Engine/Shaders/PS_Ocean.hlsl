@@ -176,8 +176,10 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	DEFERRED_PS_OUTPUT output;
 	output.vDiffuse = float4(color.rgb, 1.0f);
 		
-	output.vNrm_SI_SP.xy = 0.0f;//EncodeNormal(normalize(Input.vNormalVS));
-	output.vNrm_SI_SP.z = 1.0f;
-	output.vNrm_SI_SP.w = OS_SpecularPower;
+	output.vNrm.xyz = 0.0f;//normalize(Input.vNormalVS);
+	output.vNrm.w = 1.0f;
+
+	output.vSI_SP.x = 1.0f;
+	output.vSI_SP.y = OS_SpecularPower;
 	return output;*/
 }

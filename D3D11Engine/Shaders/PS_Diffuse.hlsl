@@ -52,7 +52,6 @@ DEFERRED_PS_OUTPUT PSMain( PS_INPUT Input ) : SV_TARGET
 {
 	float4 color = TX_Texture0.Sample(SS_Linear, Input.vTexcoord);
 	
-	
 	// Do alphatest if wanted
 #if ALPHATEST == 1
 	ClipDistanceEffect(length(Input.vViewPosition), DIST_DrawDistance, color.r * 2 - 1, 500.0f);
@@ -60,31 +59,31 @@ DEFERRED_PS_OUTPUT PSMain( PS_INPUT Input ) : SV_TARGET
 	// WorldMesh can always do the alphatest
 	DoAlphaTest(color.a);
 #endif
-
-
-
+	
 	// Apply normalmapping if wanted
 #if NORMALMAPPING == 1
 	float3 nrm = perturb_normal(Input.vNormalVS, Input.vViewPosition, TX_Texture1, Input.vTexcoord, SS_Linear, MI_NormalmapStrength);
 #else
 	float3 nrm = normalize(Input.vNormalVS);
 #endif
-
+	
 	float4 fx;
 #if FXMAP == 1
 	fx = TX_Texture2.Sample(SS_Linear, Input.vTexcoord);
 #else
 	fx = 1.0f;
 #endif
-		
+	
 	DEFERRED_PS_OUTPUT output;
 	output.vDiffuse = float4(color.rgb, Input.vDiffuse.y);
 	//output.vDiffuse = float4(Input.vTexcoord2, 0, 1);
 	//output.vDiffuse = float4(Input.vNormalVS, 1);
 	
-	output.vNrm_SI_SP.xy = EncodeNormal(nrm);
-	output.vNrm_SI_SP.z = MI_SpecularIntensity * fx.r;
-	output.vNrm_SI_SP.w = MI_SpecularPower * fx.g;
+	output.vNrm.xyz = nrm;
+	output.vNrm.w = 1.0f;
+	
+	output.vSI_SP.x = MI_SpecularIntensity * fx.r;
+	output.vSI_SP.y = MI_SpecularPower * fx.g;
 	return output;
 }
 

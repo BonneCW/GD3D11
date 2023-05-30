@@ -71,7 +71,7 @@ public:
 
 protected:
     /** Visualizes a mesh info */
-    void VisualizeMeshInfo( MeshInfo* m, const DirectX::XMFLOAT4& color = DirectX::XMFLOAT4( 1, 1, 1, 1 ), bool showBounds = false, const DirectX::XMFLOAT4X4* world = nullptr );
+    void VisualizeMeshInfo( MeshInfo* m, const XMFLOAT4& color = XMFLOAT4( 1, 1, 1, 1 ), bool showBounds = false, const XMFLOAT4X4* world = nullptr );
 
     /** Sets the editor-mode */
     void SetEditorMode( EditorMode mode );
@@ -111,7 +111,7 @@ protected:
     GVegetationBox* PlaceDraggedVegetationBox();
 
     /** Traces the set of placed vegatation boxes */
-    GVegetationBox* TraceVegetationBoxes( const DirectX::XMFLOAT3& wPos, const DirectX::XMFLOAT3& wDir );
+    GVegetationBox* TraceVegetationBoxes( const XMFLOAT3& wPos, const XMFLOAT3& wDir );
 
 
     /** Callbacks */
@@ -172,9 +172,9 @@ protected:
     std::string TracedTexture;
 
     /** Vegetation-box specific values, valid in EM_PLACE_VEGETATION*/
-    DirectX::XMFLOAT3 DraggedBoxMinLocal;
-    DirectX::XMFLOAT3 DraggedBoxMaxLocal;
-    DirectX::XMFLOAT3 DraggedBoxCenter;
+    XMFLOAT3 DraggedBoxMinLocal;
+    XMFLOAT3 DraggedBoxMaxLocal;
+    XMFLOAT3 DraggedBoxCenter;
 
     SV_Checkbox* VegRestrictByTextureCheckBox;
     SV_Checkbox* VegCircularShapeCheckBox;
@@ -182,8 +182,8 @@ protected:
     /** Selection specific values */
     SV_Checkbox* SelectTrianglesOnlyCheckBox;
     bool SelectedSomething;
-    DirectX::XMFLOAT3 SelectedTriangle[3];
-    DirectX::XMFLOAT3 TracedPosition;
+    XMFLOAT3 SelectedTriangle[3];
+    XMFLOAT3 TracedPosition;
     MeshInfo* TracedMesh;
     GVegetationBox* TracedVegetationBox;
     zCMaterial* TracedMaterial;
@@ -202,7 +202,7 @@ protected:
     POINT CStartMousePosition;
     float CPitch;
     float CYaw;
-    DirectX::XMFLOAT4X4 CStartWorld;
+    XMFLOAT4X4 CStartWorld;
     bool Keys[256];
 
     /** Vegetation settings */

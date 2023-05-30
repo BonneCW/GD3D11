@@ -22,9 +22,6 @@ public:
     Microsoft::WRL::ComPtr<ID3D11GeometryShader> GetShader() { return GeometryShader.Get(); }
 
 private:
-    /** Compiles the shader from file and outputs error messages if needed */
-    HRESULT CompileShaderFromFile( const CHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, const std::vector<D3D_SHADER_MACRO>& makros );
-
     Microsoft::WRL::ComPtr<ID3D11GeometryShader> GeometryShader;
     std::vector<D3D11ConstantBuffer*> ConstantBuffers;
 };

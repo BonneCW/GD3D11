@@ -1,7 +1,7 @@
 #pragma once
-
 #include "D3D11GraphicsEngineBase.h"
 #include "fpslimiter.h"
+#include "GothicAPI.h"
 
 struct RenderToDepthStencilBuffer;
 
@@ -91,6 +91,8 @@ public:
 
     /** Fetches a list of available display modes */
     XRESULT FetchDisplayModeList();
+    XRESULT FetchDisplayModeListDXGI();
+    XRESULT FetchDisplayModeListWindows();
 
     /** Returns a list of available display modes */
     virtual XRESULT GetDisplayModeList( std::vector<DisplayModeInfo>* modeList, bool includeSuperSampling = false );
@@ -134,6 +136,7 @@ public:
     void UpdateColorSpace_SwapChain3();
     void UpdateColorSpace_SwapChain4();
 
+#if ENABLE_TESSELATION > 0
     enum EPNAENRenderMode {
         PNAEN_Default,
         PNAEN_Instanced,
@@ -142,13 +145,14 @@ public:
 
     /** Sets up everything for a PNAEN-Mesh */
     void Setup_PNAEN( EPNAENRenderMode mode = PNAEN_Default );
+#endif
 
     /** Sets up texture with normalmap and fxmap for rendering */
     bool BindTextureNRFX( zCTexture* tex, bool bindShader );
 
     /** Draws a skeletal mesh */
-    XRESULT DrawSkeletalVertexNormals( SkeletalVobInfo* vi, const std::vector<DirectX::XMFLOAT4X4>& transforms, float4 color, float fatness = 1.0f );
-    virtual XRESULT DrawSkeletalMesh( SkeletalVobInfo* vi, const std::vector<DirectX::XMFLOAT4X4>& transforms, float4 color, float fatness = 1.0f ) override;
+    XRESULT DrawSkeletalVertexNormals( SkeletalVobInfo* vi, const std::vector<XMFLOAT4X4>& transforms, float4 color, float fatness = 1.0f );
+    virtual XRESULT DrawSkeletalMesh( SkeletalVobInfo* vi, const std::vector<XMFLOAT4X4>& transforms, float4 color, float fatness = 1.0f ) override;
 
     /** Draws a screen fade effects */
     virtual XRESULT DrawScreenFade( void* camera ) override;
@@ -189,14 +193,11 @@ public:
     /** Gets the depthbuffer */
     RenderToDepthStencilBuffer* GetDepthBuffer() { return DepthStencilBuffer.get(); }
 
-    /** Returns the Backbuffers shader resource view */
-    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> GetBackbufferSRV() { return BackbufferSRV.Get(); }
-
     /** Returns the first GBuffer */
     RenderToTextureBuffer& GetGBuffer0() { return *GBuffer0_Diffuse; }
 
     /** Returns the second GBuffer */
-    RenderToTextureBuffer& GetGBuffer1() { return *GBuffer1_Normals_SpecIntens_SpecPower; }
+    RenderToTextureBuffer& GetGBuffer1() { return *GBuffer1_Normals; }
 
     /** Returns the HDRBackbuffer */
     RenderToTextureBuffer& GetHDRBackBuffer() { return *HDRBackBuffer; }
@@ -235,15 +236,12 @@ public:
     /** Draws PolyStrips (weapon and particle trails) */
     XRESULT DrawPolyStrips( bool noTextures = false );
 
-    /** Draws a single VOB */
-    virtual void DrawVobSingle( VobInfo* vob ) override;
-
-    /** Draws a multiple VOBs (used for inventory) */
-    virtual void DrawVobsList( const std::list<VobInfo*>& vobs, zCCamera& camera ) override;
+    /** Draws a VOB (used for inventory) */
+    virtual void DrawVobSingle( VobInfo* vob, zCCamera& camera ) override;
 
     /** Draws everything around the given position */
-    void XM_CALLCONV DrawWorldAround( DirectX::FXMVECTOR position, int sectionRange, float vobXZRange, bool cullFront = true, bool dontCull = false );
-    void XM_CALLCONV DrawWorldAround( DirectX::FXMVECTOR position,
+    void XM_CALLCONV DrawWorldAround( FXMVECTOR position, int sectionRange, float vobXZRange, bool cullFront = true, bool dontCull = false );
+    void XM_CALLCONV DrawWorldAround( FXMVECTOR position,
         float range,
         bool cullFront = true,
         bool indoor = false,
@@ -266,10 +264,10 @@ public:
     virtual XRESULT DrawSky();
 
     /** Renders the shadowmaps for the sun */
-    void XM_CALLCONV RenderShadowmaps( DirectX::FXMVECTOR cameraPosition, RenderToDepthStencilBuffer* target = nullptr, bool cullFront = true, bool dontCull = false, Microsoft::WRL::ComPtr<ID3D11DepthStencilView> dsvOverwrite = nullptr, Microsoft::WRL::ComPtr<ID3D11RenderTargetView> debugRTV = nullptr );
+    void XM_CALLCONV RenderShadowmaps( FXMVECTOR cameraPosition, RenderToDepthStencilBuffer* target = nullptr, bool cullFront = true, bool dontCull = false, Microsoft::WRL::ComPtr<ID3D11DepthStencilView> dsvOverwrite = nullptr, Microsoft::WRL::ComPtr<ID3D11RenderTargetView> debugRTV = nullptr );
 
     /** Renders the shadowmaps for a pointlight */
-    void XM_CALLCONV RenderShadowCube( DirectX::FXMVECTOR position,
+    void XM_CALLCONV RenderShadowCube( FXMVECTOR position,
         float range,
         const RenderToDepthStencilBuffer& targetCube,
         Microsoft::WRL::ComPtr<ID3D11DepthStencilView> face,
@@ -300,9 +298,6 @@ public:
     /** Message-Callback for the main window */
     virtual LRESULT OnWindowMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam );
 
-    /** Constructs the makro list for shader compilation */
-    static void ConstructShaderMakroList( std::vector<D3D_SHADER_MACRO>& list );
-
     /** Reloads shaders */
     virtual XRESULT ReloadShaders();
 
@@ -319,7 +314,7 @@ public:
     void DrawUnderwaterEffects();
 
     /** Binds the right shader for the given texture */
-    void BindShaderForTexture( zCTexture* texture, bool forceAlphaTest = false, int zMatAlphaFunc = 0 );
+    void BindShaderForTexture( zCTexture* texture, bool forceAlphaTest = false, int zMatAlphaFunc = 0, MaterialInfo::EMaterialType materialInfo = MaterialInfo::MT_None );
 
     /** Copies the depth stencil buffer to DepthStencilBufferCopy */
     void CopyDepthStencil();
@@ -343,6 +338,9 @@ public:
     RenderToTextureBuffer* GetDummyCubeRT() { return DummyShadowCubemapTexture.get(); }
 
     void EnsureTempVertexBufferSize( std::unique_ptr<D3D11VertexBuffer>& buffer, UINT size );
+
+    float UpdateCustomFontMultiplierFontRendering( float multiplier );
+
 protected:
     std::unique_ptr<FpsLimiter> m_FrameLimiter;
     int m_LastFrameLimit;
@@ -364,14 +362,14 @@ protected:
 
     /** Swapchain buffers */
     Microsoft::WRL::ComPtr<ID3D11RenderTargetView> BackbufferRTV;
-    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> BackbufferSRV; // Diffuse
     std::unique_ptr<RenderToTextureBuffer> GBuffer0_Diffuse;
-    std::unique_ptr<RenderToTextureBuffer> GBuffer1_Normals_SpecIntens_SpecPower; // Normals / SpecIntensity / SpecPower
+    std::unique_ptr<RenderToTextureBuffer> GBuffer1_Normals; // Normals
+    std::unique_ptr<RenderToTextureBuffer> GBuffer2_SpecIntens_SpecPower; // SpecIntensity / SpecPower
     std::unique_ptr<RenderToTextureBuffer> DepthStencilBufferCopy;
     std::unique_ptr<RenderToTextureBuffer> DummyShadowCubemapTexture; // PS-Stage needs to have a rendertarget bound to execute SV_Depth-Writes, as it seems.
 
     /** Temp-Arrays for storing data to be put in constant buffers */
-    DirectX::XMFLOAT4X4 Temp2D3DXMatrix[2];
+    XMFLOAT4X4 Temp2D3DXMatrix[2];
     float2 Temp2Float2[2];
     std::unique_ptr<D3D11VertexBuffer> DynamicInstancingBuffer;
 
@@ -404,6 +402,12 @@ protected:
 
     /** List of worldmeshes we have to render using alphablending */
     std::vector<std::pair<MeshKey, MeshInfo*>> FrameTransparencyMeshes;
+
+    /** List of portal worldmeshes we have to render using alphablending */
+    std::vector<std::pair<MeshKey, MeshInfo*>> FrameTransparencyMeshesPortal;
+
+    /** List of waterfall worldmeshes we have to render using alphablending */
+    std::vector<std::pair<MeshKey, MeshInfo*>> FrameTransparencyMeshesWaterfall;
 
     /** Reflection */
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> ReflectionCube;
@@ -444,4 +448,5 @@ protected:
     bool m_HDR;
     int m_previousFpsLimit;
     bool m_isWindowActive;
+    float unionCurrentCustomFontMultiplier;
 };

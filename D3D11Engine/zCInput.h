@@ -19,7 +19,7 @@ public:
     }
 
     inline static zCInput* GetInput() {
-        return *(zCInput**)GothicMemoryLocations::GlobalObjects::zCInput;
+        return *reinterpret_cast<zCInput**>(GothicMemoryLocations::GlobalObjects::zCInput);
     };
 
 };

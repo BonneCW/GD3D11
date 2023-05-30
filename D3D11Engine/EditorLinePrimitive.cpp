@@ -7,8 +7,6 @@
 #include "GothicAPI.h"
 #include "D3D11ShaderManager.h"
 
-using namespace DirectX;
-
 EditorLinePrimitive::EditorLinePrimitive() {
     Vertices = nullptr;
     PrimShader = nullptr;
@@ -30,8 +28,8 @@ EditorLinePrimitive::EditorLinePrimitive() {
 
     bJustUseRotationMatrix = false;
 
-    SetSolidShader( ((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetShaderManager().GetPShader( "PS_Lines" ) );
-    SetShader( ((D3D11GraphicsEngineBase*)Engine::GraphicsEngine)->GetShaderManager().GetPShader( "PS_Lines" ) );
+    SetSolidShader( reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine)->GetShaderManager().GetPShader( "PS_Lines" ) );
+    SetShader( reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine)->GetShaderManager().GetPShader( "PS_Lines" ) );
 }
 
 
@@ -314,9 +312,7 @@ HRESULT EditorLinePrimitive::CreateSolidPrimitive( LineVertex* PrimVerts, UINT N
     InitData.SysMemPitch = 0;
     InitData.SysMemSlicePitch = 0;
 
-    D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
-
-    LE( engine->GetDevice()->CreateBuffer( &bufferDesc, &InitData, SolidPrimVB.GetAddressOf() ) );
+    LE( reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine)->GetDevice()->CreateBuffer( &bufferDesc, &InitData, SolidPrimVB.GetAddressOf() ) );
 
     SolidPrimitiveTopology = Topology;
 
@@ -329,7 +325,7 @@ HRESULT EditorLinePrimitive::CreateFilledCirclePrimitive( float Radius, UINT Det
     UINT NumVerts = Detail * 3;
     LineVertex* vx = new LineVertex[NumVerts];
 
-    float Step = XM_2PI / ((float)(Detail)-1);
+    float Step = XM_2PI / static_cast<float>((Detail)-1);
     float s = 0;
 
     size_t i = 0;
@@ -391,7 +387,7 @@ HRESULT EditorLinePrimitive::CreateFilledCirclePrimitive( float Radius, UINT Det
 HRESULT EditorLinePrimitive::CreateCirclePrimitive( float Radius, UINT Detail, const float4& Color, int Axis ) {
     LineVertex* vx = new LineVertex[Detail];
 
-    float Step = XM_2PI / ((float)Detail - 1);
+    float Step = XM_2PI / static_cast<float>(Detail - 1);
     float s = 0;
 
     for ( UINT i = 0; i < Detail; i++ ) {
@@ -430,7 +426,7 @@ HRESULT EditorLinePrimitive::CreateLineBallPrimitive( UINT Detail, const float4&
     // Allocate enough memory for all 3 slices
     LineVertex* vx = new LineVertex[(Detail * 3)];
 
-    float Step = XM_2PI / ((float)Detail - 1);
+    float Step = XM_2PI / static_cast<float>(Detail - 1);
     float s = 0;
 
     // Create first
@@ -478,8 +474,6 @@ HRESULT EditorLinePrimitive::CreateLineBallPrimitive( UINT Detail, const float4&
 HRESULT EditorLinePrimitive::CreateArrowPrimitive( const float4& Color, float ArrowRadius, float ArrowOffset ) {
     LineVertex vx[10];
 
-
-
     // Middle streak
     vx[0].Position = float3( 0, 0, 0 );
     vx[1].Position = float3( 1, 0, 0 );
@@ -514,7 +508,7 @@ HRESULT EditorLinePrimitive::CreateSimpleConePrimitive( float Length, float Radi
 
     LineVertex* vx = new LineVertex[NumVerts];
 
-    float Step = XM_2PI / ((float)Detail - 1);
+    float Step = XM_2PI / static_cast<float>(Detail - 1);
     float s = 0;
 
     UINT i = 0;
@@ -554,7 +548,6 @@ HRESULT EditorLinePrimitive::CreateSimpleConePrimitive( float Length, float Radi
 void EditorLinePrimitive::EncodeColor( LineVertex* vx, const float4& Color ) {
     vx->Color = Color;
 }
-
 
 /** Intersects the whole primitive. If hit, it returns a distance other than -1 */
 float XM_CALLCONV EditorLinePrimitive::IntersectPrimitive( FXMVECTOR RayOrigin, FXMVECTOR RayDirection, float Epsilon ) {
@@ -657,13 +650,11 @@ bool XM_CALLCONV EditorLinePrimitive::IntersectTriangle( FXMVECTOR orig, FXMVECT
     return TRUE;
 }
 
-
 float EditorLinePrimitive::IntersectLineSegment( FXMVECTOR rayOrigin, FXMVECTOR rayVec, FXMVECTOR lineStart, GXMVECTOR lineEnd, float Epsilon ) {
 
     FXMVECTOR u = rayVec;
     FXMVECTOR v = (lineEnd)-(lineStart);
     FXMVECTOR w = (rayOrigin)-(lineStart);
-
 
     float a; XMStoreFloat( &a, XMVector3Dot( u, u ) ); // always >= 0
     float b; XMStoreFloat( &b, XMVector3Dot( u, v ) );
@@ -673,7 +664,6 @@ float EditorLinePrimitive::IntersectLineSegment( FXMVECTOR rayOrigin, FXMVECTOR 
     float D = a * c - b * b;	// always >= 0
     float sc, sN, sD = D;	// sc = sN / sD, default sD = D >= 0
     float tc, tN, tD = D;	// tc = tN / tD, default tD = D >= 0
-
 
     // compute the line parameters of the two closest points
     if ( D < Epsilon ) {	// the lines are almost parallel
@@ -764,8 +754,6 @@ void EditorLinePrimitive::RecalcTransforms() {
     //Now scale another matrix
     matScale = XMMatrixScalingFromVector( XMLoadFloat3( &Scale ) );
 
-
-
     //Apply rotation
     MatRot = XMMatrixIdentity();
 
@@ -779,7 +767,6 @@ void EditorLinePrimitive::RecalcTransforms() {
         XMVECTOR Up = XMVectorSet( 0, 1, 0, 0 );
         XMVECTOR Front = XMVectorSet( 1, 0, 0, 0 );
         if ( bLocalRotation ) {
-
             Up = XMVector3TransformNormal( Up, xmRotationMatrix );
             Front = XMVector3TransformNormal( Front, xmRotationMatrix );
             FXMVECTOR Right = XMVector3Cross( Up, Front );
@@ -790,9 +777,7 @@ void EditorLinePrimitive::RecalcTransforms() {
 
             xmRotationMatrix *= X * Y * Z;
             XMStoreFloat4x4( &RotationMatrix, xmRotationMatrix );
-
         } else {
-
             MatTemp = XMMatrixRotationAxis( Front, Rotation.x );                   // Pitch
             MatRot *= MatTemp;
             MatTemp = XMMatrixRotationAxis( Up, Rotation.y );                      // Yaw
@@ -810,7 +795,6 @@ void EditorLinePrimitive::RecalcTransforms() {
 
         RotationMatrixAngles = XMFLOAT3( 0, 0, 0 );
     }
-
 
     XMStoreFloat4x4( &WorldMatrix, matScale * xmRotationMatrix * matWorld );
 }
@@ -840,9 +824,7 @@ HRESULT EditorLinePrimitive::CreatePrimitive( LineVertex* PrimVerts, UINT NumVer
     InitData.SysMemPitch = 0;
     InitData.SysMemSlicePitch = 0;
 
-    D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
-
-    LE( engine->GetDevice()->CreateBuffer( &bufferDesc, &InitData, PrimVB.GetAddressOf() ) );
+    LE( reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine)->GetDevice()->CreateBuffer( &bufferDesc, &InitData, PrimVB.GetAddressOf() ) );
 
     PrimitiveTopology = Topology;
 
@@ -861,7 +843,7 @@ void EditorLinePrimitive::SetSolidShader( std::shared_ptr<D3D11PShader> SolidSha
 
 /** Renders a vertexbuffer with the given shader */
 void EditorLinePrimitive::RenderVertexBuffer( const Microsoft::WRL::ComPtr<ID3D11Buffer>& VB, UINT NumVertices, D3D11PShader* Shader, D3D11_PRIMITIVE_TOPOLOGY Topology, int Pass ) {
-    D3D11GraphicsEngineBase* engine = (D3D11GraphicsEngineBase*)Engine::GraphicsEngine;
+    D3D11GraphicsEngineBase* engine = reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine);
 
     XMMATRIX tr = XMMatrixTranspose( XMLoadFloat4x4( &WorldMatrix ) );;
     Engine::GAPI->SetWorldTransformXM( tr );

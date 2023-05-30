@@ -1,5 +1,4 @@
 #pragma once
-
 #include <vector>
 
 #include "d2dsubview.h"

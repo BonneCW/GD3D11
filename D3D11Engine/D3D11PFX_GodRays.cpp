@@ -12,10 +12,7 @@
 #include "GothicAPI.h"
 #include "GSky.h"
 
-using namespace DirectX;
-
 D3D11PFX_GodRays::D3D11PFX_GodRays( D3D11PfxRenderer* rnd ) : D3D11PFX_Effect( rnd ) {}
-
 
 D3D11PFX_GodRays::~D3D11PFX_GodRays() {}
 
@@ -24,7 +21,7 @@ XRESULT D3D11PFX_GodRays::Render( RenderToTextureBuffer* fxbuffer ) {
     if ( Engine::GAPI->GetSky()->GetAtmoshpereSettings().LightDirection.y <= 0 )
         return XR_SUCCESS; // Don't render the godrays in the night-time
 
-	D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
+	D3D11GraphicsEngine* engine = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
 
 	engine->SetDefaultStates();
 
@@ -86,8 +83,8 @@ XRESULT D3D11PFX_GodRays::Render( RenderToTextureBuffer* fxbuffer ) {
 	vp.TopLeftY = 0.0f;
 	vp.MinDepth = 0.0f;
 	vp.MaxDepth = 1.0f;
-	vp.Width = (float)FxRenderer->GetTempBufferDS4_1().GetSizeX();
-	vp.Height = (float)FxRenderer->GetTempBufferDS4_1().GetSizeY();
+	vp.Width = static_cast<float>(FxRenderer->GetTempBufferDS4_1().GetSizeX());
+	vp.Height = static_cast<float>(FxRenderer->GetTempBufferDS4_1().GetSizeY());
 
 	engine->GetContext()->RSSetViewports( 1, &vp );
 
@@ -107,8 +104,8 @@ XRESULT D3D11PFX_GodRays::Render( RenderToTextureBuffer* fxbuffer ) {
 
     FxRenderer->CopyTextureToRTV( FxRenderer->GetTempBufferDS4_2().GetShaderResView(), oldRTV, INT2( engine->GetResolution().x, engine->GetResolution().y ) );
 
-	vp.Width = (float)engine->GetResolution().x;
-	vp.Height = (float)engine->GetResolution().y;
+	vp.Width = static_cast<float>(engine->GetResolution().x);
+	vp.Height = static_cast<float>(engine->GetResolution().y);
 
 	engine->GetContext()->RSSetViewports( 1, &vp );
 

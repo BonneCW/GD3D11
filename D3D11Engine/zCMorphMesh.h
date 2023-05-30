@@ -10,11 +10,11 @@
 class zCMorphMesh {
 public:
     zCProgMeshProto* GetMorphMesh() {
-        return *(zCProgMeshProto**)THISPTR_OFFSET( GothicMemoryLocations::zCMorphMesh::Offset_MorphMesh );
+        return *reinterpret_cast<zCProgMeshProto**>(THISPTR_OFFSET( GothicMemoryLocations::zCMorphMesh::Offset_MorphMesh ));
     }
 
     zCModelTexAniState* GetTexAniState() {
-        return (zCModelTexAniState*)THISPTR_OFFSET( GothicMemoryLocations::zCMorphMesh::Offset_TexAniState );
+        return reinterpret_cast<zCModelTexAniState*>(THISPTR_OFFSET( GothicMemoryLocations::zCMorphMesh::Offset_TexAniState ));
     }
 
     void CalcVertexPositions() {
@@ -23,8 +23,5 @@ public:
 
     void AdvanceAnis() {
         reinterpret_cast<void( __fastcall* )( zCMorphMesh* )>( GothicMemoryLocations::zCMorphMesh::AdvanceAnis )( this );
-    }
-
-    void UpdateBuffer( D3D11VertexBuffer* buffer ) {
     }
 };

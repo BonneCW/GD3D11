@@ -8,8 +8,8 @@ class zMat4
         /** Hooks the functions of this Class */
         static void Hook()
         {
-            XHook(0x515080, zMat4::zMat4Transpose);
-            XHook(0x515500, zMat4::zMat4Inverse);
+            PatchJMP( 0x00515080, reinterpret_cast<DWORD>(&zMat4Transpose) );
+            PatchJMP( 0x00515500, reinterpret_cast<DWORD>(&zMat4Inverse) );
         }
 
         static XMFLOAT4X4& __fastcall zMat4Transpose(XMFLOAT4X4& _THIS, int _EDX, XMFLOAT4X4& output)

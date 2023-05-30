@@ -38,7 +38,7 @@ bool SV_Slider::OnWindowMessage( HWND hWnd, unsigned int msg, WPARAM wParam, LPA
     case WM_LBUTTONDOWN:
     {
         POINT p = D2DView::GetCursorPosition();
-        if ( PointInsideRect( D2D1::Point2F( (float)p.x, (float)p.y ), clientRectAbs ) ) {
+        if ( PointInsideRect( D2D1::Point2F( static_cast<float>(p.x), static_cast<float>(p.y) ), clientRectAbs ) ) {
             DraggingSlider = true;
             return false;
         }
@@ -181,7 +181,7 @@ void SV_Slider::RenderSlider() {
             char txt[32];
 
             if ( IsIntegral ) {
-                sprintf_s( txt, "%d", (int)(Value * DisplayMultiplier + 0.5f) );
+                sprintf_s( txt, "%d", static_cast<int>(Value * DisplayMultiplier + 0.5f) );
                 str = txt;
             } else {
                 sprintf_s( txt, "%.2f", Value * DisplayMultiplier );
@@ -196,7 +196,7 @@ void SV_Slider::RenderSlider() {
 
             ValueLabel->SetCaption( Toolbox::ToWideChar( str ) );
         } else {
-            unsigned int v = (unsigned int)(Value + 0.5f);
+            unsigned int v = static_cast<unsigned int>(Value + 0.5f);
             if ( v >= DisplayValues.size() )
                 v = DisplayValues.size() - 1;
 
@@ -224,7 +224,7 @@ void SV_Slider::SetValueP( float value ) {
     Value = Toolbox::lerp( Min, Max, value );
 
     if ( IsIntegral )
-        Value = (float)((int)(Value + 0.5f));
+        Value = static_cast<float>(static_cast<int>(Value + 0.5f));
 
     BarPosition = (GetSize().width - ((SV_SLIDERCONTROL_SLIDER_SIZEX + 2) * 2)) * value + (SV_SLIDERCONTROL_SLIDER_SIZEX + 2);
 
@@ -233,7 +233,7 @@ void SV_Slider::SetValueP( float value ) {
         *DataToUpdate = Value;
 
     if ( DataToUpdateInt )
-        *DataToUpdateInt = (int)(Value + 0.5f);
+        *DataToUpdateInt = static_cast<int>(Value + 0.5f);
 
     // Fire callback
     if ( oldVal != Value && ValueChangedCallback )
@@ -246,7 +246,7 @@ void SV_Slider::SetValueP( float value ) {
         char txt[32];
 
         if ( IsIntegral ) {
-            sprintf_s( txt, "%d", (int)(Value * DisplayMultiplier + 0.5f) );
+            sprintf_s( txt, "%d", static_cast<int>(Value * DisplayMultiplier + 0.5f) );
             str = txt;
         } else {
             sprintf_s( txt, "%.2f", Value * DisplayMultiplier );
@@ -261,7 +261,7 @@ void SV_Slider::SetValueP( float value ) {
 
         ValueLabel->SetCaption( Toolbox::ToWideChar( str ) );
     } else {
-        unsigned int v = (unsigned int)(Value + 0.5f);
+        unsigned int v = static_cast<unsigned int>(Value + 0.5f);
         if ( v >= DisplayValues.size() )
             v = DisplayValues.size() - 1;
 
@@ -298,7 +298,7 @@ void SV_Slider::SetSliderChangedCallback( SV_SliderValueChangedCallback fn, void
 
 /** Returns the current value */
 float SV_Slider::GetValue() const {
-    return IsIntegral ? (int)(Value + 0.5f) : Value;
+    return IsIntegral ? static_cast<int>(Value + 0.5f) : Value;
 }
 
 /** Sets whether this should display only ints or not */

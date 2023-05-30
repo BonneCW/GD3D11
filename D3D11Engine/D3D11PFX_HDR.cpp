@@ -14,19 +14,21 @@
 const int LUM_SIZE = 512;
 
 D3D11PFX_HDR::D3D11PFX_HDR( D3D11PfxRenderer* rnd ) : D3D11PFX_Effect( rnd ) {
-	D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
+	D3D11GraphicsEngine* engine = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
 
 	// Create lum-buffer
-	LumBuffer1 = new RenderToTextureBuffer( engine->GetDevice().Get(), LUM_SIZE, LUM_SIZE, DXGI_FORMAT_R16_FLOAT, nullptr, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, (int)(log( LUM_SIZE ) / log( 2 )) );
-	LumBuffer2 = new RenderToTextureBuffer( engine->GetDevice().Get(), LUM_SIZE, LUM_SIZE, DXGI_FORMAT_R16_FLOAT, nullptr, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, (int)(log( LUM_SIZE ) / log( 2 )) );
-	LumBuffer3 = new RenderToTextureBuffer( engine->GetDevice().Get(), LUM_SIZE, LUM_SIZE, DXGI_FORMAT_R16_FLOAT, nullptr, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, (int)(log( LUM_SIZE ) / log( 2 )) );
+	LumBuffer1 = new RenderToTextureBuffer( engine->GetDevice().Get(), LUM_SIZE, LUM_SIZE, DXGI_FORMAT_R16_FLOAT, nullptr,
+        DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, static_cast<int>(log( LUM_SIZE ) / log( 2 )) );
+	LumBuffer2 = new RenderToTextureBuffer( engine->GetDevice().Get(), LUM_SIZE, LUM_SIZE, DXGI_FORMAT_R16_FLOAT, nullptr,
+        DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, static_cast<int>(log( LUM_SIZE ) / log( 2 )) );
+	LumBuffer3 = new RenderToTextureBuffer( engine->GetDevice().Get(), LUM_SIZE, LUM_SIZE, DXGI_FORMAT_R16_FLOAT, nullptr,
+        DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, static_cast<int>(log( LUM_SIZE ) / log( 2 )) );
 
-	engine->GetContext()->ClearRenderTargetView( LumBuffer1->GetRenderTargetView().Get(), (float*)&float4( 0, 0, 0, 0 ) );
-	engine->GetContext()->ClearRenderTargetView( LumBuffer2->GetRenderTargetView().Get(), (float*)&float4( 0, 0, 0, 0 ) );
-	engine->GetContext()->ClearRenderTargetView( LumBuffer3->GetRenderTargetView().Get(), (float*)&float4( 0, 0, 0, 0 ) );
+	engine->GetContext()->ClearRenderTargetView( LumBuffer1->GetRenderTargetView().Get(), reinterpret_cast<float*>(&float4( 0, 0, 0, 0 )) );
+	engine->GetContext()->ClearRenderTargetView( LumBuffer2->GetRenderTargetView().Get(), reinterpret_cast<float*>(&float4( 0, 0, 0, 0 )) );
+	engine->GetContext()->ClearRenderTargetView( LumBuffer3->GetRenderTargetView().Get(), reinterpret_cast<float*>(&float4( 0, 0, 0, 0 )) );
 	ActiveLumBuffer = 0;
 }
-
 
 D3D11PFX_HDR::~D3D11PFX_HDR() {
 	delete LumBuffer1;
@@ -36,7 +38,7 @@ D3D11PFX_HDR::~D3D11PFX_HDR() {
 
 /** Draws this effect to the given buffer */
 XRESULT D3D11PFX_HDR::Render( RenderToTextureBuffer* fxbuffer ) {
-	D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
+	D3D11GraphicsEngine* engine = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
     engine->SetDefaultStates();
 	Engine::GAPI->GetRendererState().BlendState.BlendEnabled = false;
 	Engine::GAPI->GetRendererState().BlendState.SetDirty();
@@ -87,7 +89,7 @@ XRESULT D3D11PFX_HDR::Render( RenderToTextureBuffer* fxbuffer ) {
 
 /** Blurs the backbuffer and puts the result into TempBufferDS4_2*/
 void D3D11PFX_HDR::CreateBloom( RenderToTextureBuffer* lum ) {
-	D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
+	D3D11GraphicsEngine* engine = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
 
 	INT2 dsRes = INT2( Engine::GraphicsEngine->GetResolution().x / 4, Engine::GraphicsEngine->GetResolution().y / 4 );
 	engine->GetShaderManager().GetVShader( "VS_PFX" )->Apply();
@@ -141,7 +143,7 @@ void D3D11PFX_HDR::CreateBloom( RenderToTextureBuffer* lum ) {
 
 /** Calcualtes the luminance */
 RenderToTextureBuffer* D3D11PFX_HDR::CalcLuminance() {
-	D3D11GraphicsEngine* engine = (D3D11GraphicsEngine*)Engine::GraphicsEngine;
+	D3D11GraphicsEngine* engine = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
 
 	RenderToTextureBuffer* lumRTV = nullptr;
 	RenderToTextureBuffer* lastLum = nullptr;

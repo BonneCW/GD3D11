@@ -8,11 +8,14 @@
 
 #include "Logger.h"
 
+#define DISABLE_EXECUTABLE_CHECKSUM_CHECK
+
 namespace VersionCheck {
 
 	static const int CHECKSUM_G2_2_6_FIX = 0x008a3e89;
 	static const int CHECKSUM_G2_2_6_FIX_4GB = 0x008a3ea9;
 	static const int CHECKSUM_G1_1_08k = 0x0000eb3d;
+	static const int CHECKSUM_G1_1_08k_4GB = 0x08608228;
 	static const int CHECKSUM_G1_1_12f = 0x00862362;
 
 	/** Returns whether the given file exists */
@@ -28,6 +31,7 @@ namespace VersionCheck {
 
 	/** Checks the executable checksum for the right version */
 	void CheckExecutable() {
+#ifndef DISABLE_EXECUTABLE_CHECKSUM_CHECK
 		// Get checksum from header
 		DWORD checksum;
 		DWORD headersum;
@@ -87,7 +91,7 @@ namespace VersionCheck {
                 "\nYour checksum was: " << headersum;
         }
 #else
-		if ( headersum != CHECKSUM_G1_1_08k ) {
+		if ( headersum != CHECKSUM_G1_1_08k && headersum != CHECKSUM_G1_1_08k_4GB ) {
 			LogWarnBox() << "Your Gothic-Executable does not match the checksum for this version of GD3D11!\n"
 				"This DLL only works for Gothic 1 - Version 1.08k_mod or the System-Pack.\n\n"
 				"You can continue and try anyways but the game will most likely crash.\n"
@@ -100,6 +104,17 @@ namespace VersionCheck {
                                 "Not everything is working yet and it may crash frequently. You don't need to report every bug you see, because I likely have seen it myself by now.\n";
         #endif*/
 #endif
-	}
+#endif
 
+		// Check for game data
+		// Do this by checking one file in the folder which should always be there
+		// Not the best solution, but we'll just roll with it at this point as
+		// this is only a hint for the user that he forgot to copy over the GD3D11-Folder
+		if ( !Toolbox::FileExists( "GD3D11\\shaders\\VS_Ex.hlsl" ) ) {
+			LogErrorBox() << "Failed to find GD3D11 systemfiles!\n"
+				"This means: The GD3D11-folder is missing or corrupt. This can be the result of only copying the ddraw.dll into Gothics system-folder, which isn't enough!\n\n"
+				"Please check your installation.\n";
+			exit( 0 );
+		}
+	}
 }

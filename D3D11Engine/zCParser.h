@@ -4,10 +4,8 @@
 #include "GothicAPI.h"
 #include "zSTRING.h"
 
-
-
 #ifndef BUILD_GOTHIC_1_08k
-#define zCPARSER_CALL_FUNC(symbolId, ...)  do {((void (*)(zCParser*, ...))GothicMemoryLocations::zCParser::CallFunc)(zCParser::GetParser(), symbolId, __VA_ARGS__); } while (0)
+#define zCPARSER_CALL_FUNC(symbolId, ...)  do {reinterpret_cast<void(*)(zCParser*, ...)>(GothicMemoryLocations::zCParser::CallFunc)(zCParser::GetParser(), symbolId, __VA_ARGS__); } while (0)
 #else
 #define zCPARSER_CALL_FUNC(symbolId, ...)
 #endif
@@ -21,6 +19,6 @@ public:
 
     static zCParser* GetParser() { return nullptr; }
 #else
-    static zCParser* GetParser() { return (zCParser*)GothicMemoryLocations::GlobalObjects::zCParser; }
+    static zCParser* GetParser() { return reinterpret_cast<zCParser*>(GothicMemoryLocations::GlobalObjects::zCParser); }
 #endif
 };

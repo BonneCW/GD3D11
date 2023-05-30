@@ -10,17 +10,17 @@ public:
     void SetGlobalReverbPreset( int preset, float weight ) {
 #ifndef BUILD_GOTHIC_1_08k
         // Get vtable-entry
-        int* vtbl = (int*)((int*)this)[0];
+        DWORD* vtbl = reinterpret_cast<DWORD*>(*reinterpret_cast<DWORD*>(this));
 
         typedef void( __thiscall* pFun )(void*, int, float);
 
-        pFun fn = (pFun)vtbl[GothicMemoryLocations::zCSoundSystem::VTBL_SetGlobalReverbPreset];
+        pFun fn = reinterpret_cast<pFun>(vtbl[GothicMemoryLocations::zCSoundSystem::VTBL_SetGlobalReverbPreset]);
         fn( this, preset, weight );
 #endif
     }
 
 #ifndef BUILD_GOTHIC_1_08k
-    static zCSoundSystem* GetSoundSystem() { return *(zCSoundSystem**)GothicMemoryLocations::GlobalObjects::zSound; }
+    static zCSoundSystem* GetSoundSystem() { return *reinterpret_cast<zCSoundSystem**>(GothicMemoryLocations::GlobalObjects::zSound); }
 #else
     static zCSoundSystem* GetSoundSystem() { return nullptr; }
 #endif

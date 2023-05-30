@@ -19,6 +19,8 @@ struct GothicMemoryLocations {
         static const unsigned int s_globFreePart = 0x00874374;
         static const unsigned int zCOption = 0x00869694;
         static const unsigned int zRenderer = 0x008C5ED0;
+        static const unsigned int screen = 0x008DE1BC;
+        static const unsigned int sysEvents = 0x004F6AC0;
     };
 
     struct zCPolyStrip {
@@ -49,15 +51,37 @@ struct GothicMemoryLocations {
         static const unsigned int DrawPolySimple = 0x007143F0;
         static const unsigned int CacheInSurface = 0x0071A3E0;
         static const unsigned int CacheOutSurface = 0x0071A7F0;
+        static const unsigned int XD3D_SetRenderState = 0x007185C0;
+        static const unsigned int XD3D_SetTexture = 0x00718150;
 
         static const unsigned int RenderScreenFade = 0x005376F0;
         static const unsigned int RenderCinemaScope = 0x005377B0;
 
         static const unsigned int Offset_RenderState = 0x34;
         static const unsigned int Offset_BoundTexture = 0x80E38;
+        static const unsigned int Offset_Width = 0x984;
+        static const unsigned int Offset_Height = 0x988;
+
+        static const unsigned int SetFog_Offset = 0x28;
+        static const unsigned int GetFog_Offset = 0x2C;
+        static const unsigned int SetBilerpFilterEnabled_Offset = 0x50;
+        static const unsigned int GetBilerpFilterEnabled_Offset = 0x54;
+        static const unsigned int GetZBufferWriteEnabled_Offset = 0x68;
+        static const unsigned int SetZBufferWriteEnabled_Offset = 0x6C;
+        static const unsigned int GetZBufferCompare_Offset = 0x70;
+        static const unsigned int SetZBufferCompare_Offset = 0x74;
+        static const unsigned int SetAlphaBlendFunc_Offset = 0x88;
+        static const unsigned int GetAlphaBlendFunc_Offset = 0x8C;
+        static const unsigned int Vid_Blit_Offset = 0xD8;
+        static const unsigned int SetViewport_Offset = 0x134;
+        static const unsigned int SetTextureStageState_Offset = 0x148;
+
+        static const unsigned int DDRAW7 = 0x00929D54;
+        static const unsigned int D3DDevice7 = 0x00929D5C;
     };
 
     struct zCOption {
+        static const unsigned int GetDirectory = 0x0045FC00;
         static const unsigned int ReadInt = 0x0045CDB0;
         static const unsigned int ReadBool = 0x0045CB80;
         static const unsigned int ReadDWORD = 0x0045CEA0;
@@ -87,6 +111,7 @@ struct GothicMemoryLocations {
 
         //static const unsigned int Offset_Sun = 0x5F4; // First of the two planets
         static const unsigned int Offset_MasterTime = 0x6C;
+        static const unsigned int Offset_LastMasterTime = 0x70;
         static const unsigned int Offset_MasterState = 0x74;
         /*static const unsigned int Offset_SkyLayer1 = 0x5A8;
         static const unsigned int Offset_SkyLayer2 = 0x5C4;
@@ -111,6 +136,8 @@ struct GothicMemoryLocations {
 
         static const unsigned int ProcessRainFX = 0x005C0DC0;
         static const unsigned int Offset_OutdoorRainFXWeight = 0x66C;
+        static const unsigned int Offset_TimeStartRain = 0x678;
+        static const unsigned int Offset_TimeStopRain = 0x67C;
     };
 
     struct zCSkyController {
@@ -171,6 +198,7 @@ struct GothicMemoryLocations {
         static const unsigned int Offset_Type = 0x0A0;
 
         static const unsigned int Offset_Flags = 0xE4;
+        static const unsigned int Offset_VobTree = 0x24;
         static const unsigned int MASK_ShowVisual = 0x1;
         static const unsigned int Offset_CameraAlignment = 0xF0;
         static const unsigned int SHIFTLR_CameraAlignment = 0x1E;
@@ -181,6 +209,7 @@ struct GothicMemoryLocations {
         static const unsigned int Offset_WorldPosY = 0x58;
         static const unsigned int Offset_WorldPosZ = 0x68;
 
+        static const unsigned int Offset_WorldBBOX = 0x7C;
         static const unsigned int Offset_SleepingMode = 0xEC;
         static const unsigned int MASK_SkeepingMode = 3;
 
@@ -192,6 +221,9 @@ struct GothicMemoryLocations {
         static const unsigned int GetDeviceEnabled = 0x004C8760;
         static const unsigned int SetDeviceEnabled = 0x004C8710;
         static const unsigned int ClearKeyBuffer = 0x004C8AE0;
+
+        static const unsigned int GetKey_Offset = 0x2C;
+        static const unsigned int ProcessInputEvents_Offset = 0x70;
     };
 
     struct zCVisual {
@@ -308,9 +340,46 @@ struct GothicMemoryLocations {
     };
 
     struct zCBinkPlayer {
-        static const unsigned int GetPixelFormat = 0x0043C9E0;
-        static const unsigned int OpenVideo = 0x0043A660;
+        static const unsigned int PlayInit = 0x00469600;
+        static const unsigned int PlayDeinit = 0x00469650;
+        static const unsigned int OpenVideo = 0x00469280;
+        static const unsigned int CloseVideo = 0x004693F0;
+        static const unsigned int Offset_IsLooping = 0x18;
+        static const unsigned int Offset_IsPaused = 0x1C;
+        static const unsigned int Offset_IsPlaying = 0x20;
+        static const unsigned int Offset_SoundOn = 0x24;
         static const unsigned int Offset_VideoHandle = 0x30;
+        static const unsigned int Offset_DoHandleEvents = 0x40;
+        static const unsigned int Offset_DisallowInputHandling = 0x84;
+
+        static const unsigned int Stop_Offset = 0x20;
+
+        static const unsigned int PlayHandleEvents_Func = 0x004223D0;
+        static const unsigned int PlayHandleEvents_Vtable = 0x007D1014;
+        static const unsigned int SetSoundVolume_Func = 0x0043CB80;
+        static const unsigned int SetSoundVolume_Vtable = 0x007D1008;
+        static const unsigned int ToggleSound_Func = 0x0043CB30;
+        static const unsigned int ToggleSound_Vtable = 0x007D1004;
+        static const unsigned int Pause_Func = 0x0043C960;
+        static const unsigned int Pause_Vtable = 0x007D0FF4;
+        static const unsigned int Unpause_Func = 0x0043C980;
+        static const unsigned int Unpause_Vtable = 0x007D0FF8;
+        static const unsigned int IsPlaying_Func = 0x0043C9B0;
+        static const unsigned int IsPlaying_Vtable = 0x007D1000;
+        static const unsigned int PlayGotoNextFrame_Func = 0x0043C760;
+        static const unsigned int PlayGotoNextFrame_Vtable = 0x007D100C;
+        static const unsigned int PlayWaitNextFrame_Func = 0x0043C770;
+        static const unsigned int PlayWaitNextFrame_Vtable = 0x007D1010;
+        static const unsigned int PlayFrame_Func = 0x0043C7B0;
+        static const unsigned int PlayFrame_Vtable = 0x007D14C4;
+        static const unsigned int PlayInit_Func = 0x0043B460;
+        static const unsigned int PlayInit_Vtable = 0x007D14C0;
+        static const unsigned int PlayDeinit_Func = 0x0043BFB0;
+        static const unsigned int PlayDeinit_Vtable = 0x007D14C8;
+        static const unsigned int OpenVideo_Func = 0x0043A660;
+        static const unsigned int OpenVideo_Vtable = 0x007D14B8;
+        static const unsigned int CloseVideo_Func = 0x0043B1D0;
+        static const unsigned int CloseVideo_Vtable = 0x007D0FE4;
     };
 
     struct oCSpawnManager {
@@ -399,9 +468,11 @@ struct GothicMemoryLocations {
         static const unsigned int REPL_SetMode_ModechangeStart = 0x007021A9;
         static const unsigned int REPL_SetMode_ModechangeEnd = 0x0007021B8;
         static const unsigned int PrintTimed = 0x006FE1A0;
-
-        static const unsigned int PrintChars = 0x006fff80;
-        static const unsigned int CreateText = 0x007006e0;
+        static const unsigned int PrintChars = 0x006FFF80;
+        static const unsigned int CreateText = 0x007006E0;
+        static const unsigned int BlitText = 0x006FC7B0;
+        static const unsigned int Print = 0x006FFEB0;
+        static const unsigned int Blit = 0x006FC8C0;
     };
 
     struct zCVobLight {
@@ -447,6 +518,7 @@ struct GothicMemoryLocations {
     struct zCModel {
         static const unsigned int RenderNodeList = 0x0055FA50;
         static const unsigned int UpdateAttachedVobs = 0x005667F0;
+        static const unsigned int Offset_HomeVob = 0x54;
         static const unsigned int Offset_ModelProtoList = 0x58;
         static const unsigned int Offset_NodeList = 0x64;
         static const unsigned int Offset_MeshSoftSkinList = 0x70;
@@ -489,6 +561,7 @@ struct GothicMemoryLocations {
         static const unsigned int oCMobLadder = 0x008daf10;
         static const unsigned int zCTrigger = 0x008d7b78;
         static const unsigned int zCTriggerBase = 0x008d7a98;
+        static const unsigned int oCVisualFX = 0x00869e00;
         static const unsigned int oCZoneMusic = 0x008de498;
         static const unsigned int zCMover = 0x008d7868;
         static const unsigned int oCMobDoor = 0x008dac40;
@@ -503,6 +576,12 @@ struct GothicMemoryLocations {
         static const unsigned int zCTriggerList = 0x008d7f68;
         static const unsigned int zCVobStair = 0x008d7708;
         static const unsigned int zCTexture = 0x008CF110;
+    };
+
+    struct oCInformationManager
+    {
+        static const unsigned int GetInformationManager = 0x0072ABD0;
+        static const unsigned int IsDoneOffset = 0x2C;
     };
 
     class VobTypes // vftables

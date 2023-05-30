@@ -3,13 +3,14 @@
 #include "ddraw.h"
 #include "D3D7/MyDirectDraw.h"
 #include "Logger.h"
-#include "detours.h"
+#include "Detours/detours.h"
 #include "DbgHelp.h"
 #include "BaseAntTweakBar.h"
 #include "HookedFunctions.h"
 #include <signal.h>
 #include "VersionCheck.h"
 #include "InstructionSet.h"
+#include "D3D11GraphicsEngine.h"
 
 #include <shlwapi.h>
 
@@ -17,8 +18,6 @@
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "Imagehlp.lib") // Used in VersionCheck.cpp to get Gothic.exe Checksum.
 #pragma comment(lib, "shlwapi.lib")
-
-//#pragma pack(1)
 
 // Signal NVIDIA/AMD drivers that we want the high-performance card on laptops
 extern "C" {
@@ -28,13 +27,12 @@ extern "C" {
 
 static HINSTANCE hLThis = 0;
 
-static HRESULT( WINAPI* DirectDrawCreateEx_t )(GUID FAR* lpGuid, LPVOID* lplpDD, REFIID  iid, IUnknown FAR* pUnkOuter);
 typedef void (WINAPI* DirectDrawSimple)();
 typedef HRESULT( WINAPI* DirectDrawCreateEx_type )(GUID FAR*, LPVOID*, REFIID, IUnknown FAR*);
 
 #if defined(BUILD_GOTHIC_2_6_fix)
 using WinMainFunc = decltype(&WinMain);
-WinMainFunc originalWinMain;
+WinMainFunc originalWinMain = reinterpret_cast<WinMainFunc>(GothicMemoryLocations::Functions::WinMain);
 #endif
 
 bool FeatureLevel10Compatibility = false;
@@ -69,6 +67,7 @@ struct ddraw_dll {
     FARPROC	GetSurfaceFromDC;
     FARPROC	RegisterSpecialCase;
     FARPROC	ReleaseDDThreadLock;
+    FARPROC	UpdateCustomFontMultiplier;
 } ddraw;
 
 HRESULT DoHookedDirectDrawCreateEx( GUID FAR* lpGuid, LPVOID* lplpDD, REFIID  iid, IUnknown FAR* pUnkOuter ) {
@@ -83,12 +82,8 @@ HRESULT DoHookedDirectDrawCreateEx( GUID FAR* lpGuid, LPVOID* lplpDD, REFIID  ii
 }
 
 extern "C" HRESULT WINAPI HookedDirectDrawCreateEx( GUID FAR * lpGuid, LPVOID * lplpDD, REFIID  iid, IUnknown FAR * pUnkOuter ) {
-    //LogInfo() << "HookedDirectDrawCreateEx!";
-    HRESULT hr = S_OK;
-
     if ( Engine::PassThrough ) {
-        DirectDrawCreateEx_type fn = (DirectDrawCreateEx_type)ddraw.DirectDrawCreateEx;
-        return fn( lpGuid, lplpDD, iid, pUnkOuter );
+        return reinterpret_cast<DirectDrawCreateEx_type>(ddraw.DirectDrawCreateEx)( lpGuid, lplpDD, iid, pUnkOuter );
     }
 
     hook_infunc
@@ -97,13 +92,12 @@ extern "C" HRESULT WINAPI HookedDirectDrawCreateEx( GUID FAR * lpGuid, LPVOID * 
 
     hook_outfunc
 
-        return hr;
+        return S_OK;
 }
 
 extern "C" void WINAPI HookedAcquireDDThreadLock() {
     if ( Engine::PassThrough ) {
-        DirectDrawSimple fn = (DirectDrawSimple)ddraw.AcquireDDThreadLock;
-        fn();
+        reinterpret_cast<DirectDrawSimple>(ddraw.AcquireDDThreadLock)();
         return;
     }
     // Do nothing
@@ -112,14 +106,19 @@ extern "C" void WINAPI HookedAcquireDDThreadLock() {
 
 extern "C" void WINAPI HookedReleaseDDThreadLock() {
     if ( Engine::PassThrough ) {
-        DirectDrawSimple fn = (DirectDrawSimple)ddraw.ReleaseDDThreadLock;
-        fn();
+        reinterpret_cast<DirectDrawSimple>(ddraw.ReleaseDDThreadLock)();
         return;
     }
-
     // Do nothing
     LogInfo() << "ReleaseDDThreadLock called!";
 }
+
+
+extern "C" float WINAPI  UpdateCustomFontMultiplierFontRendering( float multiplier ) {
+    D3D11GraphicsEngine* engine = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
+    return engine ? engine->UpdateCustomFontMultiplierFontRendering( multiplier ) : 1.0;
+}
+
 
 __declspec(naked) void FakeAcquireDDThreadLock() { _asm { jmp[ddraw.AcquireDDThreadLock] } }
 __declspec(naked) void FakeCheckFullscreen() { _asm { jmp[ddraw.CheckFullscreen] } }
@@ -136,9 +135,19 @@ __declspec(naked) void FakeDirectDrawCreateClipper() { _asm { jmp[ddraw.DirectDr
 // HRESULT WINAPI DirectDrawCreateEx(GUID FAR * lpGuid, LPVOID *lplpDD, REFIID iid,IUnknown FAR *pUnkOuter);
 __declspec(naked) void FakeDirectDrawCreateEx() { _asm { jmp[ddraw.DirectDrawCreateEx] } }
 // HRESULT WINAPI DirectDrawEnumerateA(LPDDENUMCALLBACKA lpCallback, LPVOID lpContext);
-__declspec(naked) void FakeDirectDrawEnumerateA() { _asm { jmp[ddraw.DirectDrawEnumerateA] } }
+HRESULT WINAPI FakeDirectDrawEnumerateA( LPDDENUMCALLBACKA lpCallback, LPVOID lpContext )
+{
+    GUID deviceGUID = { 0xF5049E78, 0x4861, 0x11D2, {0xA4, 0x07, 0x00, 0xA0, 0xC9, 0x06, 0x29, 0xA8} };
+    lpCallback( &deviceGUID, "DirectX11", "DirectX11", lpContext );
+    return S_OK;
+}
 // HRESULT WINAPI DirectDrawEnumerateExA(LPDDENUMCALLBACKEXA lpCallback, LPVOID lpContext, DWORD dwFlags);
-__declspec(naked) void FakeDirectDrawEnumerateExA() { _asm { jmp[ddraw.DirectDrawEnumerateExA] } }
+HRESULT WINAPI FakeDirectDrawEnumerateExA( LPDDENUMCALLBACKEXA lpCallback, LPVOID lpContext, DWORD dwFlags )
+{
+    GUID deviceGUID = { 0xF5049E78, 0x4861, 0x11D2, {0xA4, 0x07, 0x00, 0xA0, 0xC9, 0x06, 0x29, 0xA8} };
+    lpCallback( &deviceGUID, "DirectX11", "DirectX11", lpContext, nullptr );
+    return S_OK;
+}
 // HRESULT WINAPI DirectDrawEnumerateExW(LPDDENUMCALLBACKEXW lpCallback, LPVOID lpContext, DWORD dwFlags);
 __declspec(naked) void FakeDirectDrawEnumerateExW() { _asm { jmp[ddraw.DirectDrawEnumerateExW] } }
 // HRESULT WINAPI DirectDrawEnumerateW(LPDDENUMCALLBACKW lpCallback, LPVOID lpContext);
@@ -208,21 +217,28 @@ int WINAPI hooked_WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR l
     // Remove automatic volume change of sounds regarding whether the camera is indoor or outdoor
     // TODO: Implement!
     if ( !GMPModeActive ) {
-        XHook( GothicMemoryLocations::zCActiveSnd::AutoCalcObstruction, HookedFunctionInfo::hooked_zCActiveSndAutoCalcObstruction );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCActiveSndAutoCalcObstruction), HookedFunctionInfo::hooked_zCActiveSndAutoCalcObstruction );
     }
     return originalWinMain( hInstance, hPrevInstance, lpCmdLine, nShowCmd );
 }
 #endif
 
 BOOL WINAPI DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
+    if ( DetourIsHelperProcess() ) {
+        return TRUE;
+    }
+
     if ( reason == DLL_PROCESS_ATTACH ) {
+        DetourRestoreAfterWith();
+        DetourTransactionBegin();
+
         //DebugWrite_i("DDRAW Proxy DLL starting.\n", 0);
         hLThis = hInst;
 
         Engine::PassThrough = false;
 
 #if defined(BUILD_GOTHIC_2_6_fix)
-        XHook( originalWinMain, GothicMemoryLocations::Functions::WinMain, hooked_WinMain );
+        DetourAttach( &reinterpret_cast<PVOID&>(originalWinMain), hooked_WinMain );
 #endif
 
         //_CrtSetDbgFlag (_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
@@ -249,6 +265,7 @@ BOOL WINAPI DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
             EnableCrashingOnCrashes();
             //SetUnhandledExceptionFilter(MyUnhandledExceptionFilter);
         }
+        DetourTransactionCommit();
 
         char infoBuf[MAX_PATH];
         GetSystemDirectoryA( infoBuf, MAX_PATH );
@@ -281,8 +298,6 @@ BOOL WINAPI DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
         ddraw.GetSurfaceFromDC = GetProcAddress( ddraw.dll, "GetSurfaceFromDC" );
         ddraw.RegisterSpecialCase = GetProcAddress( ddraw.dll, "RegisterSpecialCase" );
         ddraw.ReleaseDDThreadLock = GetProcAddress( ddraw.dll, "ReleaseDDThreadLock" );
-
-        *(void**)&DirectDrawCreateEx_t = (void*)GetProcAddress( ddraw.dll, "DirectDrawCreateEx" );
     } else if ( reason == DLL_PROCESS_DETACH ) {
         Engine::OnShutDown();
 

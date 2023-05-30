@@ -11,26 +11,26 @@ public:
 
     /** Hooks the functions of this Class */
     static void Hook() {
-        XHook( HookedFunctions::OriginalFunctions.original_zCQuadMarkCreateQuadMark, GothicMemoryLocations::zCQuadMark::CreateQuadMark, zCQuadMark::Hooked_CreateQuadMark );
-        //XHook(HookedFunctions::OriginalFunctions.original_zCQuadMarkConstructor, GothicMemoryLocations::zCQuadMark::Constructor, zCQuadMark::Hooked_Constructor);
-        XHook( HookedFunctions::OriginalFunctions.original_zCQuadMarkDestructor, GothicMemoryLocations::zCQuadMark::Destructor, zCQuadMark::Hooked_Destructor );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCQuadMarkCreateQuadMark), Hooked_CreateQuadMark );
+        //DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCQuadMarkConstructor), Hooked_Constructor );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCQuadMarkDestructor), Hooked_Destructor );
     }
 
-    static void __fastcall Hooked_CreateQuadMark( void* thisptr, void* unknwn, zCPolygon* poly, const float3& position, const float2& size, struct zTEffectParams* params ) {
+    static void __fastcall Hooked_CreateQuadMark( zCQuadMark* thisptr, void* unknwn, zCPolygon* poly, const float3& position, const float2& size, struct zTEffectParams* params ) {
         hook_infunc
 
-            if ( ((zCQuadMark*)thisptr)->GetDontRepositionConnectedVob() )
+            if ( thisptr->GetDontRepositionConnectedVob() )
                 return; // Don't create quad-marks for particle-effects because it's kinda slow at the moment
                         // And even for the original game using some emitters? (L'Hiver Light, Swampdragon)
 
         HookedFunctions::OriginalFunctions.original_zCQuadMarkCreateQuadMark( thisptr, poly, position, size, params );
 
-        QuadMarkInfo* info = Engine::GAPI->GetQuadMarkInfo( (zCQuadMark*)thisptr );
+        QuadMarkInfo* info = Engine::GAPI->GetQuadMarkInfo( thisptr );
 
-        WorldConverter::UpdateQuadMarkInfo( info, (zCQuadMark*)thisptr, position );
+        WorldConverter::UpdateQuadMarkInfo( info, thisptr, position );
 
         if ( !info->Mesh )
-            Engine::GAPI->RemoveQuadMark( (zCQuadMark*)thisptr );
+            Engine::GAPI->RemoveQuadMark( thisptr );
 
         hook_outfunc
     }
@@ -43,30 +43,30 @@ public:
         hook_outfunc
     }
 
-    static void __fastcall Hooked_Destructor( void* thisptr, void* unknwn ) {
+    static void __fastcall Hooked_Destructor( zCQuadMark* thisptr, void* unknwn ) {
         hook_infunc
 
             HookedFunctions::OriginalFunctions.original_zCQuadMarkDestructor( thisptr );
 
-        Engine::GAPI->RemoveQuadMark( (zCQuadMark*)thisptr );
+        Engine::GAPI->RemoveQuadMark( thisptr );
 
         hook_outfunc
     }
 
     zCMesh* GetQuadMesh() {
-        return *(zCMesh**)THISPTR_OFFSET( GothicMemoryLocations::zCQuadMark::Offset_QuadMesh );
+        return *reinterpret_cast<zCMesh**>(THISPTR_OFFSET( GothicMemoryLocations::zCQuadMark::Offset_QuadMesh ));
     }
 
     zCMaterial* GetMaterial() {
-        return *(zCMaterial**)THISPTR_OFFSET( GothicMemoryLocations::zCQuadMark::Offset_Material );
+        return *reinterpret_cast<zCMaterial**>(THISPTR_OFFSET( GothicMemoryLocations::zCQuadMark::Offset_Material ));
     }
 
     zCVob* GetConnectedVob() {
-        return *(zCVob**)THISPTR_OFFSET( GothicMemoryLocations::zCQuadMark::Offset_ConnectedVob );
+        return *reinterpret_cast<zCVob**>(THISPTR_OFFSET( GothicMemoryLocations::zCQuadMark::Offset_ConnectedVob ));
     }
 
     /** This gets only set for quad-marks created by a particle-effect. */
     int GetDontRepositionConnectedVob() {
-        return *(int*)THISPTR_OFFSET( GothicMemoryLocations::zCQuadMark::Offset_DontRepositionConnectedVob );
+        return *reinterpret_cast<int*>(THISPTR_OFFSET( GothicMemoryLocations::zCQuadMark::Offset_DontRepositionConnectedVob ));
     }
 };

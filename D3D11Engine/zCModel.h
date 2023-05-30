@@ -23,26 +23,24 @@ struct zCModelNodeInst {
     zCModelNodeInst* ParentNode;
     zCModelNode* ProtoNode;
     zCVisual* NodeVisual;
-    DirectX::XMFLOAT4X4 Trafo;
-    DirectX::XMFLOAT4X4 TrafoObjToCam;
+    XMFLOAT4X4 Trafo;
+    XMFLOAT4X4 TrafoObjToCam;
     zTBBox3D BBox3D;
 
     zCModelTexAniState TexAniState;
 };
 
-
-
 struct zCModelNode {
     zCModelNode* ParentNode;
     zSTRING	NodeName;
     zCVisual* Visual;
-    DirectX::XMFLOAT4X4 Transform;
+    XMFLOAT4X4 Transform;
 
-    DirectX::XMFLOAT3 NodeRotAxis;
+    XMFLOAT3 NodeRotAxis;
     float NodeRotAngle;
-    DirectX::XMFLOAT3 Translation;
-    DirectX::XMFLOAT4X4 TransformObjToWorld;
-    DirectX::XMFLOAT4X4* NodeTransformList;
+    XMFLOAT3 Translation;
+    XMFLOAT4X4 TransformObjToWorld;
+    XMFLOAT4X4* NodeTransformList;
     zCModelNodeInst* LastInstNode;
 };
 
@@ -63,7 +61,7 @@ public:
 #ifdef BUILD_GOTHIC_1_08k
         return false;
 #else
-        DWORD value = *(DWORD*)THISPTR_OFFSET( GothicMemoryLocations::zCModelAni::Offset_Flags );
+        DWORD value = *reinterpret_cast<DWORD*>(THISPTR_OFFSET( GothicMemoryLocations::zCModelAni::Offset_Flags ));
         return (value & GothicMemoryLocations::zCModelAni::Mask_FlagIdle) != 0;
 #endif
     }
@@ -72,7 +70,7 @@ public:
 #ifdef BUILD_GOTHIC_1_08k
         return 0;
 #else
-        return *(uint16_t*)THISPTR_OFFSET( GothicMemoryLocations::zCModelAni::Offset_NumFrames );
+        return *reinterpret_cast<uint16_t*>(THISPTR_OFFSET( GothicMemoryLocations::zCModelAni::Offset_NumFrames ));
 #endif
     }
 };
@@ -121,25 +119,26 @@ class zCModelPrototype {
 public:
     /** Hooks the functions of this Class */
     static void Hook() {
-        //XHook(HookedFunctions::OriginalFunctions.original_zCModelPrototypeLoadModelASC, GothicMemoryLocations::zCModelPrototype::LoadModelASC, zCModelPrototype::Hooked_LoadModelASC);
-        //XHook(HookedFunctions::OriginalFunctions.original_zCModelPrototypeReadMeshAndTreeMSB, GothicMemoryLocations::zCModelPrototype::ReadMeshAndTreeMSB, zCModelPrototype::Hooked_ReadMeshAndTreeMSB);
-
+        //DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCModelPrototypeLoadModelASC), Hooked_LoadModelASC );
+        //DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCModelPrototypeReadMeshAndTreeMSB), Hooked_ReadMeshAndTreeMSB );
     }
 
     /** This is called on load time for models */
+    /*
     static int __fastcall Hooked_LoadModelASC( void* thisptr, void* unknwn, const zSTRING& file ) {
         LogInfo() << "Loading Model: " << file.ToChar();
         int r = HookedFunctions::OriginalFunctions.original_zCModelPrototypeLoadModelASC( thisptr, file );
 
         // Pre-Load this model for us, too
         if ( r ) {
-
         }
 
         return r;
     }
+    */
 
     /** This is called on load time for models */
+    /*
     static int __fastcall Hooked_ReadMeshAndTreeMSB( void* thisptr, void* unknwn, int& i, class zCFileBIN& f ) {
         LogInfo() << "Loading Model!";
         int r = HookedFunctions::OriginalFunctions.original_zCModelPrototypeReadMeshAndTreeMSB( thisptr, i, f );
@@ -150,19 +149,17 @@ public:
 
         return r;
     }
-
-
-
+    */
 
     /** This returns the list of nodes which hold information about the bones and attachments later */
     zCArray<zCModelNode*>* GetNodeList() {
-        return (zCArray<zCModelNode*>*)THISPTR_OFFSET( GothicMemoryLocations::zCModelPrototype::Offset_NodeList );
+        return reinterpret_cast<zCArray<zCModelNode*>*>(THISPTR_OFFSET( GothicMemoryLocations::zCModelPrototype::Offset_NodeList ));
     }
 
     /** Returns the list of meshes which store the vertex-positions and weights */
     zCArray<zCMeshSoftSkin*>* GetMeshSoftSkinList() {
 #ifndef BUILD_GOTHIC_1_08k
-        return (zCArray<zCMeshSoftSkin*>*)THISPTR_OFFSET( GothicMemoryLocations::zCModelPrototype::Offset_MeshSoftSkinList );
+        return reinterpret_cast<zCArray<zCMeshSoftSkin*>*>(THISPTR_OFFSET( GothicMemoryLocations::zCModelPrototype::Offset_MeshSoftSkinList ));
 #else
         return nullptr;
 #endif
@@ -177,8 +174,6 @@ public:
     }
 };
 
-
-
 class zCModel : public zCVisual {
 public:
     /** Hooks the functions of this Class */
@@ -192,16 +187,15 @@ public:
         #endif*/
     }
 
-
     /** Creates an array of matrices for the bone transforms */
-    void __fastcall RenderNodeList( zTRenderContext& renderContext, zCArray<DirectX::XMFLOAT4X4*>& boneTransforms, zCRenderLightContainer& lightContainer, int lightingMode = 0 ) {
-        reinterpret_cast<void( __fastcall* )( zCModel*, zTRenderContext&, zCArray<DirectX::XMFLOAT4X4*>&, zCRenderLightContainer&, int )>
+    void __fastcall RenderNodeList( zTRenderContext& renderContext, zCArray<XMFLOAT4X4*>& boneTransforms, zCRenderLightContainer& lightContainer, int lightingMode = 0 ) {
+        reinterpret_cast<void( __fastcall* )( zCModel*, zTRenderContext&, zCArray<XMFLOAT4X4*>&, zCRenderLightContainer&, int )>
             ( GothicMemoryLocations::zCModel::RenderNodeList )( this, renderContext, boneTransforms, lightContainer, lightingMode );
     }
 
     /** Returns the current amount of active animations */
     int GetNumActiveAnimations() {
-        return *(int*)THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_NumActiveAnis );
+        return *reinterpret_cast<int*>(THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_NumActiveAnis ));
     }
 
     /** Returns true if only an idle-animation is running */
@@ -209,15 +203,14 @@ public:
 #ifdef BUILD_GOTHIC_1_08k
         return false;
 #else
-        zCModelAniActive* activeAni = *(zCModelAniActive**)THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_AniChannels );
-
-        return GetNumActiveAnimations() == 1 && (/*activeAni->protoAni->IsIdleAni() ||*/ activeAni->protoAni->GetNumAniFrames() <= 1);
+        zCModelAniActive* activeAni = *reinterpret_cast<zCModelAniActive**>(THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_AniChannels ));
+        return GetNumActiveAnimations() == 1 && activeAni->protoAni->GetNumAniFrames() <= 1;
 #endif
     }
 
     /** This is needed for the animations to work at full framerate */
     void SetDistanceToCamera( float dist ) {
-        *(float*)THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_DistanceModelToCamera ) = dist;
+        *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_DistanceModelToCamera )) = dist;
     }
 
     /** Updates stuff like blinking eyes, etc */
@@ -228,7 +221,7 @@ public:
 
     int GetIsVisible() {
 #ifndef BUILD_GOTHIC_1_08k
-        return (*(int*)THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_Flags )) & 1;
+        return *reinterpret_cast<int*>(THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_Flags )) & 1;
 #else
         return 1;
 #endif
@@ -238,7 +231,7 @@ public:
 #ifndef BUILD_GOTHIC_1_08k
         int v = visible ? 1 : 0;
 
-        byte* flags = (byte*)THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_Flags );
+        byte* flags = reinterpret_cast<byte*>(THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_Flags ));
 
         *flags &= ~1;
         *flags |= v;
@@ -248,21 +241,21 @@ public:
 #endif
     }
 
-    DirectX::XMFLOAT3 GetModelScale() {
-        return *(DirectX::XMFLOAT3*)THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_ModelScale );
+    XMFLOAT3 GetModelScale() {
+        return *reinterpret_cast<XMFLOAT3*>(THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_ModelScale ));
     }
 
-    DirectX::XMVECTOR GetModelScaleXM() {
-        return DirectX::XMLoadFloat3( (DirectX::XMFLOAT3*)THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_ModelScale ) );
+    XMVECTOR GetModelScaleXM() {
+        return XMLoadFloat3( reinterpret_cast<XMFLOAT3*>(THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_ModelScale )) );
     }
 
     float GetModelFatness() {
-        return *(float*)THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_ModelFatness );
+        return *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_ModelFatness ));
     }
 
     int GetDrawHandVisualsOnly() {
 #ifndef BUILD_GOTHIC_1_08k
-        return *(int*)THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_DrawHandVisualsOnly );
+        return *reinterpret_cast<int*>(THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_DrawHandVisualsOnly ));
 #else
         return 0; // First person not implemented in G1
 #endif
@@ -280,23 +273,23 @@ public:
     }
 
     zCArray<zCModelNodeInst*>* GetNodeList() {
-        return (zCArray<zCModelNodeInst*>*)THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_NodeList );
+        return reinterpret_cast<zCArray<zCModelNodeInst*>*>(THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_NodeList ));
     }
 
     zCArray<zCMeshSoftSkin*>* GetMeshSoftSkinList() {
-        return (zCArray<zCMeshSoftSkin*>*)THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_MeshSoftSkinList );
+        return reinterpret_cast<zCArray<zCMeshSoftSkin*>*>(THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_MeshSoftSkinList ));
     }
 
     zCArray<zCModelPrototype*>* GetModelProtoList() {
-        return (zCArray<zCModelPrototype*>*)THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_ModelProtoList );
+        return reinterpret_cast<zCArray<zCModelPrototype*>*>(THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_ModelProtoList ));
     }
 
     zCArray<zTMeshLibEntry*>* GetMeshLibList() {
-        return (zCArray<zTMeshLibEntry*>*)THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_MeshLibList );
+        return reinterpret_cast<zCArray<zTMeshLibEntry*>*>(THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_MeshLibList ));
     }
 
     zCArray<zTMdl_NodeVobAttachment>* GetAttachedVobList() {
-        return (zCArray<zTMdl_NodeVobAttachment>*)THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_AttachedVobList );
+        return reinterpret_cast<zCArray<zTMdl_NodeVobAttachment>*>(THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_AttachedVobList ));
     }
 
     /* Updates the world matrices of the attached VOBs */
@@ -305,7 +298,7 @@ public:
     }
 
     /** Fills a vector of (viewspace) bone-transformation matrices for this frame */
-    void GetBoneTransforms( std::vector<DirectX::XMFLOAT4X4>* transforms, zCVob* vob = nullptr ) {
+    void GetBoneTransforms( std::vector<XMFLOAT4X4>* transforms, zCVob* vob = nullptr ) {
         zCArray<zCModelNodeInst*>* nodeList = GetNodeList();
         if ( !nodeList )
             return;
@@ -336,8 +329,12 @@ public:
 
     zSTRING GetModelName() {
         zSTRING str;
-        reinterpret_cast<void(__fastcall*)( zCModel*, int, zSTRING& )>( GothicMemoryLocations::zCModel::GetVisualName )( this, 0, str );
+        reinterpret_cast<void( __fastcall* )( zCModel*, int, zSTRING& )>( GothicMemoryLocations::zCModel::GetVisualName )( this, 0, str );
         return str;
+    }
+
+    zCVob* GetHomeVob() {
+        return reinterpret_cast<zCVob*>(THISPTR_OFFSET( GothicMemoryLocations::zCModel::Offset_HomeVob ));
     }
 
 private:

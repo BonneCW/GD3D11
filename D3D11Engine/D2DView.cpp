@@ -88,7 +88,7 @@ XRESULT D2DView::Init( HWND hwnd ) {
             D2D1_ALPHA_MODE_PREMULTIPLIED ) ),
         D2D1::HwndRenderTargetProperties( hwnd, D2D1::SizeU( windowSize.right - windowSize.left, windowSize.bottom - windowSize.top ),
             D2D1_PRESENT_OPTIONS_IMMEDIATELY ),
-        (ID2D1HwndRenderTarget**)&RenderTarget ) ) ) {
+        reinterpret_cast<ID2D1HwndRenderTarget**>(&RenderTarget) ) ) ) {
         SAFE_RELEASE( Factory );
 
         LogError() << "Failed to create D2D-Device!";
@@ -305,7 +305,7 @@ HRESULT D2DView::InitResources() {
         SAFE_RELEASE( pGradientStops );
     }
 
-    DWriteCreateFactory( DWRITE_FACTORY_TYPE_SHARED, __uuidof(WriteFactory), (IUnknown**)(&WriteFactory) );
+    DWriteCreateFactory( DWRITE_FACTORY_TYPE_SHARED, __uuidof(WriteFactory), reinterpret_cast<IUnknown**>(&WriteFactory) );
 
     // create the DWrite text format
     WriteFactory->CreateTextFormat(

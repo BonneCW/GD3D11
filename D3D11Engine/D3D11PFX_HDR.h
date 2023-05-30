@@ -18,7 +18,6 @@ protected:
     /** Blurs the backbuffer and puts the result into TempBufferDS4_1*/
     void CreateBloom( RenderToTextureBuffer* lum );
 
-
     RenderToTextureBuffer* LumBuffer1;
     RenderToTextureBuffer* LumBuffer2;
     RenderToTextureBuffer* LumBuffer3;

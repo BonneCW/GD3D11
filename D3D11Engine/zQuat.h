@@ -8,9 +8,10 @@ class zQuat
         /** Hooks the functions of this Class */
         static void Hook()
         {
-            XHook( 0x518EF0, zQuat::zQuatLerp );
-            XHook( 0x518D10, zQuat::zQuatSlerp );
-            XHook( 0x518560, zQuat::zQuatMat4ToQuat );
+            PatchJMP( 0x00518EF0, reinterpret_cast<DWORD>(&zQuatLerp) );
+            PatchJMP( 0x00518D10, reinterpret_cast<DWORD>(&zQuatSlerp) );
+            PatchJMP( 0x00518560, reinterpret_cast<DWORD>(&zQuatMat4ToQuat) );
+            PatchJMP( 0x00518360, reinterpret_cast<DWORD>(&zQuatQuatToMat4) );
         }
 
 		static void __fastcall zQuatLerp(float4& output, int _EDX, float t, float4& q0, float4& q1)
@@ -131,5 +132,48 @@ class zQuat
 
             t0 = XMVector4Length( t2 );
 			_mm_storeu_ps( reinterpret_cast<float*>( &output.x ), _mm_div_ps( t2, t0 ) );
+		}
+
+		static void __fastcall zQuatQuatToMat4(float4& quat, int _EDX, XMFLOAT4X4& output)
+		{
+            const __m128 XMPPPZ = _mm_setr_ps( 1.0f, 1.0f, 1.0f, 0.0f );
+            const __m128 XMMMMZ = _mm_castsi128_ps( _mm_setr_epi32( -1, -1, -1, 0 ) );
+
+            __m128 quaternion = _mm_loadu_ps( reinterpret_cast<const float*>(&quat.x) );
+            __m128 Q0 = _mm_add_ps( quaternion, quaternion );
+            __m128 Q1 = _mm_mul_ps( quaternion, Q0 );
+
+            __m128 V0 = _mm_shuffle_ps( Q1, Q1, _MM_SHUFFLE( 3, 0, 0, 1 ) );
+            V0 = _mm_and_ps( V0, XMMMMZ );
+            __m128 V1 = _mm_shuffle_ps( Q1, Q1, _MM_SHUFFLE( 3, 1, 2, 2 ) );
+            V1 = _mm_and_ps( V1, XMMMMZ );
+            __m128 R0 = _mm_sub_ps( XMPPPZ, V0 );
+            R0 = _mm_sub_ps( R0, V1 );
+
+            V0 = _mm_shuffle_ps( quaternion, quaternion, _MM_SHUFFLE( 3, 1, 0, 0 ) );
+            V1 = _mm_shuffle_ps( Q0, Q0, _MM_SHUFFLE( 3, 2, 1, 2 ) );
+            V0 = _mm_mul_ps( V0, V1 );
+
+            V1 = _mm_shuffle_ps( quaternion, quaternion, _MM_SHUFFLE( 3, 3, 3, 3 ) );
+            __m128 V2 = _mm_shuffle_ps( Q0, Q0, _MM_SHUFFLE( 3, 0, 2, 1 ) );
+            V1 = _mm_mul_ps( V1, V2 );
+
+            __m128 R1 = _mm_add_ps( V0, V1 );
+            __m128 R2 = _mm_sub_ps( V0, V1 );
+
+            V0 = _mm_shuffle_ps( R1, R2, _MM_SHUFFLE( 1, 0, 2, 1 ) );
+            V0 = _mm_shuffle_ps( V0, V0, _MM_SHUFFLE( 1, 3, 2, 0 ) );
+            V1 = _mm_shuffle_ps( R1, R2, _MM_SHUFFLE( 2, 2, 0, 0 ) );
+            V1 = _mm_shuffle_ps( V1, V1, _MM_SHUFFLE( 2, 0, 2, 0 ) );
+
+            Q1 = _mm_shuffle_ps( R0, V0, _MM_SHUFFLE( 1, 0, 3, 0 ) );
+            Q1 = _mm_shuffle_ps( Q1, Q1, _MM_SHUFFLE( 1, 3, 2, 0 ) );
+
+            XMStoreFloat3( reinterpret_cast<XMFLOAT3*>(&output.m[0]), Q1 );
+            Q1 = _mm_shuffle_ps( R0, V0, _MM_SHUFFLE( 3, 2, 3, 1 ) );
+            Q1 = _mm_shuffle_ps( Q1, Q1, _MM_SHUFFLE( 1, 3, 0, 2 ) );
+            XMStoreFloat3( reinterpret_cast<XMFLOAT3*>(&output.m[1]), Q1 );
+            Q1 = _mm_shuffle_ps( V1, R0, _MM_SHUFFLE( 3, 2, 1, 0 ) );
+            XMStoreFloat3( reinterpret_cast<XMFLOAT3*>(&output.m[2]), Q1 );
 		}
 };

@@ -1,5 +1,4 @@
 #pragma once
-
 #include "BaseWidget.h"
 
 enum EWTR_Selection {
