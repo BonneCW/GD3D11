@@ -105,7 +105,7 @@ HRESULT SV_Panel::SetD3D11TextureAsImage( ID3D11Texture2D* texture, INT2 size ) 
     // Since D2D can't load DXTn-Textures on Windows 7, we copy it over to a smaller texture here in d3d11
 
     // Create texture
-    CD3D11_TEXTURE2D_DESC textureDesc( DXGI_FORMAT_R8G8B8A8_UNORM, size.x, size.y, 1, 1, 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, 1, 0, 0 );
+    CD3D11_TEXTURE2D_DESC textureDesc( DXGI_FORMAT_B8G8R8A8_UNORM, size.x, size.y, 1, 1, 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ, 1, 0, 0 );
 
     ComPtr<ID3D11Texture2D> staging;
     LE( engine->GetDevice()->CreateTexture2D( &textureDesc, nullptr, staging.ReleaseAndGetAddressOf() ) );
@@ -113,7 +113,7 @@ HRESULT SV_Panel::SetD3D11TextureAsImage( ID3D11Texture2D* texture, INT2 size ) 
     engine->GetContext()->CopyResource( staging.Get(), texture );
 
     D2D1_BITMAP_PROPERTIES properties;
-    properties = D2D1::BitmapProperties( D2D1::PixelFormat( DXGI_FORMAT_R8G8B8A8_UNORM, D2D1_ALPHA_MODE_IGNORE ), 0, 0 );
+    properties = D2D1::BitmapProperties( D2D1::PixelFormat( DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE ), 0, 0 );
 
     // Get data out
     D3D11_MAPPED_SUBRESOURCE mapped;

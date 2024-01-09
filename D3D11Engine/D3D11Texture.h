@@ -8,7 +8,8 @@ public:
 
     /** Layec out for DXGI */
     enum ETextureFormat {
-        TF_R8G8B8A8 = DXGI_FORMAT_R8G8B8A8_UNORM,
+        TF_R8 = DXGI_FORMAT_R8_UNORM,
+        TF_B8G8R8A8 = DXGI_FORMAT_B8G8R8A8_UNORM,
         TF_DXT1 = DXGI_FORMAT_BC1_UNORM,
         TF_DXT3 = DXGI_FORMAT_BC2_UNORM,
         TF_DXT5 = DXGI_FORMAT_BC3_UNORM

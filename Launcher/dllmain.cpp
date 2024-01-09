@@ -83,7 +83,7 @@ __declspec(naked) void FakeGDX_SetWorldAOStrength() { _asm { jmp[ddraw.GDX_SetWo
 __declspec(naked) void FakeGDX_OpenMessageBox() { _asm { jmp[ddraw.GDX_OpenMessageBox] } }
 
 __declspec(naked) void FakeUpdateCustomFontMultiplier() { _asm { jmp[ddraw.UpdateCustomFontMultiplier] } }
-
+bool FakeIsUsingBGRATextures() { return true; }
 
 extern "C" HMODULE WINAPI FakeGDX_Module() {
     return ddraw.dll;

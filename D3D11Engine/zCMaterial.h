@@ -165,7 +165,7 @@ public:
     }
 
     bool HasTexAniMap() {
-        return *reinterpret_cast<unsigned char*>(THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_AlphaFunc )) & GothicMemoryLocations::zCMaterial::Mask_FlagTexAniMap;
+        return *reinterpret_cast<unsigned char*>(THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_Flags )) & GothicMemoryLocations::zCMaterial::Mask_FlagTexAniMap;
     }
 
     XMFLOAT2 GetTexAniMapDelta() {

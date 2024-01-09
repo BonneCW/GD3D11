@@ -136,7 +136,7 @@ void GOcean::CreateFresnelMap( Microsoft::WRL::ComPtr<ID3D11Device1> pd3dDevice 
     tex_desc.Width = FRESNEL_TEX_SIZE;
     tex_desc.MipLevels = 1;
     tex_desc.ArraySize = 1;
-    tex_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    tex_desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
     tex_desc.Usage = D3D11_USAGE_IMMUTABLE;
     tex_desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
     tex_desc.CPUAccessFlags = 0;
@@ -154,7 +154,7 @@ void GOcean::CreateFresnelMap( Microsoft::WRL::ComPtr<ID3D11Device1> pd3dDevice 
 
     // Create shader resource
     D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
-    srv_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    srv_desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
     srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE1D;
     srv_desc.Texture1D.MipLevels = 1;
     srv_desc.Texture1D.MostDetailedMip = 0;

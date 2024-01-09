@@ -223,7 +223,7 @@ void SV_GMeshInfoView::SetRect( const D2D1_RECT_F& rect ) {
 
 	// Create new RT
 	delete RT;
-	RT = new RenderToTextureBuffer( g->GetDevice().Get(), std::max<UINT>( 8, GetSize().width ), std::max<UINT>( 8, GetSize().height ), DXGI_FORMAT_R8G8B8A8_UNORM );
+	RT = new RenderToTextureBuffer( g->GetDevice().Get(), std::max<UINT>( 8, GetSize().width ), std::max<UINT>( 8, GetSize().height ), DXGI_FORMAT_B8G8R8A8_UNORM );
 
 	delete DS;
 	DS = new RenderToDepthStencilBuffer( g->GetDevice().Get(), std::max<UINT>( 8, GetSize().width ), std::max<UINT>( 8, GetSize().height ), DXGI_FORMAT_R32_TYPELESS, nullptr, DXGI_FORMAT_D32_FLOAT, DXGI_FORMAT_R32_FLOAT );

@@ -1,5 +1,6 @@
 LIBRARY   "ddraw"
 EXPORTS
+	IsUsingBGRATextures			= FakeIsUsingBGRATextures
 	DirectDrawCreateEx			= FakeDirectDrawCreateEx
 	AcquireDDThreadLock			= FakeAcquireDDThreadLock			@1
 	CheckFullscreen				= FakeCheckFullscreen				@2

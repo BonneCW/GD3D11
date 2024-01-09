@@ -482,10 +482,6 @@ public:
 
 	HRESULT STDMETHODCALLTYPE DrawPrimitive( D3DPRIMITIVETYPE dptPrimitiveType, DWORD dwVertexTypeDesc, LPVOID lpvVertices, DWORD dwVertexCount, DWORD dwFlags ) {
 		DebugWrite( "MyDirect3DDevice7::DrawPrimitive" );
-		if ( dptPrimitiveType != D3DPT_TRIANGLEFAN )
-		{
-			return S_OK;
-		}
 
 		// Convert them into ExVertices
 		static std::vector<ExVertexStruct> exv;

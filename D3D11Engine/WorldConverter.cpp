@@ -352,16 +352,19 @@ HRESULT WorldConverter::ConvertWorldMesh( zCPolygon** polys, unsigned int numPol
             continue;
         }
 
-        //Flag portals so that we can apply a different PS shader later
-        if ( poly->GetPolyFlags()->PortalPoly && poly->GetMaterial()->GetTexture() ) {
-            std::string textureName = poly->GetMaterial()->GetTexture()->GetNameWithoutExt();
-            if ( textureName == "OWODFLWOODGROUND" ) {
-                continue; //this is a ground texture that is sometimes re-used for visual tricks to darken tunnels, etc. We don't want to treat this as a portal.
-            } else {
-                MaterialInfo* info = Engine::GAPI->GetMaterialInfoFrom( poly->GetMaterial()->GetTexture() );
-                if ( info ) {
+        // Flag portals so that we can apply a different PS shader later
+        if ( poly->GetPolyFlags()->PortalPoly ) {
+            zCMaterial* polymat = poly->GetMaterial();
+            if ( zCTexture* tex = polymat->GetTextureSingle() ) {
+                std::string textureName = tex->GetNameWithoutExt();
+                if ( textureName == "OWODFLWOODGROUND" ) {
+                    continue; // this is a ground texture that is sometimes re-used for visual tricks to darken tunnels, etc. We don't want to treat this as a portal.
+                } else {
+                    MaterialInfo* info = Engine::GAPI->GetMaterialInfoFrom( tex );
                     info->MaterialType = MaterialInfo::MT_Portal;
                 }
+            } else {
+                continue;
             }
         }
 

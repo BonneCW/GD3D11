@@ -447,7 +447,7 @@ XRESULT D3D11GraphicsEngine::Init() {
     // Create dummy rendertarget for shadowcubes
     DummyShadowCubemapTexture = std::make_unique<RenderToTextureBuffer>(
         GetDevice(), POINTLIGHT_SHADOWMAP_SIZE, POINTLIGHT_SHADOWMAP_SIZE,
-        DXGI_FORMAT_R8G8B8A8_UNORM, nullptr, DXGI_FORMAT_UNKNOWN,
+        DXGI_FORMAT_B8G8R8A8_UNORM, nullptr, DXGI_FORMAT_UNKNOWN,
         DXGI_FORMAT_UNKNOWN, 1, 6 );
 
     SteamOverlay::Init();
@@ -706,7 +706,7 @@ XRESULT D3D11GraphicsEngine::OnResize( INT2 newSize ) {
             LogInfo() << "SwapChain: DXGI_FEATURE_PRESENT_ALLOW_TEARING = " << (m_flipWithTearing ? "Enabled" : "Disabled");
         }
 
-        LogInfo() << "Creating new swapchain! (Format: DXGI_FORMAT_R8G8B8A8_UNORM)";
+        LogInfo() << "Creating new swapchain! (Format: DXGI_FORMAT_B8G8R8A8_UNORM)";
 
         if ( m_swapchainflip ) {
             scd.BufferCount = 2;
@@ -761,7 +761,7 @@ XRESULT D3D11GraphicsEngine::OnResize( INT2 newSize ) {
         // Need to init AntTweakBar now that we have a working swapchain
         XLE( Engine::AntTweakBar->Init() );
     } else {
-        LogInfo() << "Resizing swapchain  (Format: DXGI_FORMAT_R8G8B8A8_UNORM)";
+        LogInfo() << "Resizing swapchain  (Format: DXGI_FORMAT_B8G8R8A8_UNORM)";
         if ( dxgi_1_5 ) {
             //if (FAILED(SwapChain4->SetSourceSize(bbres.x, bbres.y))) { //crashes when scd.Scaling = DXGI_SCALING_STRETCH is not set;
             if ( FAILED( SwapChain4->ResizeBuffers( 0, bbres.x, bbres.y, DXGI_FORMAT_B8G8R8A8_UNORM, scflags ) ) ) {
@@ -870,7 +870,7 @@ XRESULT D3D11GraphicsEngine::OnResize( INT2 newSize ) {
         GetDevice().Get(), Resolution.x, Resolution.y, DXGI_FORMAT_R16G16B16A16_FLOAT );
 
     GBuffer0_Diffuse = std::make_unique<RenderToTextureBuffer>(
-        GetDevice().Get(), Resolution.x, Resolution.y, DXGI_FORMAT_R8G8B8A8_UNORM );
+        GetDevice().Get(), Resolution.x, Resolution.y, DXGI_FORMAT_B8G8R8A8_UNORM );
 
     HDRBackBuffer = std::make_unique<RenderToTextureBuffer>( GetDevice().Get(), Resolution.x, Resolution.y,
         (Engine::GAPI->GetRendererState().RendererSettings.CompressBackBuffer ? DXGI_FORMAT_R11G11B10_FLOAT : DXGI_FORMAT_R16G16B16A16_FLOAT) );
@@ -1034,7 +1034,7 @@ XRESULT D3D11GraphicsEngine::OnBeginFrame() {
 
     if ( Engine::GAPI->GetRendererState().RendererSettings.AllowNormalmaps ) {
         PS_DiffuseNormalmappedFxMap = ShaderManager->GetPShader( "PS_DiffuseNormalmappedFxMap" );
-        PS_DiffuseNormalmappedAlphatestFxMap = ShaderManager->GetPShader( "PS_DiffuseNormalmappedAlphatestFxMap" );
+        PS_DiffuseNormalmappedAlphatestFxMap = ShaderManager->GetPShader( "PS_DiffuseNormalmappedAlphaTestFxMap" );
         PS_DiffuseNormalmapped = ShaderManager->GetPShader( "PS_DiffuseNormalmapped" );
         PS_DiffuseNormalmappedAlphatest = ShaderManager->GetPShader( "PS_DiffuseNormalmappedAlphaTest" );
     } else {
@@ -1129,14 +1129,14 @@ XRESULT D3D11GraphicsEngine::FetchDisplayModeListDXGI() {
     }
 
     UINT numModes = 0;
-    hr = output->GetDisplayModeList1( DXGI_FORMAT_R8G8B8A8_UNORM, 0, &numModes, nullptr );
+    hr = output->GetDisplayModeList1( DXGI_FORMAT_B8G8R8A8_UNORM, 0, &numModes, nullptr );
     if ( FAILED( hr ) || numModes == 0 ) {
         CachedDisplayModes.emplace_back( Resolution.x, Resolution.y );
         return XR_FAILED;
     }
 
     std::unique_ptr<DXGI_MODE_DESC1[]> displayModes = std::make_unique<DXGI_MODE_DESC1[]>( numModes );
-    hr = output->GetDisplayModeList1( DXGI_FORMAT_R8G8B8A8_UNORM, 0, &numModes, displayModes.get() );
+    hr = output->GetDisplayModeList1( DXGI_FORMAT_B8G8R8A8_UNORM, 0, &numModes, displayModes.get() );
     if ( FAILED( hr ) ) {
         CachedDisplayModes.emplace_back( Resolution.x, Resolution.y );
         return XR_FAILED;
@@ -1899,8 +1899,9 @@ XRESULT  D3D11GraphicsEngine::DrawSkeletalMesh( SkeletalVobInfo* vi,
             if ( zCMaterial* mat = itm.first ) {
                 zCTexture* tex;
                 if ( ActivePS && (tex = mat->GetAniTexture()) != nullptr ) {
-                    if ( !BindTextureNRFX( tex, (RenderingStage != DES_GHOST) ) )
+                    if ( !BindTextureNRFX( tex, (RenderingStage != DES_GHOST) ) ) {
                         continue;
+                    }
                 }
             }
 
@@ -2678,7 +2679,7 @@ XRESULT D3D11GraphicsEngine::DrawMeshInfoListAlphablended(
     // Draw again, but only to depthbuffer this time to make them work with
     // fogging
     for ( auto const& [meshKey, meshInfo] : list ) {
-        if ( meshKey.Material->GetAniTexture() != nullptr ) {
+        if ( meshKey.Material->GetAniTexture() != nullptr && meshKey.Info->MaterialType != MaterialInfo::MT_Portal ) {
             // Draw the section-part
             DrawVertexBufferIndexedUINT( nullptr, nullptr, meshInfo->Indices.size(),
                 meshInfo->BaseIndexLocation );
@@ -2758,16 +2759,18 @@ XRESULT D3D11GraphicsEngine::DrawWorldMesh( bool noTextures ) {
                     key.Texture = aniTex;
                 }
 
+                if ( worldMesh.first.Info->MaterialType == MaterialInfo::MT_Portal ) {
+                    FrameTransparencyMeshesPortal.push_back( worldMesh );
+                    continue;
+                } else if ( worldMesh.first.Info->MaterialType == MaterialInfo::MT_WaterfallFoam ) {
+                    FrameTransparencyMeshesWaterfall.push_back( worldMesh );
+                    continue;
+                }
+
                 // Check for alphablending
                 if ( worldMesh.first.Material->GetAlphaFunc() > zMAT_ALPHA_FUNC_NONE &&
                     worldMesh.first.Material->GetAlphaFunc() != zMAT_ALPHA_FUNC_TEST ) {
-                    if ( worldMesh.first.Info->MaterialType == MaterialInfo::MT_Portal ) {
-                        FrameTransparencyMeshesPortal.push_back( worldMesh );
-                    } else if ( worldMesh.first.Info->MaterialType == MaterialInfo::MT_WaterfallFoam ) {
-                        FrameTransparencyMeshesWaterfall.push_back( worldMesh );
-                    } else {
-                        FrameTransparencyMeshes.push_back( worldMesh );
-                    }
+                    FrameTransparencyMeshes.push_back( worldMesh );
                 } else {
                     // Create a new pair using the animated texture
                     meshList.emplace_back( key, worldMesh.second );
@@ -3377,7 +3380,7 @@ void XM_CALLCONV D3D11GraphicsEngine::DrawWorldAround(
                 if ( meshInfoByKey->first.Material && meshInfoByKey->first.Material->GetTexture() ) {
                     // Check surface type
 
-                    if ( meshInfoByKey->first.Info->MaterialType == MaterialInfo::MT_Water ) {
+                    if ( meshInfoByKey->first.Info->MaterialType != MaterialInfo::MT_None ) {
                         continue;
                     }
 
@@ -3419,7 +3422,7 @@ void XM_CALLCONV D3D11GraphicsEngine::DrawWorldAround(
                             for ( auto&& meshInfoByKey = section.WorldMeshes.begin();
                                 meshInfoByKey != section.WorldMeshes.end(); ++meshInfoByKey ) {
                                 // Check surface type
-                                if ( meshInfoByKey->first.Info->MaterialType == MaterialInfo::MT_Water ) {
+                                if ( meshInfoByKey->first.Info->MaterialType != MaterialInfo::MT_None ) {
                                     continue;
                                 }
 
@@ -3709,7 +3712,7 @@ void XM_CALLCONV D3D11GraphicsEngine::DrawWorldAround( FXMVECTOR position,
                     } else {
                         for ( const auto& it : section.WorldMeshes ) {
                             // Check surface type
-                            if ( it.first.Info->MaterialType == MaterialInfo::MT_Water ) {
+                            if ( it.first.Info->MaterialType != MaterialInfo::MT_None ) {
                                 continue;
                             }
 
@@ -5474,9 +5477,9 @@ void D3D11GraphicsEngine::OnUIEvent( EUIEvent uiEvent ) {
 }
 
 /** Returns the data of the backbuffer */
-void D3D11GraphicsEngine::GetBackbufferData( byte** data, int& pixelsize ) {
-    constexpr int width = 256;
-    byte* d = new byte[width * width * 4];
+void D3D11GraphicsEngine::GetBackbufferData( byte** data, INT2& buffersize, int& pixelsize ) {
+    buffersize = Resolution;
+    byte* d = new byte[Resolution.x * Resolution.y * 4];
 
     // Copy HDR scene to backbuffer
     SetDefaultStates();
@@ -5494,13 +5497,9 @@ void D3D11GraphicsEngine::GetBackbufferData( byte** data, int& pixelsize ) {
     ActivePS->GetConstantBuffer()[0]->BindToPixelShader( 0 );
 
     HRESULT hr;
-
-    // Buffer for scaling down the image
     auto rt = std::make_unique<RenderToTextureBuffer>(
-        GetDevice().Get(), width, width, DXGI_FORMAT_R8G8B8A8_UNORM );
-
-    // Downscale to 256x256
-    PfxRenderer->CopyTextureToRTV( HDRBackBuffer->GetShaderResView(), rt->GetRenderTargetView(), INT2( width, width ),
+        GetDevice().Get(), buffersize.x, buffersize.y, DXGI_FORMAT_B8G8R8A8_UNORM );
+    PfxRenderer->CopyTextureToRTV( HDRBackBuffer->GetShaderResView(), rt->GetRenderTargetView(), INT2( buffersize.x, buffersize.y ),
         true );
     GetContext()->Flush();
 
@@ -5508,10 +5507,9 @@ void D3D11GraphicsEngine::GetBackbufferData( byte** data, int& pixelsize ) {
     texDesc.ArraySize = 1;
     texDesc.BindFlags = 0;
     texDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-    texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    texDesc.Width = width;  // Gothic transforms the backbufferdata for
-                            // savegamethumbs to 256x256-pictures anyways
-    texDesc.Height = width;
+    texDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    texDesc.Width = buffersize.x;
+    texDesc.Height = buffersize.y;
     texDesc.MipLevels = 1;
     texDesc.MiscFlags = 0;
     texDesc.SampleDesc.Count = 1;
@@ -5532,13 +5530,15 @@ void D3D11GraphicsEngine::GetBackbufferData( byte** data, int& pixelsize ) {
     if ( SUCCEEDED( GetContext()->Map( texture.Get(), 0, D3D11_MAP_READ, 0, &res ) ) ) {
         unsigned char* dstData = reinterpret_cast<unsigned char*>(res.pData);
         unsigned char* srcData = reinterpret_cast<unsigned char*>(d);
-        UINT length = width * 4;
+        UINT length = buffersize.x * 4;
         if ( length == res.RowPitch ) {
-            memcpy( srcData, dstData, length * width );
+            memcpy( srcData, dstData, length * buffersize.y );
         } else {
-            if ( length > res.RowPitch )
+            if ( length > res.RowPitch ) {
                 length = res.RowPitch;
-            for ( int row = 0; row < width; ++row ) {
+            }
+
+            for ( int row = 0; row < buffersize.y; ++row ) {
                 memcpy( srcData, dstData, length );
                 srcData += length;
                 dstData += res.RowPitch;
@@ -6267,7 +6267,7 @@ void D3D11GraphicsEngine::SaveScreenshot() {
 
     // Buffer for scaling down the image
     auto rt = std::make_unique<RenderToTextureBuffer>(
-        GetDevice().Get(), Resolution.x, Resolution.y, DXGI_FORMAT_R8G8B8A8_UNORM );
+        GetDevice().Get(), Resolution.x, Resolution.y, DXGI_FORMAT_B8G8R8A8_UNORM );
 
     // Downscale to 256x256
     PfxRenderer->CopyTextureToRTV( HDRBackBuffer->GetShaderResView(), rt->GetRenderTargetView() );
@@ -6276,7 +6276,7 @@ void D3D11GraphicsEngine::SaveScreenshot() {
     texDesc.ArraySize = 1;
     texDesc.BindFlags = 0;
     texDesc.CPUAccessFlags = 0;
-    texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    texDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
     texDesc.Width = Resolution.x;   // must be same as backbuffer
     texDesc.Height = Resolution.y;  // must be same as backbuffer
     texDesc.MipLevels = 1;
@@ -6445,6 +6445,15 @@ void D3D11GraphicsEngine::DrawString( const std::string& str, float x, float y, 
     UIScale *= unionCurrentCustomFontMultiplier;
 
     //
+    // Set alpha blending
+    //
+    DWORD zrenderer = *reinterpret_cast<DWORD*>(GothicMemoryLocations::GlobalObjects::zRenderer);
+    reinterpret_cast<void( __thiscall* )(DWORD, int, int)>(GothicMemoryLocations::zCRndD3D::XD3D_SetRenderState)(zrenderer, 27, 1);
+    reinterpret_cast<void( __thiscall* )(DWORD, int, int)>(GothicMemoryLocations::zCRndD3D::XD3D_SetRenderState)(zrenderer, 15, 0);
+    reinterpret_cast<void( __thiscall* )(DWORD, int, int)>(GothicMemoryLocations::zCRndD3D::XD3D_SetRenderState)(zrenderer, 19, 5);
+    reinterpret_cast<void( __thiscall* )(DWORD, int, int)>(GothicMemoryLocations::zCRndD3D::XD3D_SetRenderState)(zrenderer, 20, 6);
+
+    //
     // Backup old renderstates, BlendState can be ignored here.
     //
     auto oldDepthState = Engine::GAPI->GetRendererState().DepthState.Clone();
@@ -6493,18 +6502,8 @@ void D3D11GraphicsEngine::DrawString( const std::string& str, float x, float y, 
 
     UI::zFont::AppendGlyphs( vertices, str, maxLen, x, y, font, fontColor, UIScale, zCCamera::GetCamera() );
 
-    //if (str[0] == '(') {
-    //	int o = 1;
-    //}
-
     // Bind the texture.
     tx->Bind( 0 );
-
-    if ( !Engine::GAPI->GetRendererState().BlendState.BlendEnabled ) {
-        Engine::GAPI->GetRendererState().BlendState.SetAlphaBlending();
-        Engine::GAPI->GetRendererState().BlendState.SetDirty();
-        UpdateRenderStates();
-    }
 
     //
     // Populate TempVertexBuffer

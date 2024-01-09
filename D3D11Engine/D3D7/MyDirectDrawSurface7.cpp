@@ -320,22 +320,22 @@ HRESULT MyDirectDrawSurface7::Lock( LPRECT lpDestRect, LPDDSURFACEDESC2 lpDDSurf
     {
         // Assume 32-bit
         byte* data;
+        INT2 buffersize;
         int pixelSize;
         reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine)->ResetPresentPending();
         Engine::GraphicsEngine->OnStartWorldRendering();
-        Engine::GraphicsEngine->GetBackbufferData( &data, pixelSize );
+        Engine::GraphicsEngine->GetBackbufferData( &data, buffersize, pixelSize );
         reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine)->ResetPresentPending();
 
         lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount = 32;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0x000000FF;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0x00FF0000;
         lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x0000FF00;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x00FF0000;
+        lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x000000FF;
         lpDDSurfaceDesc->ddpfPixelFormat.dwRGBAlphaBitMask = 0x00000000;
 
-        // Gothic transforms this into a 256x256 texture anyways
-        lpDDSurfaceDesc->lPitch = 256 * pixelSize;
-        lpDDSurfaceDesc->dwWidth = 256;
-        lpDDSurfaceDesc->dwHeight = 256;
+        lpDDSurfaceDesc->lPitch = buffersize.x * pixelSize;
+        lpDDSurfaceDesc->dwWidth = buffersize.x;
+        lpDDSurfaceDesc->dwHeight = buffersize.y;
         lpDDSurfaceDesc->lpSurface = data;
 
         LockedData = data;
@@ -535,15 +535,15 @@ HRESULT MyDirectDrawSurface7::SetSurfaceDesc( LPDDSURFACEDESC2 lpDDSurfaceDesc, 
     int bpp = redBits + greenBits + blueBits + alphaBits;
 
     // Find out format
-    D3D11Texture::ETextureFormat format = D3D11Texture::ETextureFormat::TF_R8G8B8A8;
+    D3D11Texture::ETextureFormat format = D3D11Texture::ETextureFormat::TF_B8G8R8A8;
     switch ( bpp ) {
     case 16:
-        format = D3D11Texture::ETextureFormat::TF_R8G8B8A8;
+        format = D3D11Texture::ETextureFormat::TF_B8G8R8A8;
         break;
 
     case 24:
     case 32:
-        format = D3D11Texture::ETextureFormat::TF_R8G8B8A8;
+        format = D3D11Texture::ETextureFormat::TF_B8G8R8A8;
         break;
 
     case 0:

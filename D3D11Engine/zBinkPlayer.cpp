@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "Detours/detours.h"
 #include "zSTRING.h"
+#include "Engine.h"
+#include "D3D11Texture.h"
+#include "BaseGraphicsEngine.h"
 
 #include <ddraw.h>
 #include <d3d.h>
@@ -35,7 +38,9 @@ struct BinkVideo
 	void* vid = nullptr;
 
 	unsigned char* textureData = nullptr;
-	LPDIRECTDRAWSURFACE7 texture = nullptr;
+    D3D11Texture* textureY = nullptr;
+    D3D11Texture* textureU = nullptr;
+    D3D11Texture* textureV = nullptr;
 	DWORD width = 0;
 	DWORD height = 0;
 	bool useBGRA = false;
@@ -234,274 +239,190 @@ int __fastcall BinkPlayerPlayFrame(DWORD BinkPlayer)
 		if(BinkPlayerIsPlaying(BinkPlayer))
 		{
             BinkPlayerPlayDoFrame(BinkPlayer);
-			{
-				DWORD vidWidth = *reinterpret_cast<DWORD*>(reinterpret_cast<DWORD>(video->vid) + 0x00);
-				DWORD vidHeight = *reinterpret_cast<DWORD*>(reinterpret_cast<DWORD>(video->vid) + 0x04);
-				if(!video->texture || video->width != vidWidth || video->height != vidHeight)
-				{
-					video->useBGRA = false;
-					video->width = vidWidth;
-					video->height = vidHeight;
-					if(video->texture)
-					{
-						video->texture->Release();
-						video->texture = nullptr;
-					}
-					video->textureData = new unsigned char[vidWidth * vidHeight * 4];
+            {
+                DWORD vidWidth = *reinterpret_cast<DWORD*>(reinterpret_cast<DWORD>(video->vid) + 0x00);
+                DWORD vidHeight = *reinterpret_cast<DWORD*>(reinterpret_cast<DWORD>(video->vid) + 0x04);
+                if(!video->textureY || !video->textureU || !video->textureV || video->width != vidWidth || video->height != vidHeight)
+                {
+                    if(video->textureY)
+                    {
+                        delete video->textureY;
+                        video->textureY = nullptr;
+                    }
+                    if(video->textureU)
+                    {
+                        delete video->textureU;
+                        video->textureU = nullptr;
+                    }
+                    if(video->textureV)
+                    {
+                        delete video->textureV;
+                        video->textureV = nullptr;
+                    }
 
-					DDSURFACEDESC2 ddsd;
-					ZeroMemory(&ddsd, sizeof(ddsd));
-					ddsd.dwSize = sizeof(ddsd);
-					ddsd.dwFlags = DDSD_CAPS | DDSD_WIDTH | DDSD_HEIGHT | DDSD_PIXELFORMAT;
-					ddsd.ddsCaps.dwCaps = DDSCAPS_TEXTURE | DDSCAPS_VIDEOMEMORY;
-					ddsd.ddsCaps.dwCaps2 = DDSCAPS2_HINTDYNAMIC;
-					ddsd.dwWidth = UTIL_power_of_2(vidWidth);
-					ddsd.dwHeight = UTIL_power_of_2(vidHeight);
-					ddsd.ddpfPixelFormat.dwSize = sizeof(ddsd.ddpfPixelFormat);
-					ddsd.ddpfPixelFormat.dwFlags = DDPF_RGB | DDPF_ALPHAPIXELS;
-					ddsd.ddpfPixelFormat.dwRGBBitCount = 32;
-					ddsd.ddpfPixelFormat.dwRBitMask = 0x000000FF;
-					ddsd.ddpfPixelFormat.dwGBitMask = 0x0000FF00;
-					ddsd.ddpfPixelFormat.dwBBitMask = 0x00FF0000;
-					ddsd.ddpfPixelFormat.dwRGBAlphaBitMask = 0xFF000000;
-					HRESULT hr = (*reinterpret_cast<LPDIRECTDRAW7*>(GothicMemoryLocations::zCRndD3D::DDRAW7))->CreateSurface(&ddsd, &video->texture, nullptr);
-					if(FAILED(hr))
-					{
-						video->useBGRA = true;
-						ddsd.ddpfPixelFormat.dwRBitMask = 0x00FF0000;
-						ddsd.ddpfPixelFormat.dwGBitMask = 0x0000FF00;
-						ddsd.ddpfPixelFormat.dwBBitMask = 0x000000FF;
-						hr = (*reinterpret_cast<LPDIRECTDRAW7*>(GothicMemoryLocations::zCRndD3D::DDRAW7))->CreateSurface(&ddsd, &video->texture, nullptr);
-						if(FAILED(hr))
-						{
-							*reinterpret_cast<int*>(BinkPlayer + GothicMemoryLocations::zCBinkPlayer::Offset_IsPlaying) = 0;
-							return 0;
-						}
-					}
+                    video->width = vidWidth;
+                    video->height = vidHeight;
+                    video->textureY = new D3D11Texture();
+                    video->textureU = new D3D11Texture();
+                    video->textureV = new D3D11Texture();
+                    video->textureY->Init(INT2(vidWidth, vidHeight), D3D11Texture::ETextureFormat::TF_R8, 1, nullptr, "Video Texture Y");
+                    video->textureU->Init(INT2(vidWidth / 2, vidHeight / 2), D3D11Texture::ETextureFormat::TF_R8, 1, nullptr, "Video Texture U");
+                    video->textureV->Init(INT2(vidWidth / 2, vidHeight / 2), D3D11Texture::ETextureFormat::TF_R8, 1, nullptr, "Video Texture V");
+                    video->textureData = new unsigned char[(vidWidth * vidHeight) + ((vidWidth / 2) * (vidHeight / 2)) * 2];
 
-					video->scaleTU = 1.0f / ddsd.dwWidth;
-					video->scaleTV = 1.0f / ddsd.dwHeight;
-				}
+                    // Init textureData as black pixel yuv data
+                    unsigned char* dataY = video->textureData;
+                    memset( dataY, 16, vidWidth * vidHeight );
+                    unsigned char* dataV = dataY + (vidWidth * vidHeight);
+                    memset( dataV, 128, (vidWidth / 2) * (vidHeight / 2) );
+                    unsigned char* dataU = dataV + ((vidWidth / 2) * (vidHeight / 2));
+                    memset( dataU, 128, (vidWidth / 2) * (vidHeight / 2) );
+                }
+                reinterpret_cast<void( __stdcall* )(void*, void*, int, DWORD, DWORD, DWORD, DWORD)>(BinkCopyToBuffer)
+                    (video->vid, video->textureData, vidWidth, vidHeight, 0, 0, 0x70000000L | 15);
 
-				int srcPitch = vidWidth * 4;
-				reinterpret_cast<void(__stdcall*)(void*, void*, int, DWORD, DWORD, DWORD, DWORD)>(BinkCopyToBuffer)
-					(video->vid, video->textureData, vidWidth * 4, vidHeight, 0, 0, (video->useBGRA ? 3 : 4));
-				if(video->texture->IsLost() == DDERR_SURFACELOST)
-					video->texture->Restore();
+                unsigned char* dataY = video->textureData;
+                video->textureY->UpdateData( dataY, 0 );
+                unsigned char* dataV = dataY + (vidWidth * vidHeight);
+                video->textureV->UpdateData( dataV, 0 );
+                unsigned char* dataU = dataV + ((vidWidth / 2) * (vidHeight / 2));
+                video->textureU->UpdateData( dataU, 0 );
 
-				DDSURFACEDESC2 ddsd;
-				ZeroMemory(&ddsd, sizeof(ddsd));
-				ddsd.dwSize = sizeof(ddsd);
-				HRESULT hr = video->texture->Lock(nullptr, &ddsd, DDLOCK_NOSYSLOCK | DDLOCK_WAIT | DDLOCK_WRITEONLY, nullptr);
-				if(FAILED(hr))
-				{
-					*reinterpret_cast<int*>(BinkPlayer + GothicMemoryLocations::zCBinkPlayer::Offset_IsPlaying) = 0;
-					return 0;
-				}
-
-				if(ddsd.lPitch == srcPitch)
-					memcpy(ddsd.lpSurface, video->textureData, srcPitch * vidHeight);
-				else
-				{
-					unsigned char* dstData = reinterpret_cast<unsigned char*>(ddsd.lpSurface);
-					unsigned char* srcData = video->textureData;
-					for(DWORD h = 0; h < vidHeight; ++h)
-					{
-						memcpy(dstData, srcData, srcPitch);
-						dstData += ddsd.lPitch;
-						srcData += srcPitch;
-					}
-				}
-				video->texture->Unlock(nullptr);
-
-				DWORD zrenderer = *reinterpret_cast<DWORD*>(GothicMemoryLocations::GlobalObjects::zRenderer);
-				int oldZWrite = reinterpret_cast<int(__thiscall*)(DWORD)>(*reinterpret_cast<DWORD*>
+                DWORD zrenderer = *reinterpret_cast<DWORD*>(GothicMemoryLocations::GlobalObjects::zRenderer);
+                int oldZWrite = reinterpret_cast<int( __thiscall* )(DWORD)>(*reinterpret_cast<DWORD*>
                     (*reinterpret_cast<DWORD*>(zrenderer) + GothicMemoryLocations::zCRndD3D::GetZBufferWriteEnabled_Offset))(zrenderer);
-				reinterpret_cast<void(__thiscall*)(DWORD, int)>(*reinterpret_cast<DWORD*>
+                reinterpret_cast<void( __thiscall* )(DWORD, int)>(*reinterpret_cast<DWORD*>
                     (*reinterpret_cast<DWORD*>(zrenderer) + GothicMemoryLocations::zCRndD3D::SetZBufferWriteEnabled_Offset))(zrenderer, 0); // No depth-writes
-				int oldZCompare = reinterpret_cast<int(__thiscall*)(DWORD)>(*reinterpret_cast<DWORD*>
+                int oldZCompare = reinterpret_cast<int( __thiscall* )(DWORD)>(*reinterpret_cast<DWORD*>
                     (*reinterpret_cast<DWORD*>(zrenderer) + GothicMemoryLocations::zCRndD3D::GetZBufferCompare_Offset))(zrenderer);
-				int newZCompare = 0; // Compare always
-				reinterpret_cast<void(__thiscall*)(DWORD, int&)>(*reinterpret_cast<DWORD*>
+                int newZCompare = 0; // Compare always
+                reinterpret_cast<void( __thiscall* )(DWORD, int&)>(*reinterpret_cast<DWORD*>
                     (*reinterpret_cast<DWORD*>(zrenderer) + GothicMemoryLocations::zCRndD3D::SetZBufferCompare_Offset))(zrenderer, newZCompare);
-				int oldAlphaFunc = reinterpret_cast<int(__thiscall*)(DWORD)>(*reinterpret_cast<DWORD*>
+                int oldAlphaFunc = reinterpret_cast<int( __thiscall* )(DWORD)>(*reinterpret_cast<DWORD*>
                     (*reinterpret_cast<DWORD*>(zrenderer) + GothicMemoryLocations::zCRndD3D::GetAlphaBlendFunc_Offset))(zrenderer);
-				int oldFilter = reinterpret_cast<int(__thiscall*)(DWORD)>(*reinterpret_cast<DWORD*>
+                int oldFilter = reinterpret_cast<int( __thiscall* )(DWORD)>(*reinterpret_cast<DWORD*>
                     (*reinterpret_cast<DWORD*>(zrenderer) + GothicMemoryLocations::zCRndD3D::GetBilerpFilterEnabled_Offset))(zrenderer);
-				reinterpret_cast<void(__thiscall*)(DWORD, int)>(*reinterpret_cast<DWORD*>
+                reinterpret_cast<void( __thiscall* )(DWORD, int)>(*reinterpret_cast<DWORD*>
                     (*reinterpret_cast<DWORD*>(zrenderer) + GothicMemoryLocations::zCRndD3D::SetBilerpFilterEnabled_Offset))(zrenderer, video->scaleVideo ? 1 : 0); // Bilinear filter
-				int oldFog = reinterpret_cast<int(__thiscall*)(DWORD)>(*reinterpret_cast<DWORD*>
+                int oldFog = reinterpret_cast<int( __thiscall* )(DWORD)>(*reinterpret_cast<DWORD*>
                     (*reinterpret_cast<DWORD*>(zrenderer) + GothicMemoryLocations::zCRndD3D::GetFog_Offset))(zrenderer);
-				reinterpret_cast<void(__thiscall*)(DWORD, int)>(*reinterpret_cast<DWORD*>
+                reinterpret_cast<void( __thiscall* )(DWORD, int)>(*reinterpret_cast<DWORD*>
                     (*reinterpret_cast<DWORD*>(zrenderer) + GothicMemoryLocations::zCRndD3D::SetFog_Offset))(zrenderer, 0); // No fog
 
                 DWORD SetTextureStageState = *reinterpret_cast<DWORD*>(*reinterpret_cast<DWORD*>(zrenderer) + GothicMemoryLocations::zCRndD3D::SetTextureStageState_Offset);
-				// Disable alpha blending
-				reinterpret_cast<void(__thiscall*)(DWORD, int, int)>(GothicMemoryLocations::zCRndD3D::XD3D_SetRenderState)(zrenderer, 26, 0);
-				reinterpret_cast<void(__thiscall*)(DWORD, int, int)>(GothicMemoryLocations::zCRndD3D::XD3D_SetRenderState)(zrenderer, 27, 0);
-				reinterpret_cast<void(__thiscall*)(DWORD, int, int)>(GothicMemoryLocations::zCRndD3D::XD3D_SetRenderState)(zrenderer, 15, 0);
-				// Disable clipping
-				reinterpret_cast<void(__thiscall*)(DWORD, int, int)>(GothicMemoryLocations::zCRndD3D::XD3D_SetRenderState)(zrenderer, 136, 0);
-				// Disable culling
-				reinterpret_cast<void(__thiscall*)(DWORD, int, int)>(GothicMemoryLocations::zCRndD3D::XD3D_SetRenderState)(zrenderer, 22, 1);
-				// Set texture clamping
-				reinterpret_cast<void(__thiscall*)(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 0, 12, 3);
-				reinterpret_cast<void(__thiscall*)(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 0, 13, 3);
-				// 0 stage AlphaOp modulate
-				reinterpret_cast<void(__thiscall*)(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 0, 3, 3);
-				// 1 stage AlphaOp disable
-				reinterpret_cast<void(__thiscall*)(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 1, 3, 0);
-				// 0 stage ColorOp modulate
-				reinterpret_cast<void(__thiscall*)(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 0, 0, 3);
-				// 1 stage ColorOp disable
-				reinterpret_cast<void(__thiscall*)(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 1, 0, 0);
-				// 0 stage AlphaArg1/2 texure/diffuse
-				reinterpret_cast<void(__thiscall*)(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 0, 4, 3);
-				reinterpret_cast<void(__thiscall*)(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 0, 5, 1);
-				// 0 stage ColorArg1/2 texure/diffuse
-				reinterpret_cast<void(__thiscall*)(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 0, 1, 3);
-				reinterpret_cast<void(__thiscall*)(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 0, 2, 1);
-				// 0 stage TextureTransformFlags disable
-				reinterpret_cast<void(__thiscall*)(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 0, 23, 0);
-				// 0 stage TexCoordIndex 0
-				reinterpret_cast<void(__thiscall*)(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 0, 10, 0);
+                // Disable alpha blending
+                reinterpret_cast<void( __thiscall* )(DWORD, int, int)>(GothicMemoryLocations::zCRndD3D::XD3D_SetRenderState)(zrenderer, 26, 0);
+                reinterpret_cast<void( __thiscall* )(DWORD, int, int)>(GothicMemoryLocations::zCRndD3D::XD3D_SetRenderState)(zrenderer, 27, 0);
+                reinterpret_cast<void( __thiscall* )(DWORD, int, int)>(GothicMemoryLocations::zCRndD3D::XD3D_SetRenderState)(zrenderer, 15, 0);
+                // Disable clipping
+                reinterpret_cast<void( __thiscall* )(DWORD, int, int)>(GothicMemoryLocations::zCRndD3D::XD3D_SetRenderState)(zrenderer, 136, 0);
+                // Disable culling
+                reinterpret_cast<void( __thiscall* )(DWORD, int, int)>(GothicMemoryLocations::zCRndD3D::XD3D_SetRenderState)(zrenderer, 22, 1);
+                // Set texture clamping
+                reinterpret_cast<void( __thiscall* )(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 0, 12, 3);
+                reinterpret_cast<void( __thiscall* )(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 0, 13, 3);
+                // 0 stage AlphaOp modulate
+                reinterpret_cast<void( __thiscall* )(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 0, 3, 3);
+                // 1 stage AlphaOp disable
+                reinterpret_cast<void( __thiscall* )(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 1, 3, 0);
+                // 0 stage ColorOp modulate
+                reinterpret_cast<void( __thiscall* )(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 0, 0, 3);
+                // 1 stage ColorOp disable
+                reinterpret_cast<void( __thiscall* )(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 1, 0, 0);
+                // 0 stage AlphaArg1/2 texure/diffuse
+                reinterpret_cast<void( __thiscall* )(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 0, 4, 3);
+                reinterpret_cast<void( __thiscall* )(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 0, 5, 1);
+                // 0 stage ColorArg1/2 texure/diffuse
+                reinterpret_cast<void( __thiscall* )(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 0, 1, 3);
+                reinterpret_cast<void( __thiscall* )(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 0, 2, 1);
+                // 0 stage TextureTransformFlags disable
+                reinterpret_cast<void( __thiscall* )(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 0, 23, 0);
+                // 0 stage TexCoordIndex 0
+                reinterpret_cast<void( __thiscall* )(DWORD, int, int, int)>(SetTextureStageState)(zrenderer, 0, 10, 0);
 
-				// Set fullscreen viewport
-				int gWidth = *reinterpret_cast<int*>(zrenderer + GothicMemoryLocations::zCRndD3D::Offset_Width);
-				int gHeight = *reinterpret_cast<int*>(zrenderer + GothicMemoryLocations::zCRndD3D::Offset_Height);
-				reinterpret_cast<void(__thiscall*)(DWORD, int, int, int, int)>(*reinterpret_cast<DWORD*>
+                // Set fullscreen viewport
+                int gWidth = *reinterpret_cast<int*>(zrenderer + GothicMemoryLocations::zCRndD3D::Offset_Width);
+                int gHeight = *reinterpret_cast<int*>(zrenderer + GothicMemoryLocations::zCRndD3D::Offset_Height);
+                reinterpret_cast<void( __thiscall* )(DWORD, int, int, int, int)>(*reinterpret_cast<DWORD*>
                     (*reinterpret_cast<DWORD*>(zrenderer) + GothicMemoryLocations::zCRndD3D::SetViewport_Offset))(zrenderer, 0, 0, gWidth, gHeight);
 
-				// Set video texture
-				reinterpret_cast<void(__thiscall*)(DWORD, int, LPDIRECTDRAWSURFACE7)>(GothicMemoryLocations::zCRndD3D::XD3D_SetTexture)(zrenderer, 0, video->texture);
+                float scale = std::min<float>(static_cast<float>(gWidth) / static_cast<float>(video->width), static_cast<float>(gHeight) / static_cast<float>(video->height));
+                int dstW = std::min<int>(static_cast<int>(video->width * scale), gWidth);
+                int dstH = std::min<int>(static_cast<int>(video->height * scale), gHeight);
+                int dstX = std::max<int>((gWidth / 2) - (dstW / 2), 0);
+                int dstY = std::max<int>((gHeight / 2) - (dstH / 2), 0);
+                if(!video->scaleVideo)
+                {
+                    dstX = (gWidth / 2) - (video->width / 2);
+                    dstY = (gHeight / 2) - (video->height / 2);
+                    dstW = video->width;
+                    dstH = video->height;
+                }
 
-				{
-					struct D3DTLVERTEX
-					{
-						float sx;
-						float sy;
-						float sz;
-						float rhw;
-						DWORD color;
-						DWORD specular;
-						float tu;
-						float tv;
-					};
-					D3DTLVERTEX vertices[8];
+                float minx = static_cast<float>(dstX);
+                float miny = static_cast<float>(dstY);
+                float maxx = static_cast<float>(dstW) + minx;
+                float maxy = static_cast<float>(dstH) + miny;
 
-					float scale = std::min<float>(static_cast<float>(gWidth) / static_cast<float>(video->width), static_cast<float>(gHeight) / static_cast<float>(video->height));
-					int dstW = std::min<int>(static_cast<int>(video->width * scale), gWidth);
-					int dstH = std::min<int>(static_cast<int>(video->height * scale), gHeight);
-					int dstX = std::max<int>((gWidth / 2) - (dstW / 2), 0);
-					int dstY = std::max<int>((gHeight / 2) - (dstH / 2), 0);
-					if(!video->scaleVideo)
-					{
-						dstX = (gWidth / 2) - (video->width / 2);
-						dstY = (gHeight / 2) - (video->height / 2);
-						dstW = video->width;
-						dstH = video->height;
-					}
+                ExVertexStruct verts[6];
+                verts[0].Position = float3(minx, miny, 0.f);
+                verts[0].Normal = float3(1.f, 0.f, 0.f);
+                verts[0].TexCoord = float2(0.f, 0.f);
+                verts[0].TexCoord2 = float2(0.f, 0.f);
+                verts[0].Color = 0xFFFFFFFF;
 
-					float minx = static_cast<float>(dstX);
-					float miny = static_cast<float>(dstY);
-					float maxx = static_cast<float>(dstW) + minx;
-					float maxy = static_cast<float>(dstH) + miny;
+                verts[1].Position = float3(maxx, maxy, 0.f);
+                verts[1].Normal = float3(1.f, 0.f, 0.f);
+                verts[1].TexCoord = float2(1.f, 1.f);
+                verts[1].TexCoord2 = float2(0.f, 0.f);
+                verts[1].Color = 0xFFFFFFFF;
 
-					float minu = 0.f;
-					float maxu = static_cast<float>(video->width) * video->scaleTU;
-					float minv = 0.f;
-					float maxv = static_cast<float>(video->height) * video->scaleTV;
+                verts[2].Position = float3(maxx, miny, 0.f);
+                verts[2].Normal = float3(1.f, 0.f, 0.f);
+                verts[2].TexCoord = float2(1.f, 0.f);
+                verts[2].TexCoord2 = float2(0.f, 0.f);
+                verts[2].Color = 0xFFFFFFFF;
 
-					vertices[0].sx = 0.f;
-					vertices[0].sy = 0.f;
-					vertices[0].sz = 0.f;
-					vertices[0].rhw = 1.f;
-					vertices[0].color = 0x00000000;
-					vertices[0].specular = 0x00000000;
-					vertices[0].tu = 0.f;
-					vertices[0].tv = 0.f;
+                verts[3].Position = float3(minx, miny, 0.f);
+                verts[3].Normal = float3(1.f, 0.f, 0.f);
+                verts[3].TexCoord = float2(0.f, 0.f);
+                verts[3].TexCoord2 = float2(0.f, 0.f);
+                verts[3].Color = 0xFFFFFFFF;
 
-					vertices[1].sx = static_cast<float>(gWidth);
-					vertices[1].sy = 0.f;
-					vertices[1].sz = 0.f;
-					vertices[1].rhw = 1.f;
-					vertices[1].color = 0x00000000;
-					vertices[1].specular = 0x00000000;
-					vertices[1].tu = 0.f;
-					vertices[1].tv = 0.f;
+                verts[4].Position = float3(minx, maxy, 0.f);
+                verts[4].Normal = float3(1.f, 0.f, 0.f);
+                verts[4].TexCoord = float2(0.f, 1.f);
+                verts[4].TexCoord2 = float2(0.f, 0.f);
+                verts[4].Color = 0xFFFFFFFF;
 
-					vertices[2].sx = static_cast<float>(gWidth);
-					vertices[2].sy = static_cast<float>(gHeight);
-					vertices[2].sz = 0.f;
-					vertices[2].rhw = 1.f;
-					vertices[2].color = 0x00000000;
-					vertices[2].specular = 0x00000000;
-					vertices[2].tu = 0.f;
-					vertices[2].tv = 0.f;
+                verts[5].Position = float3(maxx, maxy, 0.f);
+                verts[5].Normal = float3(1.f, 0.f, 0.f);
+                verts[5].TexCoord = float2(1.f, 1.f);
+                verts[5].TexCoord2 = float2(0.f, 0.f);
+                verts[5].Color = 0xFFFFFFFF;
 
-					vertices[3].sx = 0.f;
-					vertices[3].sy = static_cast<float>(gHeight);
-					vertices[3].sz = 0.f;
-					vertices[3].rhw = 1.f;
-					vertices[3].color = 0x00000000;
-					vertices[3].specular = 0x00000000;
-					vertices[3].tu = 0.f;
-					vertices[3].tv = 0.f;
+                Engine::GraphicsEngine->SetActiveVertexShader("VS_TransformedEx");
+                Engine::GraphicsEngine->BindViewportInformation("VS_TransformedEx", 0);
+                Engine::GraphicsEngine->SetActivePixelShader("PS_Video");
+                video->textureY->BindToPixelShader(0);
+                video->textureU->BindToPixelShader(1);
+                video->textureV->BindToPixelShader(2);
+                Engine::GraphicsEngine->Clear(float4(0.f, 0.f, 0.f, 1.f));
+                Engine::GraphicsEngine->DrawVertexArray(verts, 6);
 
-					vertices[4].sx = minx;
-					vertices[4].sy = miny;
-					vertices[4].sz = 0.f;
-					vertices[4].rhw = 1.f;
-					vertices[4].color = 0xFFFFFFFF;
-					vertices[4].specular = 0xFFFFFFFF;
-					vertices[4].tu = minu;
-					vertices[4].tv = minv;
-
-					vertices[5].sx = maxx;
-					vertices[5].sy = miny;
-					vertices[5].sz = 0.f;
-					vertices[5].rhw = 1.f;
-					vertices[5].color = 0xFFFFFFFF;
-					vertices[5].specular = 0xFFFFFFFF;
-					vertices[5].tu = maxu;
-					vertices[5].tv = minv;
-
-					vertices[6].sx = maxx;
-					vertices[6].sy = maxy;
-					vertices[6].sz = 0.f;
-					vertices[6].rhw = 1.f;
-					vertices[6].color = 0xFFFFFFFF;
-					vertices[6].specular = 0xFFFFFFFF;
-					vertices[6].tu = maxu;
-					vertices[6].tv = maxv;
-
-					vertices[7].sx = minx;
-					vertices[7].sy = maxy;
-					vertices[7].sz = 0.f;
-					vertices[7].rhw = 1.f;
-					vertices[7].color = 0xFFFFFFFF;
-					vertices[7].specular = 0xFFFFFFFF;
-					vertices[7].tu = minu;
-					vertices[7].tv = maxv;
-
-					LPDIRECT3DDEVICE7 d3d7Device = *reinterpret_cast<LPDIRECT3DDEVICE7*>(GothicMemoryLocations::zCRndD3D::D3DDevice7);
-					d3d7Device->DrawPrimitive(D3DPT_TRIANGLEFAN, D3DFVF_TLVERTEX, reinterpret_cast<LPVOID>(vertices + 0), 4, 0);
-					d3d7Device->DrawPrimitive(D3DPT_TRIANGLEFAN, D3DFVF_TLVERTEX, reinterpret_cast<LPVOID>(vertices + 4), 4, 0);
-				}
-
-				reinterpret_cast<void(__thiscall*)(DWORD, int)>(*reinterpret_cast<DWORD*>
+                reinterpret_cast<void( __thiscall* )(DWORD, int)>(*reinterpret_cast<DWORD*>
                     (*reinterpret_cast<DWORD*>(zrenderer) + GothicMemoryLocations::zCRndD3D::SetFog_Offset))(zrenderer, oldFog);
-				reinterpret_cast<void(__thiscall*)(DWORD, int)>(*reinterpret_cast<DWORD*>
+                reinterpret_cast<void( __thiscall* )(DWORD, int)>(*reinterpret_cast<DWORD*>
                     (*reinterpret_cast<DWORD*>(zrenderer) + GothicMemoryLocations::zCRndD3D::SetBilerpFilterEnabled_Offset))(zrenderer, oldFilter);
-				reinterpret_cast<void(__thiscall*)(DWORD, int&)>(*reinterpret_cast<DWORD*>
+                reinterpret_cast<void( __thiscall* )(DWORD, int&)>(*reinterpret_cast<DWORD*>
                     (*reinterpret_cast<DWORD*>(zrenderer) + GothicMemoryLocations::zCRndD3D::SetAlphaBlendFunc_Offset))(zrenderer, oldAlphaFunc);
-				reinterpret_cast<void(__thiscall*)(DWORD, int&)>(*reinterpret_cast<DWORD*>
+                reinterpret_cast<void( __thiscall* )(DWORD, int&)>(*reinterpret_cast<DWORD*>
                     (*reinterpret_cast<DWORD*>(zrenderer) + GothicMemoryLocations::zCRndD3D::SetZBufferCompare_Offset))(zrenderer, oldZCompare);
-				reinterpret_cast<void(__thiscall*)(DWORD, int)>(*reinterpret_cast<DWORD*>
+                reinterpret_cast<void( __thiscall* )(DWORD, int)>(*reinterpret_cast<DWORD*>
                     (*reinterpret_cast<DWORD*>(zrenderer) + GothicMemoryLocations::zCRndD3D::SetZBufferWriteEnabled_Offset))(zrenderer, oldZWrite);
-				reinterpret_cast<void(__thiscall*)(DWORD, int, void*, void*)>(*reinterpret_cast<DWORD*>
+                reinterpret_cast<void( __thiscall* )(DWORD, int, void*, void*)>(*reinterpret_cast<DWORD*>
                     (*reinterpret_cast<DWORD*>(zrenderer) + GothicMemoryLocations::zCRndD3D::Vid_Blit_Offset))(zrenderer, 0, nullptr, nullptr);
-			}
+            }
             BinkPlayerPlayGotoNextFrame(BinkPlayer);
             BinkPlayerPlayWaitNextFrame(BinkPlayer);
 		}
@@ -587,10 +508,20 @@ int __fastcall BinkPlayerCloseVideo(DWORD BinkPlayer)
 		return 0;
 
 	delete[] video->textureData;
-	if(video->texture)
+	if(video->textureY)
 	{
-		video->texture->Release();
-		video->texture = nullptr;
+		delete video->textureY;
+		video->textureY = nullptr;
+	}
+	if(video->textureU)
+	{
+		delete video->textureU;
+		video->textureU = nullptr;
+	}
+	if(video->textureV)
+	{
+		delete video->textureV;
+		video->textureV = nullptr;
 	}
 	reinterpret_cast<void(__stdcall*)(void*)>(BinkClose)(video->vid);
 

@@ -144,10 +144,12 @@ UINT D3D11Texture::GetRowPitchBytes( int mip ) {
     int px = (TextureSize.x >> mip);
     //int py = (TextureSize.y >> mip);
 
-    if ( TextureFormat == DXGI_FORMAT_BC1_UNORM || TextureFormat == DXGI_FORMAT_BC2_UNORM ||
+    if ( TextureFormat == DXGI_FORMAT_R8_UNORM ) {
+        return px;
+    } else if ( TextureFormat == DXGI_FORMAT_BC1_UNORM || TextureFormat == DXGI_FORMAT_BC2_UNORM ||
         TextureFormat == DXGI_FORMAT_BC3_UNORM ) {
         return Toolbox::GetDDSRowPitchSize( px, TextureFormat == DXGI_FORMAT_BC1_UNORM );
-    } else { // Use R8G8B8A8
+    } else { // Use B8G8R8A8
         return px * 4;
     }
 }
@@ -157,10 +159,12 @@ UINT D3D11Texture::GetSizeInBytes( int mip ) {
     int px = (TextureSize.x >> mip);
     int py = (TextureSize.y >> mip);
 
-    if ( TextureFormat == DXGI_FORMAT_BC1_UNORM || TextureFormat == DXGI_FORMAT_BC2_UNORM ||
+    if ( TextureFormat == DXGI_FORMAT_R8_UNORM ) {
+        return px * py;
+    } else if ( TextureFormat == DXGI_FORMAT_BC1_UNORM || TextureFormat == DXGI_FORMAT_BC2_UNORM ||
         TextureFormat == DXGI_FORMAT_BC3_UNORM ) {
         return Toolbox::GetDDSStorageRequirements( px, py, TextureFormat == DXGI_FORMAT_BC1_UNORM );
-    } else { // Use R8G8B8A8
+    } else { // Use B8G8R8A8
         return px * py * 4;
     }
 }
@@ -195,7 +199,7 @@ XRESULT D3D11Texture::CreateThumbnail() {
 
     // Create texture
     CD3D11_TEXTURE2D_DESC textureDesc(
-        DXGI_FORMAT_R8G8B8A8_UNORM,
+        DXGI_FORMAT_B8G8R8A8_UNORM,
         256,
         256,
         1,
@@ -241,7 +245,7 @@ XRESULT D3D11Texture::GenerateMipMaps() {
     D3D11GraphicsEngineBase* engine = reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine);
 
     std::unique_ptr<RenderToTextureBuffer> b = std::make_unique<RenderToTextureBuffer>( engine->GetDevice().Get(), TextureSize.x, TextureSize.y,
-        DXGI_FORMAT_R8G8B8A8_UNORM, nullptr, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, MipMapCount );
+        DXGI_FORMAT_B8G8R8A8_UNORM, nullptr, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, MipMapCount );
 
     // Copy the main image
     engine->GetContext()->CopySubresourceRegion( b->GetTexture().Get(), 0, 0, 0, 0, Texture.Get(), 0, nullptr );

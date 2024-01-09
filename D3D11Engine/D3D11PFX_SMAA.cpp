@@ -193,10 +193,10 @@ void D3D11PFX_SMAA::OnResize( const INT2& size ) {
 	HRESULT hr = S_OK;
 
 	// Create Edges- and Blend-Textures
-	EdgesTex = new RenderToTextureBuffer( engine->GetDevice().Get(), size.x, size.y, DXGI_FORMAT_R8G8B8A8_UNORM, &hr );
+	EdgesTex = new RenderToTextureBuffer( engine->GetDevice().Get(), size.x, size.y, DXGI_FORMAT_B8G8R8A8_UNORM, &hr );
 	LE( hr );
 
-	BlendTex = new RenderToTextureBuffer( engine->GetDevice().Get(), size.x, size.y, DXGI_FORMAT_R8G8B8A8_UNORM, &hr );
+	BlendTex = new RenderToTextureBuffer( engine->GetDevice().Get(), size.x, size.y, DXGI_FORMAT_B8G8R8A8_UNORM, &hr );
 	LE( hr );
 
 	std::vector<D3D_SHADER_MACRO> Makros;

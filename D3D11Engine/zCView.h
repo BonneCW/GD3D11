@@ -37,9 +37,7 @@ public:
         }
 
 #if (defined(BUILD_GOTHIC_1_08k) && !defined(BUILD_1_12F)) || defined(BUILD_GOTHIC_2_6_fix)
-        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCViewBlitText), hooked_BlitText );
-        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCViewPrint), hooked_Print );
-        //DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCViewBlit), hooked_Blit );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCViewPrintChars), hooked_PrintChars );
 #endif
     }
 
@@ -54,93 +52,23 @@ public:
     }
 
 #if (defined(BUILD_GOTHIC_1_08k) && !defined(BUILD_1_12F)) || defined(BUILD_GOTHIC_2_6_fix)
-    /*
-    static void __fastcall hooked_Blit(_zCView* thisptr, void* unknwn) {
-
-        if (true || !Engine::GAPI->GetRendererState().RendererSettings.EnableCustomFontRendering) {
-            HookedFunctions::OriginalFunctions.original_zCViewBlit(thisptr);
-            return;
-        }
-
-        if (thisptr->viewID == 1 /* VIEW_VIEWPORT *\/) return;
-        if (thisptr == GetScreen()) return;
-        hook_infunc
-            auto oldDepthState = Engine::GAPI->GetRendererState().DepthState.Clone();
-
-            if (!thisptr->m_bFillZ) Engine::GAPI->GetRendererState().DepthState.DepthWriteEnabled = false;
-            else Engine::GAPI->GetRendererState().DepthState.DepthWriteEnabled = true;
-
-            Engine::GAPI->GetRendererState().DepthState.DepthBufferCompareFunc = GothicDepthBufferStateInfo::CF_COMPARISON_ALWAYS;
-            Engine::GAPI->GetRendererState().DepthState.SetDirty();
-
-            Engine::GraphicsEngine->UpdateRenderStates();
-
-            HookedFunctions::OriginalFunctions.original_zCViewBlit(thisptr);
-
-            oldDepthState.ApplyTo(Engine::GAPI->GetRendererState().DepthState);
-            Engine::GraphicsEngine->UpdateRenderStates();
-        hook_outfunc
-    }
-    */
-
-    static void __fastcall hooked_Print( _zCView* thisptr, void* unknwn, int x, int y, const zSTRING& s ) {
+    static void __fastcall hooked_PrintChars( _zCView* thisptr, void* unknwn, int x, int y, const zSTRING& s ) {
         if ( !Engine::GAPI->GetRendererState().RendererSettings.EnableCustomFontRendering ) {
-            HookedFunctions::OriginalFunctions.original_zCViewPrint( thisptr, x, y, s );
-            return;
-        }
-        if ( !thisptr->font ) return;
-        thisptr->scrollTimer = 0;
-
-        // Instantly blit Viewport/global-screen
-        if ( (thisptr->viewID == 1)
-            || (thisptr == GetScreen()) ) {
-            int len = s.Length();
-            if ( len > 0 ) {
-                Engine::GraphicsEngine->DrawString(
-                    std::string(s.ToChar(), len),
-                    static_cast<float>(thisptr->pposx + thisptr->nax( x )),
-                    static_cast<float>(thisptr->pposy + thisptr->nay( y )),
-                    thisptr->font, thisptr->fontColor );
-            }
-        } else {
-            // create a textview for later blitting
-            thisptr->CreateText( x, y, s );
-        }
-    }
-
-    static void __fastcall hooked_BlitText( _zCView* thisptr, void* unknwn ) {
-        if ( !Engine::GAPI->GetRendererState().RendererSettings.EnableCustomFontRendering ) {
-            HookedFunctions::OriginalFunctions.original_zCViewBlitText( thisptr );
+            HookedFunctions::OriginalFunctions.original_zCViewPrintChars( thisptr, x, y, s );
             return;
         }
 
-        thisptr->CheckAutoScroll();
-        thisptr->CheckTimedText();
+        if ( !thisptr->font ) {
+            return;
+        }
 
-        if ( !thisptr->isOpen ) return;
-
-        float x, y;
-
-        zCList <zCViewText>* textNode = thisptr->textLines.next;
-        zCViewText* text = nullptr;
-        zColor fontColor = thisptr->fontColor;
-        while ( textNode ) {
-
-            text = textNode->data;
-            textNode = textNode->next;
-
-            if ( text->colored ) { fontColor = text->color; }
-            //else                 { fontColor = thisptr->fontColor;}
-
-            x = static_cast<float>(thisptr->pposx + thisptr->nax( text->posx ));
-            y = static_cast<float>(thisptr->pposy + thisptr->nay( text->posy ));
-
-            if ( !text->font ) continue;
-
-            int len = text->text.Length();
-            if ( len > 0 ) {
-                Engine::GraphicsEngine->DrawString( std::string(text->text.ToChar(), len), x, y, text->font, fontColor );
-            }
+        int len = s.Length();
+        if ( len > 0 ) {
+            Engine::GraphicsEngine->DrawString(
+                std::string( s.ToChar(), len ),
+                static_cast<float>( x ),
+                static_cast<float>( y ),
+                thisptr->font, thisptr->fontColor );
         }
     }
     static _zCView* GetScreen() { return *reinterpret_cast<_zCView**>(GothicMemoryLocations::GlobalObjects::screen); }

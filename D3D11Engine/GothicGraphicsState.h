@@ -529,6 +529,7 @@ struct GothicRendererSettings {
 
         DrawSky = true;
         DrawFog = true;
+        FogRange = 0;
         EnableHDR = false;
         HDRToneMap = E_HDRToneMap::ToneMap_Simple;
         ReplaceSunDirection = false;
@@ -710,6 +711,7 @@ struct GothicRendererSettings {
     bool DrawParticleEffects;
     bool DrawSky;
     bool DrawFog;
+    int FogRange;
     bool DrawG1ForestPortals;
     bool EnableHDR;
     E_HDRToneMap HDRToneMap;

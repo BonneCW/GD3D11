@@ -33,9 +33,9 @@ static void Convert565to8888(unsigned char* dst, unsigned char* src, UINT realDa
 		unsigned char greenComponent = ((pixel_data >> 5) & 63) << 2;
 		unsigned char blueComponent = ((pixel_data >> 11) & 31) << 3;
 
-		dst[4 * i + 2] = redComponent;
+		dst[4 * i + 2] = blueComponent;
 		dst[4 * i + 1] = greenComponent;
-		dst[4 * i + 0] = blueComponent;
+		dst[4 * i + 0] = redComponent;
 		dst[4 * i + 3] = 255;
 	}
 }
@@ -53,9 +53,9 @@ static void Convert1555to8888(unsigned char* dst, unsigned char* src, UINT realD
 		unsigned char blueComponent = ((pixel_data >> 10) & 31) << 3;
 		unsigned char alphaComponent = (pixel_data >> 15) * 0xFF;
 
-		dst[4 * i + 2] = redComponent;
+		dst[4 * i + 2] = blueComponent;
 		dst[4 * i + 1] = greenComponent;
-		dst[4 * i + 0] = blueComponent;
+		dst[4 * i + 0] = redComponent;
 		dst[4 * i + 3] = alphaComponent;
 	}
 }
@@ -73,9 +73,9 @@ static void Convert4444to8888(unsigned char* dst, unsigned char* src, UINT realD
 		unsigned char blueComponent = ((pixel_data >> 8) & 15) << 4;
 		unsigned char alphaComponent = ((pixel_data >> 12) & 15) << 4;
 
-		dst[4 * i + 2] = redComponent;
+		dst[4 * i + 2] = blueComponent;
 		dst[4 * i + 1] = greenComponent;
-		dst[4 * i + 0] = blueComponent;
+		dst[4 * i + 0] = redComponent;
 		dst[4 * i + 3] = alphaComponent;
 	}
 }

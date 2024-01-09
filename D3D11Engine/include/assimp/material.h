@@ -3,7 +3,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2022, assimp team
 
 All rights reserved.
 
@@ -306,7 +306,7 @@ enum aiTextureType {
     aiTextureType_SHEEN = 19,
 
     /** Clearcoat
-    * Simulates a layer of 'polish' or 'laquer' layered on top of a PBR substrate
+    * Simulates a layer of 'polish' or 'lacquer' layered on top of a PBR substrate
     * https://autodesk.github.io/standard-surface/#closures/coating
     * https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_clearcoat
     */
@@ -331,11 +331,11 @@ enum aiTextureType {
 #endif
 };
 
-#define AI_TEXTURE_TYPE_MAX aiTextureType_UNKNOWN
+#define AI_TEXTURE_TYPE_MAX aiTextureType_TRANSMISSION
 
 // -------------------------------------------------------------------------------
 // Get a string for a given aiTextureType
-ASSIMP_API const char *TextureTypeToString(enum aiTextureType in);
+ASSIMP_API const char *aiTextureTypeToString(enum aiTextureType in);
 
 // ---------------------------------------------------------------------------
 /** @brief Defines all shading models supported by the library
@@ -989,6 +989,9 @@ extern "C" {
 // Roughness factor. 0.0 = Perfectly Smooth, 1.0 = Completely Rough
 #define AI_MATKEY_ROUGHNESS_FACTOR "$mat.roughnessFactor", 0, 0
 #define AI_MATKEY_ROUGHNESS_TEXTURE aiTextureType_DIFFUSE_ROUGHNESS, 0
+// Anisotropy factor. 0.0 = isotropic, 1.0 = anisotropy along tangent direction,
+// -1.0 = anisotropy along bitangent direction
+#define AI_MATKEY_ANISOTROPY_FACTOR "$mat.anisotropyFactor", 0, 0
 
 // Specular/Glossiness Workflow
 // ---------------------------

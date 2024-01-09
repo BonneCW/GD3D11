@@ -21,10 +21,10 @@ jobs:
         configuration: [Release_AVX, Release_G1_AVX, Release, Release_G1, Spacer_NET, Launcher]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v1
+      uses: microsoft/setup-msbuild@v1.1
 
     - name: Set tag and directory name env
       run: |
@@ -40,7 +40,7 @@ jobs:
       run: msbuild /p:Configuration=${{matrix.configuration}} .
       
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.configuration }}
         path: ${{ matrix.configuration }}/ddraw.dll
@@ -51,7 +51,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set tag and directory name env
       run: |
@@ -62,16 +62,16 @@ jobs:
         echo "RELEASE_VERSION=${tagName}" >> $Env:GITHUB_ENV
         echo "RELEASE_DIR=${dirName}" >> $Env:GITHUB_ENV
 
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
     
     - name: Display structure of downloaded files
-      run: ls -R
+      run: tree
     
     - name: Create distribution
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: |
-        mkdir "${{env.RELEASE_DIR}}\GD3D11\shaders\CSFFT"
-        mkdir "${{env.RELEASE_DIR}}\GD3D11\Bin"
+        mkdir "${{env.RELEASE_DIR}}\GD3D11\shaders\CSFFT" -Force
+        mkdir "${{env.RELEASE_DIR}}\GD3D11\Bin" -Force
         Xcopy "D3D11Engine\Shaders\*" "${{env.RELEASE_DIR}}\GD3D11\shaders" /s
         copy "D3D11Engine\CSFFT\*.hlsl" "${{env.RELEASE_DIR}}\GD3D11\shaders\CSFFT"
         Xcopy "blobs\Meshes" "${{env.RELEASE_DIR}}\GD3D11\Meshes\" /s
@@ -84,10 +84,12 @@ jobs:
         copy "Launcher\ddraw.dll" "${{env.RELEASE_DIR}}\"
     
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ env.RELEASE_DIR }}
         path: ${{ env.RELEASE_DIR }}
+        # higher values don't get us much due to DLLs, libs, textures...
+        compression-level: 1
 
     - name: zip distribution for nightly
       if: github.ref_name == 'master'
@@ -103,20 +105,27 @@ jobs:
         (Get-FileHash "${{env.RELEASE_DIR}}.zip" -Algorithm SHA256).hash | Out-File -FilePath "${{env.RELEASE_DIR}}.zip.sha256"
         type "${{env.RELEASE_DIR}}.zip.sha256"
 
-    - name: Create nightly github release
+    - name: Delete old nightly
       if: github.ref_name == 'master'
-      run: |
-        gh release delete nightly --yes --cleanup-tag
-        gh release create nightly --prerelease --title "Nightly" --notes "Generated release from GitHub Actions"
-        echo "Ignore 'Validation Failed' results. Expected since only the first job that reaches this step can create the release."
-        exit 0
-      env:
-        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      # v1.0.1
+      uses: dev-drprasad/delete-tag-and-release@8cd619d00037e4aeb781909c9a6b03940507d0da
+      with:
+        delete_release: true
+        tag_name: nightly
+        github_token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Upload artifacts to github release
+    - name: Create new nightly
       if: github.ref_name == 'master'
-      run: |
-        gh release upload nightly "${{env.RELEASE_DIR}}.zip" --clobber
-        gh release upload nightly "${{env.RELEASE_DIR}}.zip.sha256" --clobber
-      env:
-        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      # v1.13.0
+      uses: ncipollo/release-action@6c75be85e571768fa31b40abf38de58ba0397db5
+      with:
+        name: Nightly
+        tag: nightly
+        generateReleaseNotes: true
+        allowUpdates: true
+        prerelease: true
+        draft: false
+        omitDraftDuringUpdate: false
+        removeArtifacts: true
+        artifacts: "${{env.RELEASE_DIR}}.zip,${{env.RELEASE_DIR}}.zip.sha256"
+        token: ${{ secrets.GITHUB_TOKEN }}

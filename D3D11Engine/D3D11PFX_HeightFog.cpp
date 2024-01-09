@@ -48,7 +48,7 @@ XRESULT D3D11PFX_HeightFog::Render( RenderToTextureBuffer* fxbuffer ) {
 
 	float fnear = 15000.0f;
 	float ffar = 60000.0f;
-	float secScale = Engine::GAPI->GetRendererState().RendererSettings.SectionDrawRadius;
+    float secScale = std::min<float>( Engine::GAPI->GetRendererState().RendererSettings.SectionDrawRadius, Engine::GAPI->GetRendererState().RendererSettings.FogRange + 3 );
 
 	cb.HF_WeightZNear = std::max( 0.0f, WORLD_SECTION_SIZE * ((secScale - 0.5f) * 0.7f) - (ffar - fnear) ); // Keep distance from original fog but scale the near-fog up to section draw distance
 	cb.HF_WeightZFar = WORLD_SECTION_SIZE * ((secScale - 0.5f) * 0.8f);

@@ -265,7 +265,23 @@ XRESULT D2DSettingsDialog::InitControls() {
 		if ( i <= 25 ) {
 			fpsValues.emplace_back( "off" );
 		} else {
-			fpsValues.emplace_back( std::move( std::to_string( i ) ) );
+            if ( i >= 28 && i <= 32 ) {
+                fpsValues.emplace_back( "30" );
+            } else if ( i >= 58 && i <= 62 ) {
+                fpsValues.emplace_back( "60" );
+            } else if ( i >= 73 && i <= 77 ) {
+                fpsValues.emplace_back( "75" );
+            } else if ( i >= 88 && i <= 92 ) {
+                fpsValues.emplace_back( "90" );
+            } else if ( i >= 98 && i <= 102 ) {
+                fpsValues.emplace_back( "100" );
+            } else if ( i >= 118 && i <= 122 ) {
+                fpsValues.emplace_back( "120" );
+            } else if ( i >= 142 && i <= 146 ) {
+                fpsValues.emplace_back( "144" );
+            } else {
+                fpsValues.emplace_back( std::move( std::to_string( i ) ) );
+            }
 		}
 	}
 	fpsLimitSlider->SetDisplayValues( fpsValues );
@@ -570,7 +586,24 @@ XRESULT D2DSettingsDialog::InitControls() {
 
 void D2DSettingsDialog::FpsLimitSliderChanged( SV_Slider* sender, void* userdata ) {
 	int newValue = static_cast<int>(sender->GetValue());
-	Engine::GAPI->GetRendererState().RendererSettings.FpsLimit = newValue <= 25 ? 0 : newValue;
+    if ( newValue <= 25 ) {
+        newValue = 0;
+    } else if ( newValue >= 28 && newValue <= 32 ) {
+        newValue = 30;
+    } else if ( newValue >= 58 && newValue <= 62 ) {
+        newValue = 60;
+    } else if ( newValue >= 73 && newValue <= 77 ) {
+        newValue = 75;
+    } else if ( newValue >= 88 && newValue <= 92 ) {
+        newValue = 90;
+    } else if ( newValue >= 98 && newValue <= 102 ) {
+        newValue = 100;
+    } else if ( newValue >= 118 && newValue <= 122 ) {
+        newValue = 120;
+    } else if ( newValue >= 142 && newValue <= 146 ) {
+        newValue = 144;
+    }
+	Engine::GAPI->GetRendererState().RendererSettings.FpsLimit = newValue;
 }
 
 void D2DSettingsDialog::FovOverrideCheckedChanged( SV_Checkbox* sender, void* userdata ) {

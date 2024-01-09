@@ -217,7 +217,9 @@ int WINAPI hooked_WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR l
     // Remove automatic volume change of sounds regarding whether the camera is indoor or outdoor
     // TODO: Implement!
     if ( !GMPModeActive ) {
+        DetourTransactionBegin();
         DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCActiveSndAutoCalcObstruction), HookedFunctionInfo::hooked_zCActiveSndAutoCalcObstruction );
+        DetourTransactionCommit();
     }
     return originalWinMain( hInstance, hPrevInstance, lpCmdLine, nShowCmd );
 }
