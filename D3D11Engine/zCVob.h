@@ -31,6 +31,7 @@ enum EVisualCamAlignType {
 class zCBspLeaf;
 class zCVisual;
 class zCWorld;
+class oCGame;
 
 class zCVob {
 public:
@@ -44,8 +45,6 @@ public:
     /** Called when this vob got it's world-matrix changed */
 #ifdef BUILD_GOTHIC_1_08k
     static void __fastcall Hooked_EndMovement( zCVob* thisptr, void* unknwn ) {
-        hook_infunc
-
         bool vobHasMoved = false;
         if ( (*reinterpret_cast<unsigned char*>(reinterpret_cast<DWORD>(thisptr) + 0xE8) & 0x03) && thisptr->GetHomeWorld() ) {
             vobHasMoved = (*reinterpret_cast<unsigned char*>(*reinterpret_cast<DWORD*>(reinterpret_cast<DWORD>(thisptr) + 0xFC) + 0x88) & 0x03);
@@ -53,8 +52,11 @@ public:
 
         HookedFunctions::OriginalFunctions.original_zCVobEndMovement( thisptr );
 
-        if ( Engine::GAPI && vobHasMoved )
+        hook_infunc
+
+            if ( vobHasMoved ) {
                 Engine::GAPI->OnVobMoved( thisptr );
+            }
 
         hook_outfunc
     }
@@ -82,22 +84,24 @@ public:
         hook_infunc
 
             // Notify the world. We are doing this here for safety so nothing possibly deleted remains in our world.
-            if ( Engine::GAPI )
-                Engine::GAPI->OnRemovedVob( thisptr, thisptr->GetHomeWorld() );
-
-        HookedFunctions::OriginalFunctions.original_zCVobDestructor( thisptr );
+            Engine::GAPI->OnRemovedVob( thisptr, thisptr->GetHomeWorld() );
 
         hook_outfunc
+
+        HookedFunctions::OriginalFunctions.original_zCVobDestructor( thisptr );
     }
 
     /** Called when this vob is about to change the visual */
     static void __fastcall Hooked_SetVisual( zCVob* thisptr, void* unknwn, zCVisual* visual ) {
+        HookedFunctions::OriginalFunctions.original_zCVobSetVisual( thisptr, visual );
+
+        if ( Engine::GAPI->IsSavingGameNow() ) {
+            return;
+        }
+
         hook_infunc
 
-            HookedFunctions::OriginalFunctions.original_zCVobSetVisual( thisptr, visual );
-
-        // Notify the world
-        if ( Engine::GAPI )
+            // Notify the world
             Engine::GAPI->OnSetVisual( thisptr );
 
         hook_outfunc
@@ -152,21 +156,41 @@ public:
         return __GetObjectName().ToChar();
     }
 
-    /** Returns the world-position of this vob */
-    XMFLOAT3 GetPositionWorld() const {
-        // Get the data right off the memory to save a function call
-        return XMFLOAT3( *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WorldPosX )),
-            *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WorldPosY )),
-            *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WorldPosZ )) );
+    ///** Returns the world-position of this vob */
+    //XMFLOAT3 GetPositionWorld() const {
+    //    // Get the data right off the memory to save a function call
+    //    return XMFLOAT3( *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WorldPosX )),
+    //        *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WorldPosY )),
+    //        *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WorldPosZ )) );
+    //}
+
+    ///** Returns the world-position of this vob */
+    //FXMVECTOR XM_CALLCONV GetPositionWorldXM() const {
+    //    // Get the data right off the memory to save a function call
+    //    FXMVECTOR pos = XMVectorSet( *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WorldPosX )),
+    //        *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WorldPosY )),
+    //        *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WorldPosZ )), 0.f );
+    //    return pos;
+    //}
+
+    //** Returns the world-position by reading translation part of this vob's matrix */
+    XMFLOAT3 GetPositionWorld() {
+        XMFLOAT4X4* m = GetWorldMatrixPtr();
+        if ( m ) { // typically if matrix is no good, then everything here would be.
+            return XMFLOAT3( m->_14, m->_24, m->_34 ); // this one should be way faster than directx maffs
+        }
+
+        return XMFLOAT3( 0.f, 0.f, 0.f );
     }
 
-    /** Returns the world-position of this vob */
-    FXMVECTOR XM_CALLCONV GetPositionWorldXM() const {
-        // Get the data right off the memory to save a function call
-        FXMVECTOR pos = XMVectorSet( *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WorldPosX )),
-            *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WorldPosY )),
-            *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WorldPosZ )), 0 );
-        return pos;
+    //** Returns the world-position by reading translation part of this vob's matrix */
+    FXMVECTOR XM_CALLCONV GetPositionWorldXM() {
+        XMFLOAT4X4* m = GetWorldMatrixPtr();
+        if ( m ) {
+            return XMVectorSet( m->_14, m->_24, m->_34, 0.f );
+        }
+
+        return XMVectorZero();
     }
 
     /** Sets this vobs position */
@@ -213,7 +237,7 @@ public:
 
     /** Returns a copy of the world matrix */
     XMMATRIX GetWorldMatrixXM() {
-        return XMLoadFloat4x4( reinterpret_cast<XMFLOAT4X4*>(THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WorldMatrixPtr )) );
+        return XMLoadFloat4x4( GetWorldMatrixPtr() );
     }
 
     /** Returns the world-polygon right under this vob */
@@ -288,6 +312,17 @@ public:
         return (flags & GothicMemoryLocations::zCVob::MASK_ShowVisual);
     }
 
+    /** Returns whether vob is transparent */
+    bool GetVisualAlpha() {
+        unsigned int flags = *reinterpret_cast<unsigned int*>(THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_Flags ));
+        return (flags & GothicMemoryLocations::zCVob::MASK_VisualAlpha);
+    }
+
+    /** Vob transparency */
+    float GetVobTransparency() {
+        return *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_VobAlpha ));
+    }
+
     /** Vob type */
     EVobType GetVobType() {
         return *reinterpret_cast<EVobType*>(THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_Type ));
@@ -315,6 +350,22 @@ public:
 
         return static_cast<EVisualCamAlignType>(flags);
     }
+
+    zTAnimationMode GetVisualAniMode() {
+#ifdef BUILD_GOTHIC_1_08k
+        return zVISUAL_ANIMODE_NONE;
+#else
+        return *reinterpret_cast<zTAnimationMode*>(THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WindAniMode ));
+#endif
+    };
+
+    float GetVisualAniModeStrength() {
+#ifdef BUILD_GOTHIC_1_08k
+        return 0.f;
+#else
+        return *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCVob::Offset_WindAniModeStrength ));
+#endif
+    };
     
     /** Checks the inheritance chain and casts to T* if possible. Returns nullptr otherwise */
     template<class T>

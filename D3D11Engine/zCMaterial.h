@@ -42,34 +42,33 @@ public:
         hook_infunc
 
             // Notify the world
-            if ( Engine::GAPI )
-                Engine::GAPI->OnMaterialDeleted( thisptr );
-
-        HookedFunctions::OriginalFunctions.original_zCMaterialDestructor( thisptr );
+            Engine::GAPI->OnMaterialDeleted( thisptr );
 
         hook_outfunc
+
+        HookedFunctions::OriginalFunctions.original_zCMaterialDestructor( thisptr );
     }
 
     static void __fastcall Hooked_Constructor( void* thisptr, void* unknwn ) {
         hook_infunc
+
             // Notify the world
             //Engine::GAPI->OnMaterialCreated((zCMaterial *)thisptr);
 
-            HookedFunctions::OriginalFunctions.original_zCMaterialConstruktor( thisptr );
-
         hook_outfunc
+
+        HookedFunctions::OriginalFunctions.original_zCMaterialConstruktor( thisptr );
     }
 
     static void __fastcall Hooked_InitValues( zCMaterial* thisptr, void* unknwn ) {
         hook_infunc
 
             // Notify the world
-            if ( Engine::GAPI )
-                Engine::GAPI->OnMaterialCreated( thisptr );
-
-        HookedFunctions::OriginalFunctions.original_zCMaterialInitValues( thisptr );
+            Engine::GAPI->OnMaterialCreated( thisptr );
 
         hook_outfunc
+
+        HookedFunctions::OriginalFunctions.original_zCMaterialInitValues( thisptr );
     }
 
     zCTexAniCtrl* GetTexAniCtrl() {
@@ -91,8 +90,8 @@ public:
     }
 
     /** Returns the color-mod of this material */
-    DWORD GetColor() {
-        return *reinterpret_cast<DWORD*>(THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_Color ));
+	zColor GetColor() {
+        return *reinterpret_cast<zColor*>(THISPTR_OFFSET( GothicMemoryLocations::zCMaterial::Offset_Color ));
     }
 
     /** Returns single texture, because not all seem to be animated and returned by GetAniTexture? */

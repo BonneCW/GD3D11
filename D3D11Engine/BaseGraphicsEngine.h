@@ -27,10 +27,10 @@ enum RenderStage {
 };
 
 enum WindowModes {
+    WINDOW_MODE_FULLSCREEN_BORDERLESS = 0,
     WINDOW_MODE_FULLSCREEN_EXCLUSIVE = 1,
-    WINDOW_MODE_FULLSCREEN_BORDERLESS = 2,
-    WINDOW_MODE_FULLSCREEN_LOWLATENCY = 3,
-    WINDOW_MODE_WINDOWED = 4,
+    WINDOW_MODE_FULLSCREEN_LOWLATENCY = 2,
+    WINDOW_MODE_WINDOWED = 3,
 };
 
 struct ViewportInfo {
@@ -57,14 +57,15 @@ struct ViewportInfo {
     float MaxZ;
 };
 
+class GraphicsEventRecord {
+public:
+    GraphicsEventRecord() {};
+    virtual ~GraphicsEventRecord() {};
+};
+
 /** Base graphics engine */
 class BaseGraphicsEngine {
 public:
-    enum EUIEvent {
-        UI_OpenSettings,
-        UI_OpenEditor,
-        UI_ClosedSettings,
-    };
 
     BaseGraphicsEngine() { };
     virtual ~BaseGraphicsEngine() { };
@@ -103,7 +104,7 @@ public:
     virtual XRESULT CreateShadowedPointLight( BaseShadowedPointLight** outPL, VobLightInfo* lightInfo, bool dynamic = false ) { return XR_SUCCESS; }
 
     /** Returns a list of available display modes */
-    virtual XRESULT GetDisplayModeList( std::vector<DisplayModeInfo>* modeList, bool includeSuperSampling = false ) = 0;
+    virtual std::vector<DisplayModeInfo> GetDisplayModeList() = 0;
 
     /** Presents the current frame to the screen */
     virtual XRESULT Present() = 0;
@@ -134,8 +135,9 @@ public:
     virtual XRESULT DrawVertexBufferFF( D3D11VertexBuffer* vb, unsigned int numVertices, unsigned int startVertex, unsigned int stride = sizeof( ExVertexStruct ) ) { return XR_SUCCESS; };
 
     /** Draws a vertexbuffer, non-indexed */
-    virtual XRESULT DrawVertexBufferIndexed( D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, unsigned int indexOffset = 0 ) { return XR_SUCCESS; };
-    virtual XRESULT DrawVertexBufferIndexedUINT( D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, unsigned int indexOffset ) { return XR_SUCCESS; };
+    virtual XRESULT DrawVertexBufferIndexed( D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices = 0, unsigned int indexOffset = 0 ) { return XR_SUCCESS; };
+    virtual XRESULT DrawVertexBufferIndexedUINT( D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices = 0, unsigned int indexOffset = 0 ) { return XR_SUCCESS; };
+    virtual XRESULT DrawVertexBufferIndexedUINTFromMeshInfo( MeshInfo* meshInfo, unsigned int numIndices = 0, unsigned int indexOffset = 0) { return XR_SUCCESS; };
 
     /** Draws a skeletal mesh */
     virtual XRESULT DrawSkeletalMesh( SkeletalVobInfo* vi, const std::vector<XMFLOAT4X4>& transforms, float4 color, float fatness = 1.0f ) { return XR_SUCCESS; };
@@ -201,9 +203,6 @@ public:
     /** Draws the water surfaces */
     virtual void DrawWaterSurfaces() {}
 
-    /** Handles an UI-Event */
-    virtual void OnUIEvent( EUIEvent uiEvent ) {}
-
     /** Draws particle meshes */
     virtual void DrawFrameParticleMeshes( std::unordered_map<zCVob*, MeshVisualInfo*>& progMeshes ) {}
 
@@ -213,4 +212,9 @@ public:
     virtual void DrawString( const std::string& str, float x, float y, const zFont* font, zColor& fontColor ) {};
 
     virtual XRESULT UpdateRenderStates() { return XR_SUCCESS; };
+
+    virtual void SetWindowMode( WindowModes mode ) { };
+    virtual std::unique_ptr<GraphicsEventRecord> RecordGraphicsEvent( LPCWSTR region ) {
+        return std::make_unique<GraphicsEventRecord>( );
+    }
 };

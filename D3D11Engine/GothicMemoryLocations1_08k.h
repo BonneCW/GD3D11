@@ -123,8 +123,8 @@ struct GothicMemoryLocations {
         static const unsigned int Init = 0x005E6A00;*/
 
         static const unsigned int GetUnderwaterFX = 0x5baaa0;
-        static const unsigned int Offset_OverrideColor = 0x558;
-        static const unsigned int Offset_OverrideFlag = 0x564;
+        static const unsigned int Offset_FarZ = 0x56C;
+        static const unsigned int Offset_Color = 0x580;
 
         static const unsigned int SetCameraLocationHint = 0x005BC7D0;
 
@@ -188,6 +188,12 @@ struct GothicMemoryLocations {
     struct zCVob {
         static const unsigned int Offset_WorldMatrixPtr = 0x3C;
         //static const unsigned int Offset_BoundingBoxWS = 0x40;
+
+        static const unsigned int SetCollDetStat = 0x005EF8D0;
+        static const unsigned int s_ShowHelperVisuals = 0x008D75F4;
+        static const unsigned int GetClassHelperVisual = 0x005D5D60;
+        static const unsigned int s_renderVobs = 0x00843734;
+
         static const unsigned int GetVisual = 0x005E9A70;
         static const unsigned int SetVisual = 0x005D6E10;
         static const unsigned int GetPositionWorld = 0x005EE380;
@@ -199,7 +205,9 @@ struct GothicMemoryLocations {
 
         static const unsigned int Offset_Flags = 0xE4;
         static const unsigned int Offset_VobTree = 0x24;
+        static const unsigned int Offset_VobAlpha = 0xBC;
         static const unsigned int MASK_ShowVisual = 0x1;
+        static const unsigned int MASK_VisualAlpha = 0x4;
         static const unsigned int Offset_CameraAlignment = 0xF0;
         static const unsigned int SHIFTLR_CameraAlignment = 0x1E;
 
@@ -226,9 +234,18 @@ struct GothicMemoryLocations {
         static const unsigned int ProcessInputEvents_Offset = 0x70;
     };
 
+    struct zCInput_Win32 {
+        static const unsigned int GetKey = 0x004c88a0;
+    };
+
     struct zCVisual {
         static const unsigned int VTBL_GetFileExtension = 17;
         static const unsigned int Destructor = 0x005D9F10;
+    };
+
+    struct oCVisualFX {
+        static const unsigned int Offset_emAdjustShpToOrigin = 0x29C;
+        static const unsigned int AdjustShapeToOrigin = 0x0048F390;
     };
 
     struct zCBspTree {
@@ -416,6 +433,7 @@ struct GothicMemoryLocations {
         static const unsigned int Call_Render_zCBspTreeRender = 0x005F3F95;
         //static const unsigned int GetActiveSkyController = 0x006060A0;
         static const unsigned int Offset_SkyControllerOutdoor = 0x0D0;
+        static const unsigned int DisposeWorld = 0x005F5800;
         static const unsigned int DisposeVobs = 0x005F55F0;
         static const unsigned int Offset_BspTree = 0x198;
         static const unsigned int RemoveVob = 0x005F66C0;

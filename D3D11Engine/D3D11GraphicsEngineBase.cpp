@@ -1,6 +1,5 @@
 #include "D3D11GraphicsEngineBase.h"
 
-#include "BaseAntTweakBar.h"
 #include "D3D11LineRenderer.h"
 #include "D3D11PipelineStates.h"
 #include "D3D11PointLight.h"
@@ -32,10 +31,9 @@ D3D11GraphicsEngineBase::~D3D11GraphicsEngineBase() {
 }
 
 /** Called when the game created its window */
-XRESULT D3D11GraphicsEngineBase::SetWindow( HWND hWnd ) {
-    LogInfo() << "Creating swapchain";
-    OutputWindow = hWnd;
-
+XRESULT D3D11GraphicsEngineBase::SetWindow( HWND newhWnd ) {
+    LogInfo() << "D3D11GraphicsEngineBase - Creating swapchain";
+    OutputWindow = newhWnd;
     OnResize( Resolution );
 
     return XR_SUCCESS;
@@ -99,151 +97,40 @@ XRESULT D3D11GraphicsEngineBase::Present() {
     // Draw debug-lines
     LineRenderer->Flush();
 
-    // Draw ant tweak bar
-    Engine::AntTweakBar->Draw();
-
     bool vsync = Engine::GAPI->GetRendererState().RendererSettings.EnableVSync;
-    if ( dxgi_1_5 ) {
-        if ( SwapChain4->Present( vsync ? 1 : 0, 0 ) == DXGI_ERROR_DEVICE_REMOVED ) {
-            switch ( GetDevice()->GetDeviceRemovedReason() ) {
-            case DXGI_ERROR_DEVICE_HUNG:
-                LogErrorBox() << "Device Removed! (DXGI_ERROR_DEVICE_HUNG)";
-                exit( 0 );
-                break;
+    if ( SwapChain->Present( vsync ? 1 : 0, 0 ) == DXGI_ERROR_DEVICE_REMOVED ) {
+        switch ( GetDevice()->GetDeviceRemovedReason() ) {
+        case DXGI_ERROR_DEVICE_HUNG:
+            LogErrorBox() << "Device Removed! (DXGI_ERROR_DEVICE_HUNG)";
+            exit( 0 );
+            break;
 
-            case DXGI_ERROR_DEVICE_REMOVED:
-                LogErrorBox() << "Device Removed! (DXGI_ERROR_DEVICE_REMOVED)";
-                exit( 0 );
-                break;
+        case DXGI_ERROR_DEVICE_REMOVED:
+            LogErrorBox() << "Device Removed! (DXGI_ERROR_DEVICE_REMOVED)";
+            exit( 0 );
+            break;
 
-            case DXGI_ERROR_DEVICE_RESET:
-                LogErrorBox() << "Device Removed! (DXGI_ERROR_DEVICE_RESET)";
-                exit( 0 );
-                break;
+        case DXGI_ERROR_DEVICE_RESET:
+            LogErrorBox() << "Device Removed! (DXGI_ERROR_DEVICE_RESET)";
+            exit( 0 );
+            break;
 
-            case DXGI_ERROR_DRIVER_INTERNAL_ERROR:
-                LogErrorBox() << "Device Removed! (DXGI_ERROR_DRIVER_INTERNAL_ERROR)";
-                exit( 0 );
-                break;
+        case DXGI_ERROR_DRIVER_INTERNAL_ERROR:
+            LogErrorBox() << "Device Removed! (DXGI_ERROR_DRIVER_INTERNAL_ERROR)";
+            exit( 0 );
+            break;
 
-            case DXGI_ERROR_INVALID_CALL:
-                LogErrorBox() << "Device Removed! (DXGI_ERROR_INVALID_CALL)";
-                exit( 0 );
-                break;
+        case DXGI_ERROR_INVALID_CALL:
+            LogErrorBox() << "Device Removed! (DXGI_ERROR_INVALID_CALL)";
+            exit( 0 );
+            break;
 
-            case S_OK:
-                LogInfo() << "Device removed, but we're fine!";
-                break;
+        case S_OK:
+            LogInfo() << "Device removed, but we're fine!";
+            break;
 
-            default:
-                LogWarnBox() << "Device Removed! (Unknown reason)";
-            }
-        }
-    } else if ( dxgi_1_4 ) {
-        if ( SwapChain3->Present( vsync ? 1 : 0, 0 ) == DXGI_ERROR_DEVICE_REMOVED ) {
-            switch ( GetDevice()->GetDeviceRemovedReason() ) {
-            case DXGI_ERROR_DEVICE_HUNG:
-                LogErrorBox() << "Device Removed! (DXGI_ERROR_DEVICE_HUNG)";
-                exit( 0 );
-                break;
-
-            case DXGI_ERROR_DEVICE_REMOVED:
-                LogErrorBox() << "Device Removed! (DXGI_ERROR_DEVICE_REMOVED)";
-                exit( 0 );
-                break;
-
-            case DXGI_ERROR_DEVICE_RESET:
-                LogErrorBox() << "Device Removed! (DXGI_ERROR_DEVICE_RESET)";
-                exit( 0 );
-                break;
-
-            case DXGI_ERROR_DRIVER_INTERNAL_ERROR:
-                LogErrorBox() << "Device Removed! (DXGI_ERROR_DRIVER_INTERNAL_ERROR)";
-                exit( 0 );
-                break;
-
-            case DXGI_ERROR_INVALID_CALL:
-                LogErrorBox() << "Device Removed! (DXGI_ERROR_INVALID_CALL)";
-                exit( 0 );
-                break;
-
-            case S_OK:
-                LogInfo() << "Device removed, but we're fine!";
-                break;
-
-            default:
-                LogWarnBox() << "Device Removed! (Unknown reason)";
-            }
-        }
-    } else if ( dxgi_1_3 ) {
-        if ( SwapChain2->Present( vsync ? 1 : 0, 0 ) == DXGI_ERROR_DEVICE_REMOVED ) {
-            switch ( GetDevice()->GetDeviceRemovedReason() ) {
-            case DXGI_ERROR_DEVICE_HUNG:
-                LogErrorBox() << "Device Removed! (DXGI_ERROR_DEVICE_HUNG)";
-                exit( 0 );
-                break;
-
-            case DXGI_ERROR_DEVICE_REMOVED:
-                LogErrorBox() << "Device Removed! (DXGI_ERROR_DEVICE_REMOVED)";
-                exit( 0 );
-                break;
-
-            case DXGI_ERROR_DEVICE_RESET:
-                LogErrorBox() << "Device Removed! (DXGI_ERROR_DEVICE_RESET)";
-                exit( 0 );
-                break;
-
-            case DXGI_ERROR_DRIVER_INTERNAL_ERROR:
-                LogErrorBox() << "Device Removed! (DXGI_ERROR_DRIVER_INTERNAL_ERROR)";
-                exit( 0 );
-                break;
-
-            case DXGI_ERROR_INVALID_CALL:
-                LogErrorBox() << "Device Removed! (DXGI_ERROR_INVALID_CALL)";
-                exit( 0 );
-                break;
-
-            case S_OK:
-                LogInfo() << "Device removed, but we're fine!";
-                break;
-
-            default:
-                LogWarnBox() << "Device Removed! (Unknown reason)";
-            }
-        } 		else if ( SwapChain->Present( vsync ? 1 : 0, 0 ) == DXGI_ERROR_DEVICE_REMOVED ) {
-            switch ( GetDevice()->GetDeviceRemovedReason() ) {
-            case DXGI_ERROR_DEVICE_HUNG:
-                LogErrorBox() << "Device Removed! (DXGI_ERROR_DEVICE_HUNG)";
-                exit( 0 );
-                break;
-
-            case DXGI_ERROR_DEVICE_REMOVED:
-                LogErrorBox() << "Device Removed! (DXGI_ERROR_DEVICE_REMOVED)";
-                exit( 0 );
-                break;
-
-            case DXGI_ERROR_DEVICE_RESET:
-                LogErrorBox() << "Device Removed! (DXGI_ERROR_DEVICE_RESET)";
-                exit( 0 );
-                break;
-
-            case DXGI_ERROR_DRIVER_INTERNAL_ERROR:
-                LogErrorBox() << "Device Removed! (DXGI_ERROR_DRIVER_INTERNAL_ERROR)";
-                exit( 0 );
-                break;
-
-            case DXGI_ERROR_INVALID_CALL:
-                LogErrorBox() << "Device Removed! (DXGI_ERROR_INVALID_CALL)";
-                exit( 0 );
-                break;
-
-            case S_OK:
-                LogInfo() << "Device removed, but we're fine!";
-                break;
-
-            default:
-                LogWarnBox() << "Device Removed! (Unknown reason)";
-            }
+        default:
+            LogWarnBox() << "Device Removed! (Unknown reason)";
         }
     }
 
@@ -415,6 +302,14 @@ void D3D11GraphicsEngineBase::ConstructShaderMakroList( std::vector<D3D_SHADER_M
 
     m.Name = "SHD_FILTER_16TAP_PCF";
     m.Definition = s.EnableSoftShadows ? "1" : "0";
+    list.push_back( m );
+
+    m.Name = "SHD_WIND";
+#ifdef BUILD_GOTHIC_2_6_fix
+    m.Definition = s.WindQuality == GothicRendererSettings::EWindQuality::WIND_QUALITY_ADVANCED ? "1" : "0";
+#else
+    m.Definition = "0";
+#endif
     list.push_back( m );
 
     m.Name = nullptr;

@@ -1,9 +1,10 @@
+#ifndef PUBLIC_RELEASE
+#define DEBUG_D3D11
+#endif
+
 #include "D3D11GraphicsEngine.h"
 
 #include "AlignedAllocator.h"
-#include "BaseAntTweakBar.h"
-#include "D2DEditorView.h"
-#include "D2DView.h"
 #include "D3D11Effect.h"
 #include "D3D11GShader.h"
 #include "D3D11HDShader.h"
@@ -27,6 +28,7 @@
 #include "zCView.h"
 #include "zCVobLight.h"
 #include "oCNPC.h"
+#include "oCVisFX.h"
 #include <DDSTextureLoader.h>
 #include <ScreenGrab.h>
 #include <wincodec.h>
@@ -37,13 +39,13 @@
 #include <wrl\client.h>
 #include "D3D11_Helpers.h"
 
-#if !PUBLIC_RELEASE
-#define DEBUG_D3D11
-#endif
+#include "ImGuiShim.h"
 
 #include "SteamOverlay.h"
 #include <d3dcompiler.h>
 #include <dxgi1_6.h>
+#include <VersionHelpers.h>
+#include <comdef.h>
 
 namespace wrl = Microsoft::WRL;
 
@@ -59,6 +61,11 @@ const int NUM_MIN_FRAME_SHADOW_UPDATES =
 4;  // Minimum lights to update per frame
 const int MAX_IMPORTANT_LIGHT_UPDATES = 1;
 
+constexpr float inv255f = (1.f / 255.f);
+
+constexpr DXGI_FORMAT vertexIndexDxgiFormat = sizeof( VERTEX_INDEX ) == sizeof( unsigned short )
+    ? DXGI_FORMAT_R16_UINT
+    : DXGI_FORMAT_R32_UINT;
 
 D3D11GraphicsEngine::D3D11GraphicsEngine() {
     DebugPointlight = nullptr;
@@ -80,7 +87,7 @@ D3D11GraphicsEngine::D3D11GraphicsEngine() {
     m_flipWithTearing = false;
     m_HDR = false;
     m_lowlatency = false;
-    m_isWindowActive = true;
+    m_isWindowActive = false;
 
     // Match the resolution with the current desktop resolution
     Resolution =
@@ -88,6 +95,8 @@ D3D11GraphicsEngine::D3D11GraphicsEngine() {
     CachedRefreshRate.Numerator = 0;
     CachedRefreshRate.Denominator = 0;
     unionCurrentCustomFontMultiplier = 1.0;
+    m_currentWindowMode = (WindowModes)Engine::GAPI->GetRendererState().RendererSettings.WindowMode;
+    m_recreateSwapChain = false;
 }
 
 D3D11GraphicsEngine::~D3D11GraphicsEngine() {
@@ -113,6 +122,8 @@ D3D11GraphicsEngine::~D3D11GraphicsEngine() {
 
 void PrintD3DFeatureLevel( D3D_FEATURE_LEVEL lvl ) {
     std::map<D3D_FEATURE_LEVEL, std::string> dxFeatureLevelsMap = {
+        {D3D_FEATURE_LEVEL::D3D_FEATURE_LEVEL_12_1, "D3D_FEATURE_LEVEL_12_1"},
+        {D3D_FEATURE_LEVEL::D3D_FEATURE_LEVEL_12_0, "D3D_FEATURE_LEVEL_12_0"},
         {D3D_FEATURE_LEVEL::D3D_FEATURE_LEVEL_11_1, "D3D_FEATURE_LEVEL_11_1"},
         {D3D_FEATURE_LEVEL::D3D_FEATURE_LEVEL_11_0, "D3D_FEATURE_LEVEL_11_0"},
         {D3D_FEATURE_LEVEL::D3D_FEATURE_LEVEL_10_1, "D3D_FEATURE_LEVEL_10_1"},
@@ -126,12 +137,20 @@ void PrintD3DFeatureLevel( D3D_FEATURE_LEVEL lvl ) {
 
 /** Called when the game created it's window */
 XRESULT D3D11GraphicsEngine::Init() {
-    HRESULT hr;
+    // Loading nvapi should tell nvidia drivers to use discrete gpu
+    LoadLibraryA( "NVAPI.DLL" );
 
+    HRESULT hr;
     LogInfo() << "Initializing Device...";
 
     // Create DXGI factory
-    hr = CreateDXGIFactory1( __uuidof(IDXGIFactory2), &DXGIFactory2 );
+    UINT factoryFlags = 0;
+#ifdef DEBUG_D3D11
+    factoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
+#endif
+    hr = IsWindows8Point1OrGreater() 
+        ? CreateDXGIFactory2( factoryFlags, __uuidof(IDXGIFactory2), &DXGIFactory2 )
+        : CreateDXGIFactory1(__uuidof(IDXGIFactory2), &DXGIFactory2 );
     if ( FAILED( hr ) ) {
         LogErrorBox() << "CreateDXGIFactory1 failed with code: " << hr << "!\n"
             "Minimum supported Operating System by GD3D11 is Windows 7 SP1 with Platform Update.";
@@ -144,8 +163,16 @@ XRESULT D3D11GraphicsEngine::Init() {
     if ( SUCCEEDED( hr ) ) {
         // Windows 10, version 1803 - only
         UINT adapterIndex = 0;
-        while ( DXGIFactory6->EnumAdapterByGpuPreference( adapterIndex++, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
-            IID_PPV_ARGS( DXGIAdapter1.ReleaseAndGetAddressOf() ) ) != DXGI_ERROR_NOT_FOUND ) {
+        while ( true ) {
+            hr = DXGIFactory6->EnumAdapterByGpuPreference( adapterIndex++, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
+                IID_PPV_ARGS( DXGIAdapter1.ReleaseAndGetAddressOf() ) );
+            if ( hr == DXGI_ERROR_NOT_FOUND) {
+                break;
+            }
+
+            if ( hr == E_FAIL ) {
+                break;
+            }
             DXGI_ADAPTER_DESC1 desc;
             DXGIAdapter1->GetDesc1( &desc );
 
@@ -156,10 +183,22 @@ XRESULT D3D11GraphicsEngine::Init() {
             haveAdapter = true;
             break;
         }
-    } else {
+    }
+    if (!haveAdapter ) {
         // Let's rate devices by their VRAM and vendors and hope we'll get atleast discrete GPU
         std::map<uint64_t, UINT> candidates;
-        for ( UINT adapterIndex = 0; DXGIFactory2->EnumAdapters1( adapterIndex, DXGIAdapter1.ReleaseAndGetAddressOf() ) != DXGI_ERROR_NOT_FOUND; ++adapterIndex ) {
+
+        UINT adapterIndex = 0;
+        while ( true ) {
+            hr = DXGIFactory2->EnumAdapters1( adapterIndex++, DXGIAdapter1.ReleaseAndGetAddressOf() );
+            if ( hr == DXGI_ERROR_NOT_FOUND ) {
+                break;
+            }
+
+            if ( hr == E_FAIL || DXGIAdapter1 == nullptr ) {
+                continue;
+            }
+
             DXGI_ADAPTER_DESC1 desc;
             DXGIAdapter1->GetDesc1( &desc );
 
@@ -193,17 +232,34 @@ XRESULT D3D11GraphicsEngine::Init() {
         exit( 2 );
     }
 
-    DXGIAdapter1.As( &DXGIAdapter2 );
     // Find out what we are rendering on to write it into the logfile
-    DXGI_ADAPTER_DESC2 adpDesc;
-    DXGIAdapter2->GetDesc2( &adpDesc );
+    DXGI_ADAPTER_DESC adpDesc;
+    DXGIAdapter1->GetDesc( &adpDesc );
     std::wstring wDeviceDescription( adpDesc.Description );
     std::string deviceDescription( wDeviceDescription.begin(), wDeviceDescription.end() );
     DeviceDescription = deviceDescription;
     LogInfo() << "Rendering on: " << deviceDescription.c_str();
 
+    if ( adpDesc.VendorId == 0x1002 ) {
+        static const GUID IID_IDXGIVkInteropAdapter = { 0x3A6D8F2C, 0xB0E8, 0x4AB4, { 0xB4, 0xDC, 0x4F, 0xD2, 0x48, 0x91, 0xBF, 0xA5 } };
+
+        IUnknown* dxgiVKInterop = nullptr;
+        HRESULT result = DXGIAdapter1->QueryInterface( IID_IDXGIVkInteropAdapter, reinterpret_cast<void**>(&dxgiVKInterop) );
+        if ( SUCCEEDED( result ) ) {
+            dxgiVKInterop->Release();
+        } else {
+            // for now disable the warning and make a statement in README
+
+            /*LogWarnBox() << "You might experience random crashes when saving game due"
+                " to heavy memory overhead caused by AMD drivers.\n"
+                "It is recommended to use 32-bit DXVK on top of GD3D11.";*/
+        }
+    }
+
     D3D_FEATURE_LEVEL maxFeatureLevel = D3D_FEATURE_LEVEL::D3D_FEATURE_LEVEL_9_1;
     D3D_FEATURE_LEVEL featureLevels[] = {
+        D3D_FEATURE_LEVEL_12_1,
+        D3D_FEATURE_LEVEL_12_0,
         D3D_FEATURE_LEVEL_11_1,
         D3D_FEATURE_LEVEL_11_0,
         D3D_FEATURE_LEVEL_10_1,
@@ -219,14 +275,18 @@ XRESULT D3D11GraphicsEngine::Init() {
     flags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 
-    hr = D3D11CreateDevice( DXGIAdapter2.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags, featureLevels, ARRAYSIZE( featureLevels ),
-        D3D11_SDK_VERSION, Device11.GetAddressOf(), &maxFeatureLevel, Context11.GetAddressOf() );
-    // Assume E_INVALIDARG occurs because D3D_FEATURE_LEVEL_11_1 is not supported on current platform
-    // retry with just 9.1-11.0
-    if ( hr == E_INVALIDARG ) {
-        hr = D3D11CreateDevice( DXGIAdapter2.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags, &featureLevels[1], ARRAYSIZE( featureLevels ) - 1,
+    Microsoft::WRL::ComPtr<ID3D11Device> Device11;
+    Microsoft::WRL::ComPtr<ID3D11DeviceContext> Context11;
+    for ( int i = 0; i < sizeof( featureLevels ) / sizeof( &featureLevels[0] ); ++i ) {
+        hr = D3D11CreateDevice( DXGIAdapter1.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr, flags, &featureLevels[i], 1,
             D3D11_SDK_VERSION, Device11.GetAddressOf(), &maxFeatureLevel, Context11.GetAddressOf() );
+        if ( SUCCEEDED( hr ) ) {
+            break;
+        }
+
+        maxFeatureLevel = D3D_FEATURE_LEVEL::D3D_FEATURE_LEVEL_9_1;
     }
+
     if ( FAILED( hr ) ) {
         LogErrorBox() << "D3D11CreateDevice failed with code: " << hr << "!";
         exit( 2 );
@@ -246,6 +306,7 @@ XRESULT D3D11GraphicsEngine::Init() {
 
     Device11.As( &Device );
     Context11.As( &Context );
+    Context.As( &m_UserDefinedAnnotation );
 
     FeatureLevel10Compatibility = (maxFeatureLevel < D3D_FEATURE_LEVEL::D3D_FEATURE_LEVEL_11_0);
     FetchDisplayModeList();
@@ -313,7 +374,7 @@ XRESULT D3D11GraphicsEngine::Init() {
     SetDebugName( DynamicInstancingBuffer->GetShaderResourceView().Get(), "DynamicInstancingBuffer->ShaderResourceView" );
     SetDebugName( DynamicInstancingBuffer->GetVertexBuffer().Get(), "DynamicInstancingBuffer->VertexBuffer" );
 
-    D3D11_SAMPLER_DESC samplerDesc;
+    D3D11_SAMPLER_DESC samplerDesc = {};
     samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;
     samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
     samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
@@ -449,18 +510,19 @@ XRESULT D3D11GraphicsEngine::Init() {
         GetDevice(), POINTLIGHT_SHADOWMAP_SIZE, POINTLIGHT_SHADOWMAP_SIZE,
         DXGI_FORMAT_B8G8R8A8_UNORM, nullptr, DXGI_FORMAT_UNKNOWN,
         DXGI_FORMAT_UNKNOWN, 1, 6 );
+    SetDebugName( DummyShadowCubemapTexture->GetTexture().Get(), "shadowcubesDummyTB");
 
     SteamOverlay::Init();
 
     Effects->LoadRainResources();
-
+    
     return XR_SUCCESS;
 }
 
 /** Called when the game created its window */
 XRESULT D3D11GraphicsEngine::SetWindow( HWND hWnd ) {
     if ( !OutputWindow ) {
-        LogInfo() << "Creating swapchain";
+        LogInfo() << "D3D11GraphicsEngine - Creating swapchain";
         OutputWindow = hWnd;
 
         // Force activate the window on startup
@@ -470,13 +532,14 @@ XRESULT D3D11GraphicsEngine::SetWindow( HWND hWnd ) {
             DWORD dwCurID = GetWindowThreadProcessId( hCurWnd, NULL );
             m_isWindowActive = true;
 
+            ShowWindow( hWnd, SW_RESTORE );
             AttachThreadInput( dwCurID, dwMyID, TRUE );
             SetWindowPos( hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE );
-            SetWindowPos( hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_SHOWWINDOW | SWP_NOSIZE | SWP_NOMOVE );
+            SetWindowPos( hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE );
             SetForegroundWindow( hWnd );
+            AttachThreadInput( dwCurID, dwMyID, FALSE );
             SetFocus( hWnd );
             SetActiveWindow( hWnd );
-            AttachThreadInput( dwCurID, dwMyID, FALSE );
         }
 
         const INT2 res = Resolution;
@@ -499,7 +562,7 @@ XRESULT D3D11GraphicsEngine::SetWindow( HWND hWnd ) {
         while ( ShowCursor( false ) >= 0 );
 #endif
     }
-
+    
     return XR_SUCCESS;
 }
 
@@ -508,6 +571,7 @@ void D3D11GraphicsEngine::OnResetBackBuffer() {
     PfxRenderer->OnResize( Resolution );
     HDRBackBuffer = std::make_unique<RenderToTextureBuffer>( GetDevice().Get(), Resolution.x, Resolution.y,
         (Engine::GAPI->GetRendererState().RendererSettings.CompressBackBuffer ? DXGI_FORMAT_R11G11B10_FLOAT : DXGI_FORMAT_R16G16B16A16_FLOAT) );
+    SetDebugName( HDRBackBuffer->GetTexture().Get(), "HDRBackBufferTB" );
 }
 
 /** Get BackBuffer Format */
@@ -519,15 +583,7 @@ DXGI_FORMAT D3D11GraphicsEngine::GetBackBufferFormat() {
 int D3D11GraphicsEngine::GetWindowMode() {
     if ( SwapChain.Get() ) {
         BOOL isFullscreen = 0;
-        if ( dxgi_1_5 ) {
-            if ( SwapChain4.Get() ) SwapChain4->GetFullscreenState( &isFullscreen, nullptr );
-        } else if ( dxgi_1_4 ) {
-            if ( SwapChain3.Get() ) SwapChain3->GetFullscreenState( &isFullscreen, nullptr );
-        } else if ( dxgi_1_3 ) {
-            if ( SwapChain2.Get() ) SwapChain2->GetFullscreenState( &isFullscreen, nullptr );
-        } else {
-            if ( SwapChain.Get() ) SwapChain->GetFullscreenState( &isFullscreen, nullptr );
-        }
+        if ( SwapChain.Get() ) SwapChain->GetFullscreenState( &isFullscreen, nullptr );
         if ( isFullscreen ) {
             return WINDOW_MODE_FULLSCREEN_EXCLUSIVE;
         }
@@ -547,19 +603,10 @@ int D3D11GraphicsEngine::GetWindowMode() {
 XRESULT D3D11GraphicsEngine::OnResize( INT2 newSize ) {
     HRESULT hr;
 
-    if ( dxgi_1_5 ) {
-        if ( memcmp( &Resolution, &newSize, sizeof( newSize ) ) == 0 && SwapChain4.Get() )
-            return XR_SUCCESS;  // Don't resize if we don't have to
-    } else if ( dxgi_1_4 ) {
-        if ( memcmp( &Resolution, &newSize, sizeof( newSize ) ) == 0 && SwapChain3.Get() )
-            return XR_SUCCESS;  // Don't resize if we don't have to
-    } else if ( dxgi_1_3 ) {
-        if ( memcmp( &Resolution, &newSize, sizeof( newSize ) ) == 0 && SwapChain2.Get() )
-            return XR_SUCCESS;  // Don't resize if we don't have to
-    } else {
-        if ( memcmp( &Resolution, &newSize, sizeof( newSize ) ) == 0 && SwapChain.Get() )
-            return XR_SUCCESS;  // Don't resize if we don't have to
-    }
+    if ( memcmp( &Resolution, &newSize, sizeof( newSize ) ) == 0
+        && SwapChain.Get()
+        && !m_recreateSwapChain )
+        return XR_SUCCESS;  // Don't resize if we don't have to
 
     Resolution = newSize;
     INT2 bbres = GetBackbufferResolution();
@@ -576,15 +623,8 @@ XRESULT D3D11GraphicsEngine::OnResize( INT2 newSize ) {
 
 #ifndef BUILD_SPACER
     BOOL isFullscreen = 0;
-    if ( dxgi_1_5 ) {
-        if ( SwapChain4.Get() ) LE( SwapChain4->GetFullscreenState( &isFullscreen, nullptr ) );
-    } else if ( dxgi_1_4 ) {
-        if ( SwapChain3.Get() ) LE( SwapChain3->GetFullscreenState( &isFullscreen, nullptr ) );
-    } else if ( dxgi_1_3 ) {
-        if ( SwapChain2.Get() ) LE( SwapChain2->GetFullscreenState( &isFullscreen, nullptr ) );
-    } else {
-        if ( SwapChain.Get() ) LE( SwapChain->GetFullscreenState( &isFullscreen, nullptr ) );
-    }
+    if ( SwapChain.Get() ) LE( SwapChain->GetFullscreenState( &isFullscreen, nullptr ) );
+
     if ( isFullscreen ) {
         DXGI_MODE_DESC newMode = {};
         newMode.Width = newSize.x;
@@ -592,29 +632,43 @@ XRESULT D3D11GraphicsEngine::OnResize( INT2 newSize ) {
         newMode.RefreshRate.Numerator = CachedRefreshRate.Numerator;
         newMode.RefreshRate.Denominator = CachedRefreshRate.Denominator;
         newMode.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-        if ( dxgi_1_5 ) {
-            SwapChain4->ResizeTarget( &newMode );
-        } else if ( dxgi_1_4 ) {
-            SwapChain3->ResizeTarget( &newMode );
-        } else if ( dxgi_1_3 ) {
-            SwapChain2->ResizeTarget( &newMode );
-        } else {
-            SwapChain->ResizeTarget( &newMode );
-        }
+        SwapChain->ResizeTarget( &newMode );
 
         RECT desktopRect;
         GetClientRect( GetDesktopWindow(), &desktopRect );
         SetWindowPos( OutputWindow, nullptr, 0, 0, desktopRect.right, desktopRect.bottom, SWP_SHOWWINDOW );
     } else if ( Engine::GAPI->GetRendererState().RendererSettings.StretchWindow ) {
+
+        // Remove Window Border and Captions
+        LONG lStyle = GetWindowLongA( OutputWindow, GWL_STYLE );
+        lStyle &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZE | WS_MAXIMIZE | WS_SYSMENU);
+        SetWindowLongA( OutputWindow, GWL_STYLE, lStyle );
+
+        LONG lExStyle = GetWindowLongA( OutputWindow, GWL_EXSTYLE );
+        lExStyle &= ~(WS_EX_DLGMODALFRAME | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
+        SetWindowLongA( OutputWindow, GWL_EXSTYLE, lExStyle );
+
         RECT desktopRect;
         GetClientRect( GetDesktopWindow(), &desktopRect );
         SetWindowPos( OutputWindow, nullptr, 0, 0, desktopRect.right, desktopRect.bottom, SWP_SHOWWINDOW );
     } else {
+        SetWindowLongA( OutputWindow, GWL_STYLE, WS_OVERLAPPEDWINDOW );
+        SetWindowLongA( OutputWindow, GWL_EXSTYLE, WS_EX_OVERLAPPEDWINDOW );
         RECT rect;
         if ( GetWindowRect( OutputWindow, &rect ) ) {
             SetWindowPos( OutputWindow, nullptr, rect.left, rect.top, bbres.x, bbres.y, SWP_SHOWWINDOW );
         } else {
             SetWindowPos( OutputWindow, nullptr, 0, 0, bbres.x, bbres.y, SWP_SHOWWINDOW );
+        }
+
+        if ( SwapChain.Get() ) {
+            DXGI_MODE_DESC newMode = {};
+            newMode.Width = newSize.x;
+            newMode.Height = newSize.y;
+            newMode.RefreshRate.Numerator = CachedRefreshRate.Numerator;
+            newMode.RefreshRate.Denominator = CachedRefreshRate.Denominator;
+            newMode.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+            SwapChain->ResizeTarget( &newMode );
         }
     }
 #endif
@@ -623,77 +677,56 @@ XRESULT D3D11GraphicsEngine::OnResize( INT2 newSize ) {
     BackbufferRTV.Reset();
     DepthStencilBuffer.reset();
 
-    if ( UIView ) UIView->PrepareResize();
-
     UINT scflags = m_flipWithTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
     if ( m_lowlatency ) {
         scflags |= DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
     }
 
-    if ( !SwapChain.Get() ) {
-        static std::map<DXGI_SWAP_EFFECT, std::string> swapEffectMap = {
+    if ( !SwapChain.Get() || m_recreateSwapChain ) {
+        m_recreateSwapChain = true;
+
+        if ( SwapChain.Get() ) {
+            Context.Get()->OMSetRenderTargets( 0, nullptr, nullptr );  // Unbind render target
+            Context.Get()->Flush();
+        }
+
+        std::map<DXGI_SWAP_EFFECT, std::string> swapEffectMap = {
             {DXGI_SWAP_EFFECT::DXGI_SWAP_EFFECT_DISCARD, "DXGI_SWAP_EFFECT_DISCARD"},
             {DXGI_SWAP_EFFECT::DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL, "DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL"},
             {DXGI_SWAP_EFFECT::DXGI_SWAP_EFFECT_FLIP_DISCARD, "DXGI_SWAP_EFFECT_FLIP_DISCARD"},
         };
 
-        m_swapchainflip = Engine::GAPI->GetRendererState().RendererSettings.DisplayFlip;
-        if ( m_swapchainflip ) {
-            LONG lStyle = GetWindowLongA( OutputWindow, GWL_STYLE );
-            lStyle &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZE | WS_MAXIMIZE | WS_SYSMENU);
-            SetWindowLongA( OutputWindow, GWL_STYLE, lStyle );
-
-            LONG lExStyle = GetWindowLongA( OutputWindow, GWL_EXSTYLE );
-            lExStyle &= ~(WS_EX_DLGMODALFRAME | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
-            SetWindowLongA( OutputWindow, GWL_EXSTYLE, lExStyle );
-        }
-
-        Microsoft::WRL::ComPtr<IDXGIDevice2> pDXGIDevice;
-        Microsoft::WRL::ComPtr<IDXGIDevice3> pDXGIDevice3;
-        Microsoft::WRL::ComPtr<IDXGIDevice4> pDXGIDevice4;
-        Microsoft::WRL::ComPtr<IDXGIAdapter> adapter11;
-        Microsoft::WRL::ComPtr<IDXGIAdapter2> adapter;
-        Microsoft::WRL::ComPtr<IDXGIAdapter3> adapter3;
+        Microsoft::WRL::ComPtr<IDXGIDevice> pDXGIDevice;
+        Microsoft::WRL::ComPtr<IDXGIFactory> factory;
         Microsoft::WRL::ComPtr<IDXGIFactory2> factory2;
-        Microsoft::WRL::ComPtr<IDXGIFactory4> factory4;
 
-        if ( SUCCEEDED( Device.As( &pDXGIDevice4 ) ) ) dxgi_1_5 = true;
-        else if ( SUCCEEDED( Device.As( &pDXGIDevice3 ) ) ) dxgi_1_3 = true;
-        else LE( Device.As( &pDXGIDevice ) );
+        LE( Device.As( &pDXGIDevice ) );
 
-        if ( dxgi_1_5 ) {
-            LE( pDXGIDevice4->GetAdapter( &adapter11 ) );
-            LogInfo() << "Device: DXGI 1.5";
-        } else if ( dxgi_1_3 ) {
-            LE( pDXGIDevice3->GetAdapter( &adapter11 ) );
-            LogInfo() << "Device: DXGI 1.3";
-        } else {
-            LE( pDXGIDevice->GetAdapter( &adapter11 ) );
-            LogInfo() << "Device: DXGI 1.2";
-        }
-
-        LE( adapter11.As( &adapter ) );
-        LE( adapter->GetParent( IID_PPV_ARGS( &factory2 ) ) );
-
-        if ( SUCCEEDED( factory2.As( &factory4 ) ) ) {
-            LE( adapter11.As( &adapter3 ) );
-            LE( adapter3->GetParent( IID_PPV_ARGS( &factory4 ) ) );
-            dxgi_1_4 = true;
+        if ( pDXGIDevice.Get() ) {
+            Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
+            if ( SUCCEEDED( pDXGIDevice->GetAdapter( &adapter ) ) ) {
+                LE( adapter->GetParent( IID_PPV_ARGS( &factory ) ) );
+                if ( !SUCCEEDED( adapter->GetParent( IID_PPV_ARGS( &factory2 ) ) ) ) {
+                    LogInfo() << "Could not retrieve IDXGIFactory2, fallback to IDXGIFactory";
+                }
+            }
         }
 
         DXGI_SWAP_EFFECT swapEffect = DXGI_SWAP_EFFECT::DXGI_SWAP_EFFECT_DISCARD;
 
-        DXGI_SWAP_CHAIN_DESC1 scd = {};
+        m_flipWithTearing = false;
         if ( m_swapchainflip ) {
             Microsoft::WRL::ComPtr<IDXGIFactory5> factory5;
 
-            if ( SUCCEEDED( factory2.As( &factory5 ) ) ) {
+            if ( SUCCEEDED( factory.As( &factory5 ) ) ) {
                 BOOL allowTearing = FALSE;
                 if ( factory5.Get() && SUCCEEDED( factory5->CheckFeatureSupport( DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof( allowTearing ) ) ) ) {
                     m_flipWithTearing = allowTearing != 0;
                 }
             }
-            if ( dxgi_1_4 ) {
+            Microsoft::WRL::ComPtr<IDXGIFactory4> factory4;
+
+            if ( SUCCEEDED( factory.As( &factory4 ) ) ) {
                 swapEffect = DXGI_SWAP_EFFECT::DXGI_SWAP_EFFECT_FLIP_DISCARD;
             } else {
                 swapEffect = DXGI_SWAP_EFFECT::DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
@@ -701,146 +734,145 @@ XRESULT D3D11GraphicsEngine::OnResize( INT2 newSize ) {
         }
 
         LogInfo() << "SwapChain Mode: " << swapEffectMap.at( swapEffect );
-        swapEffectMap.clear();
+
         if ( m_swapchainflip ) {
             LogInfo() << "SwapChain: DXGI_FEATURE_PRESENT_ALLOW_TEARING = " << (m_flipWithTearing ? "Enabled" : "Disabled");
         }
 
         LogInfo() << "Creating new swapchain! (Format: DXGI_FORMAT_B8G8R8A8_UNORM)";
 
-        if ( m_swapchainflip ) {
-            scd.BufferCount = 2;
-            if ( m_flipWithTearing ) scflags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
-        } else {
-            scd.BufferCount = 1;
-        }
-
         m_lowlatency = Engine::GAPI->GetRendererState().RendererSettings.LowLatency;
-        if ( m_lowlatency && (dxgi_1_3 || dxgi_1_5) && (swapEffect > 1) ) {
+        if ( m_lowlatency 
+            && factory2.Get() // IDXGIFactory2 means dxgi 1.3+ support
+            && (swapEffect > 1) ) { // Doesn't work with fullscreen exclusive on D3D11
             scflags |= DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
         } else {
             m_lowlatency = false;
         }
 
-        scd.SwapEffect = swapEffect;
-        scd.Flags = scflags;
-        scd.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-        scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT | DXGI_USAGE_SHADER_INPUT;
-        scd.SampleDesc.Count = 1;
-        scd.SampleDesc.Quality = 0;
-        scd.Height = bbres.y;
-        scd.Width = bbres.x;
-
-        LE( factory2->CreateSwapChainForHwnd( GetDevice().Get(), OutputWindow, &scd, nullptr, nullptr, SwapChain.GetAddressOf() ) );
-        if ( !SwapChain.Get() ) {
-            LogError() << "Failed to create Swapchain! Program will now exit!";
-            exit( 0 );
+        int bufferCount = 1;
+        if ( m_swapchainflip ) {
+            bufferCount  = 2;
+            if ( m_flipWithTearing ) scflags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
         }
 
-        if ( m_swapchainflip ) {
-            LE( factory2->MakeWindowAssociation( OutputWindow, DXGI_MWA_NO_WINDOW_CHANGES ) );
+        SwapChain.Reset();
+        if ( factory2.Get() ) {
+            DXGI_SWAP_CHAIN_DESC1 scd = {};
+            scd.BufferCount = bufferCount;
+            scd.SwapEffect = swapEffect;
+            scd.Flags = scflags;
+            scd.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+            scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT | DXGI_USAGE_SHADER_INPUT;
+            scd.SampleDesc.Count = 1;
+            scd.SampleDesc.Quality = 0;
+            scd.Height = bbres.y;
+            scd.Width = bbres.x;
+
+            Microsoft::WRL::ComPtr<IDXGISwapChain1> swapChain1; // we don't need the "newer" swapchain, as Present() will be sufficient
+
+            hr = factory2->CreateSwapChainForHwnd( GetDevice().Get(), OutputWindow, &scd, nullptr, nullptr, swapChain1.GetAddressOf() );
+            if ( !SUCCEEDED(hr) || !swapChain1.Get() ) {
+                LogError() << "Failed to create Swapchain! Program will now exit!" << _com_error(hr).ErrorMessage();
+                exit( 0 );
+            }
+
+            swapChain1.As( &SwapChain );
         } else {
+            LogInfo() << "fallback to IDXGIFactory::CreateSwapChain";
+
+            DXGI_MODE_DESC modeDesc = {};
+            modeDesc.Height = bbres.y;
+            modeDesc.Width = bbres.x;
+            modeDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+            modeDesc.RefreshRate = CachedRefreshRate;
+
+            DXGI_SWAP_CHAIN_DESC scd = {};
+            scd.BufferCount = bufferCount;
+            scd.SwapEffect = swapEffect;
+            scd.Flags = scflags;
+            scd.BufferDesc = modeDesc;
+            scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT | DXGI_USAGE_SHADER_INPUT;
+            scd.SampleDesc.Count = 1;
+            scd.SampleDesc.Quality = 0;
+            scd.OutputWindow = OutputWindow;
+            scd.Windowed = true; // as per microsoft recommendation https://learn.microsoft.com/en-us/windows/win32/api/dxgi/ns-dxgi-dxgi_swap_chain_desc
+
+            hr = factory->CreateSwapChain( GetDevice().Get(), &scd, SwapChain.ReleaseAndGetAddressOf() );
+            if ( !SUCCEEDED( hr ) || !SwapChain.Get() ) {
+                LogError() << "Failed to create Swapchain! Program will now exit!" << _com_error( hr ).ErrorMessage();
+                exit( 0 );
+            }
+        }
+
+        m_recreateSwapChain = false;
+
+        if ( m_swapchainflip ) {
+            LE( factory->MakeWindowAssociation( OutputWindow, DXGI_MWA_NO_WINDOW_CHANGES ) );
+        } 
+        if ( bool windowed = Engine::GAPI->HasCommandlineParameter( "ZWINDOW" ) ||
+                Engine::GAPI->GetIntParamFromConfig( "zStartupWindowed" ) ) {
             // Perform fullscreen transition
             // According to microsoft guide it is the best practice
             // because the swapchain is created in accordance to desktop resolution
             // and we can have different resolution in fullscreen exclusive
-            bool windowed = Engine::GAPI->HasCommandlineParameter( "ZWINDOW" ) ||
-                Engine::GAPI->GetIntParamFromConfig( "zStartupWindowed" );
-            if ( !windowed ) {
-                DXGI_MODE_DESC newMode = {};
-                newMode.Width = newSize.x;
-                newMode.Height = newSize.y;
-                newMode.RefreshRate.Numerator = CachedRefreshRate.Numerator;
-                newMode.RefreshRate.Denominator = CachedRefreshRate.Denominator;
-                newMode.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-                SwapChain->ResizeTarget( &newMode );
-                SwapChain->SetFullscreenState( true, nullptr );
-            }
+
+            DXGI_MODE_DESC newMode = {};
+            newMode.Width = newSize.x;
+            newMode.Height = newSize.y;
+            newMode.RefreshRate.Numerator = CachedRefreshRate.Numerator;
+            newMode.RefreshRate.Denominator = CachedRefreshRate.Denominator;
+            newMode.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+            SwapChain->ResizeTarget( &newMode );
+            SwapChain->SetFullscreenState( !windowed, nullptr );
         }
 
-        // Need to init AntTweakBar now that we have a working swapchain
-        XLE( Engine::AntTweakBar->Init() );
+        // Need to init ImGui now that we have a working swapchain
+        Engine::ImGuiHandle->Init( GetActiveWindow(), GetDevice(), GetContext() );
     } else {
         LogInfo() << "Resizing swapchain  (Format: DXGI_FORMAT_B8G8R8A8_UNORM)";
-        if ( dxgi_1_5 ) {
-            //if (FAILED(SwapChain4->SetSourceSize(bbres.x, bbres.y))) { //crashes when scd.Scaling = DXGI_SCALING_STRETCH is not set;
-            if ( FAILED( SwapChain4->ResizeBuffers( 0, bbres.x, bbres.y, DXGI_FORMAT_B8G8R8A8_UNORM, scflags ) ) ) {
-                LogError() << "Failed to resize swapchain!";
-                return XR_FAILED;
-            }
-        } else if ( dxgi_1_4 ) {
-            //if (FAILED(SwapChain3->SetSourceSize(bbres.x, bbres.y))) { //crashes when scd.Scaling = DXGI_SCALING_STRETCH is not set;
-            if ( FAILED( SwapChain3->ResizeBuffers( 0, bbres.x, bbres.y, DXGI_FORMAT_B8G8R8A8_UNORM, scflags ) ) ) {
-                LogError() << "Failed to resize swapchain!";
-                return XR_FAILED;
-            }
-        } else if ( dxgi_1_3 ) {
-            //if (FAILED(SwapChain2->SetSourceSize(bbres.x, bbres.y))) { //crashes when scd.Scaling = DXGI_SCALING_STRETCH is not set;
-            if ( FAILED( SwapChain2->ResizeBuffers( 0, bbres.x, bbres.y, DXGI_FORMAT_B8G8R8A8_UNORM, scflags ) ) ) {
-                LogError() << "Failed to resize swapchain!";
-                return XR_FAILED;
-            }
-        } else if ( FAILED( SwapChain->ResizeBuffers( 0, bbres.x, bbres.y, DXGI_FORMAT_B8G8R8A8_UNORM, scflags ) ) ) {
+        if ( FAILED( SwapChain->ResizeBuffers( 0, bbres.x, bbres.y, DXGI_FORMAT_B8G8R8A8_UNORM, scflags ) ) ) {
             LogError() << "Failed to resize swapchain!";
             return XR_FAILED;
         }
     }
 
+    if ( frameLatencyWaitableObject ) {
+        CloseHandle( frameLatencyWaitableObject );
+        frameLatencyWaitableObject = nullptr;
+    }
+
+    wrl::ComPtr<IDXGISwapChain2> swapChain2;
+    if ( m_lowlatency && SUCCEEDED( SwapChain.As( &swapChain2 ) ) && swapChain2.Get() ) {
+        frameLatencyWaitableObject = swapChain2->GetFrameLatencyWaitableObject();
+        LogInfo() << "SwapChain Mode: DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT";
+    }
+
     // Successfully resized swapchain, re-get buffers
     wrl::ComPtr<ID3D11Texture2D> backbuffer;
-    if ( dxgi_1_5 ) {
-        LE( SwapChain.As( &SwapChain4 ) );
-        LogInfo() << "SwapChain: DXGI 1.5";
-        if ( m_lowlatency && !frameLatencyWaitableObject ) {
-            frameLatencyWaitableObject = SwapChain4->GetFrameLatencyWaitableObject();
-            WaitForSingleObjectEx( frameLatencyWaitableObject, INFINITE, true );
-            LogInfo() << "SwapChain Mode: DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT";
-        }
-        m_HDR = Engine::GAPI->GetRendererState().RendererSettings.HDR_Monitor;
-        if ( m_HDR && m_swapchainflip ) {
-            UpdateColorSpace_SwapChain4();
-        }
-        SwapChain4->GetBuffer( 0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(backbuffer.GetAddressOf()) );
-    } else if ( dxgi_1_4 ) {
-        LE( SwapChain.As( &SwapChain3 ) );
-        LogInfo() << "SwapChain: DXGI 1.4";
-        if ( m_lowlatency && !frameLatencyWaitableObject ) {
-            frameLatencyWaitableObject = SwapChain3->GetFrameLatencyWaitableObject();
-            WaitForSingleObjectEx( frameLatencyWaitableObject, INFINITE, true );
-            LogInfo() << "SwapChain Mode: DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT";
-        }
-        m_HDR = Engine::GAPI->GetRendererState().RendererSettings.HDR_Monitor;
-        if ( m_HDR && m_swapchainflip ) {
-            UpdateColorSpace_SwapChain3();
-        }
-        SwapChain3->GetBuffer( 0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(backbuffer.GetAddressOf()) );
-    } else if ( dxgi_1_3 ) {
-        LE( SwapChain.As( &SwapChain2 ) );
-        LogInfo() << "SwapChain: DXGI 1.3";
-        if ( m_lowlatency && !frameLatencyWaitableObject ) {
-            frameLatencyWaitableObject = SwapChain2->GetFrameLatencyWaitableObject();
-            WaitForSingleObjectEx( frameLatencyWaitableObject, INFINITE, true );
-            LogInfo() << "SwapChain Mode: DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT";
-        }
-        SwapChain2->GetBuffer( 0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(backbuffer.GetAddressOf()) );
-    } else {
-        SwapChain->GetBuffer( 0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(backbuffer.GetAddressOf()) );
-        LogInfo() << "SwapChain: DXGI 1.2";
-    }
+
+    m_HDR = Engine::GAPI->GetRendererState().RendererSettings.HDR_Monitor;
+    UpdateColorSpace_SwapChain( );
+
+    SwapChain->GetBuffer( 0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(backbuffer.GetAddressOf()) );
 
     // Recreate RenderTargetView
     LE( GetDevice()->CreateRenderTargetView( backbuffer.Get(), nullptr, BackbufferRTV.GetAddressOf() ) );
+    SetDebugName( BackbufferRTV.Get(), "BackbufferRTV" );
 
-    if ( UIView ) UIView->Resize( Resolution, backbuffer.Get() );
-
-    // Recreate DepthStencilBuffer
+        // Recreate DepthStencilBuffer
     DepthStencilBuffer = std::make_unique<RenderToDepthStencilBuffer>(
         GetDevice().Get(), Resolution.x, Resolution.y, DXGI_FORMAT_R32_TYPELESS, nullptr,
         DXGI_FORMAT_D32_FLOAT, DXGI_FORMAT_R32_FLOAT );
+    SetDebugName( DepthStencilBuffer->GetTexture().Get(), "DepthStencilBufferTB" );
+    SetDebugName( DepthStencilBuffer->GetShaderResView().Get(), "DepthStencilBufferSRV" );
+    SetDebugName( DepthStencilBuffer->GetDepthStencilView().Get(), "DepthStencilBufferDSV" );
 
     DepthStencilBufferCopy = std::make_unique<RenderToTextureBuffer>(
         GetDevice().Get(), Resolution.x, Resolution.y, DXGI_FORMAT_R32_TYPELESS, nullptr,
         DXGI_FORMAT_R32_FLOAT, DXGI_FORMAT_R32_FLOAT );
+    SetDebugName( DepthStencilBufferCopy->GetTexture().Get(), "DepthStencilBufferTB" );
+    SetDebugName( DepthStencilBufferCopy->GetShaderResView().Get(), "DepthStencilBufferSRV" );
 
     // Bind our newly created resources
     GetContext()->OMSetRenderTargets( 1, BackbufferRTV.GetAddressOf(),
@@ -865,38 +897,44 @@ XRESULT D3D11GraphicsEngine::OnResize( INT2 newSize ) {
 
     GBuffer2_SpecIntens_SpecPower = std::make_unique<RenderToTextureBuffer>(
         GetDevice().Get(), Resolution.x, Resolution.y, DXGI_FORMAT_R16G16_FLOAT );
+    SetDebugName( GBuffer2_SpecIntens_SpecPower->GetTexture().Get(), "GBuffer2_SpecIntens_SpecPowerTex2D" );
 
     GBuffer1_Normals = std::make_unique<RenderToTextureBuffer>(
-        GetDevice().Get(), Resolution.x, Resolution.y, DXGI_FORMAT_R16G16B16A16_FLOAT );
+        GetDevice().Get(), Resolution.x, Resolution.y, DXGI_FORMAT_R8G8B8A8_SNORM );
+    SetDebugName( GBuffer1_Normals->GetTexture().Get(), "GBuffer1_NormalsTex2D" );
 
     GBuffer0_Diffuse = std::make_unique<RenderToTextureBuffer>(
         GetDevice().Get(), Resolution.x, Resolution.y, DXGI_FORMAT_B8G8R8A8_UNORM );
+    SetDebugName( GBuffer0_Diffuse->GetTexture().Get(), "GBuffer0_DiffuseTex2D" );
 
     HDRBackBuffer = std::make_unique<RenderToTextureBuffer>( GetDevice().Get(), Resolution.x, Resolution.y,
         (Engine::GAPI->GetRendererState().RendererSettings.CompressBackBuffer ? DXGI_FORMAT_R11G11B10_FLOAT : DXGI_FORMAT_R16G16B16A16_FLOAT) );
 
+    SetDebugName( HDRBackBuffer->GetTexture().Get(), "HDRBackBufferTex2D" );
+
     int s = std::min<int>( std::max<int>( Engine::GAPI->GetRendererState().RendererSettings.ShadowMapSize, 512 ), (FeatureLevel10Compatibility ? 8192 : 16384) );
+
     WorldShadowmap1 = std::make_unique<RenderToDepthStencilBuffer>(
         GetDevice().Get(), s, s, DXGI_FORMAT_R16_TYPELESS, nullptr, DXGI_FORMAT_D16_UNORM,
         DXGI_FORMAT_R16_UNORM );
     SetDebugName( WorldShadowmap1->GetTexture().Get(), "WorldShadowmap1->Texture" );
     SetDebugName( WorldShadowmap1->GetShaderResView().Get(), "WorldShadowmap1->ShaderResView" );
     SetDebugName( WorldShadowmap1->GetDepthStencilView().Get(), "WorldShadowmap1->DepthStencilView" );
-
-    Engine::AntTweakBar->OnResize( newSize );
+    
+    Engine::ImGuiHandle->OnResize( Resolution );
 
     return XR_SUCCESS;
 }
 
 /** Called when the game wants to render a new frame */
 XRESULT D3D11GraphicsEngine::OnBeginFrame() {
-    if ( !m_isWindowActive && GetForegroundWindow() == OutputWindow ) {
-        // Just in case to check if somehow we didn't get informed the window got activated
-        m_isWindowActive = true;
-        UpdateClipCursor( OutputWindow );
-    }
 
     Engine::GAPI->GetRendererState().RendererInfo.Timing.StartTotal();
+
+#if BUILD_SPACER_NET
+    Engine::GAPI->GetRendererState().RendererSettings.EnableInactiveFpsLock = false;
+#endif //  BUILD_SPACERNET
+
     if ( !m_isWindowActive && Engine::GAPI->GetRendererState().RendererSettings.EnableInactiveFpsLock ) {
         m_FrameLimiter->SetLimit( 20 );
         m_FrameLimiter->Start();
@@ -908,6 +946,20 @@ XRESULT D3D11GraphicsEngine::OnBeginFrame() {
             m_FrameLimiter->Reset();
         }
     }
+
+    if ( frameLatencyWaitableObject ) {
+        // best effor waiting.
+        WaitForSingleObjectEx(
+            frameLatencyWaitableObject,
+            1000, // 1 second timeout (shouldn't ever occur)
+            true
+        );
+    }
+
+    if ( m_recreateSwapChain ) {
+        OnResize( Resolution );
+    }
+
     static int oldToneMap = -1;
     if ( Engine::GAPI->GetRendererState().RendererSettings.HDRToneMap != oldToneMap ) {
         oldToneMap = Engine::GAPI->GetRendererState().RendererSettings.HDRToneMap;
@@ -976,18 +1028,11 @@ XRESULT D3D11GraphicsEngine::OnBeginFrame() {
     Engine::GAPI->SetFrameProcessedTexturesReady();
     Engine::GAPI->LeaveResourceCriticalSection();
 
-    // Check for editorpanel
-    if ( !UIView ) {
-        if ( Engine::GAPI->GetRendererState().RendererSettings.EnableEditorPanel ) {
-            CreateMainUIView();
-        }
-    }
-
     // Check for shadowmap resize
     int s = Engine::GAPI->GetRendererState().RendererSettings.ShadowMapSize;
 
     if ( WorldShadowmap1->GetSizeX() != s ) {
-        s = std::min<int>(std::max<int>(s, 512), (FeatureLevel10Compatibility ? 8192 : 16384));
+        s = std::min<int>( std::max<int>( s, 512 ), (FeatureLevel10Compatibility ? 8192 : 16384) );
 
         int old = WorldShadowmap1->GetSizeX();
         LogInfo() << "Shadowmapresolution changed to: " << s << "x" << s;
@@ -1056,7 +1101,9 @@ XRESULT D3D11GraphicsEngine::OnEndFrame() {
     Present();
 
     Engine::GAPI->GetRendererState().RendererInfo.Timing.StopTotal();
-    m_FrameLimiter->Wait();
+    if ( !Engine::GAPI->GetRendererState().RendererSettings.BinkVideoRunning && !Engine::GAPI->IsInSavingLoadingState() ) {
+        m_FrameLimiter->Wait();
+    }
     return XR_SUCCESS;
 }
 
@@ -1101,8 +1148,8 @@ XRESULT D3D11GraphicsEngine::FetchDisplayModeList() {
     // if it for some reason fails get resolutions through WinApi
     __try {
         XRESULT result = FetchDisplayModeListDXGI();
-        if ( result == XR_FAILED || CachedDisplayModes.size() <= 1 ) {
-            CachedDisplayModes.clear();
+        if ( result == XR_FAILED || Resolutions.size() <= 1 ) {
+            Resolutions.clear();
             result = FetchDisplayModeListWindows();
         }
         return result;
@@ -1113,32 +1160,30 @@ XRESULT D3D11GraphicsEngine::FetchDisplayModeList() {
 }
 
 XRESULT D3D11GraphicsEngine::FetchDisplayModeListDXGI() {
-    if ( !DXGIAdapter2 ) {
-        CachedDisplayModes.emplace_back( Resolution.x, Resolution.y );
+    if ( !DXGIAdapter1 ) {
+        Resolutions.emplace_back( Resolution.x, Resolution.y );
         return XR_FAILED;
     }
 
-    Microsoft::WRL::ComPtr<IDXGIOutput> output11;
-    Microsoft::WRL::ComPtr<IDXGIOutput1> output;
+    Microsoft::WRL::ComPtr<IDXGIOutput> output;
 
-    DXGIAdapter2->EnumOutputs( 0, output11.GetAddressOf() );
-    HRESULT hr = output11.As( &output );
+    HRESULT hr = DXGIAdapter1->EnumOutputs( 0, output.GetAddressOf() );
     if ( !output.Get() || FAILED( hr ) ) {
-        CachedDisplayModes.emplace_back( Resolution.x, Resolution.y );
+        Resolutions.emplace_back( Resolution.x, Resolution.y );
         return XR_FAILED;
     }
 
     UINT numModes = 0;
-    hr = output->GetDisplayModeList1( DXGI_FORMAT_B8G8R8A8_UNORM, 0, &numModes, nullptr );
+    hr = output->GetDisplayModeList( DXGI_FORMAT_B8G8R8A8_UNORM, 0, &numModes, nullptr );
     if ( FAILED( hr ) || numModes == 0 ) {
-        CachedDisplayModes.emplace_back( Resolution.x, Resolution.y );
+        Resolutions.emplace_back( Resolution.x, Resolution.y );
         return XR_FAILED;
     }
 
-    std::unique_ptr<DXGI_MODE_DESC1[]> displayModes = std::make_unique<DXGI_MODE_DESC1[]>( numModes );
-    hr = output->GetDisplayModeList1( DXGI_FORMAT_B8G8R8A8_UNORM, 0, &numModes, displayModes.get() );
+    std::unique_ptr<DXGI_MODE_DESC[]> displayModes = std::make_unique<DXGI_MODE_DESC[]>( numModes );
+    hr = output->GetDisplayModeList( DXGI_FORMAT_B8G8R8A8_UNORM, 0, &numModes, displayModes.get() );
     if ( FAILED( hr ) ) {
-        CachedDisplayModes.emplace_back( Resolution.x, Resolution.y );
+        Resolutions.emplace_back( Resolution.x, Resolution.y );
         return XR_FAILED;
     }
 
@@ -1150,7 +1195,7 @@ XRESULT D3D11GraphicsEngine::FetchDisplayModeListDXGI() {
     }
 
     for ( UINT i = 0; i < numModes; i++ ) 	{
-        DXGI_MODE_DESC1& displayMode = displayModes[i];
+        DXGI_MODE_DESC& displayMode = displayModes[i];
         if ( static_cast<UINT>(Resolution.x) == displayMode.Width && static_cast<UINT>(Resolution.y) == displayMode.Height ) {
             DWORD displayRefreshRate = static_cast<DWORD>(displayMode.RefreshRate.Numerator / displayMode.RefreshRate.Denominator);
             if ( currentRefreshRate >= (displayRefreshRate - 2) && currentRefreshRate <= (displayRefreshRate + 2) ) {
@@ -1161,14 +1206,14 @@ XRESULT D3D11GraphicsEngine::FetchDisplayModeListDXGI() {
 
         if ( displayMode.Width >= 800 && displayMode.Height >= 600 ) {
             DisplayModeInfo info( static_cast<int>(displayMode.Width), static_cast<int>(displayMode.Height) );
-            auto it = std::find_if( CachedDisplayModes.begin(), CachedDisplayModes.end(),
+            auto it = std::find_if( Resolutions.begin(), Resolutions.end(),
                 [&info]( DisplayModeInfo& a ) { return (a.Width == info.Width && a.Height == info.Height); } );
-            if ( it == CachedDisplayModes.end() ) {
-                CachedDisplayModes.push_back( info );
+            if ( it == Resolutions.end() ) {
+                Resolutions.push_back( info );
             }
         }
     }
-    CachedDisplayModes.shrink_to_fit();
+    Resolutions.shrink_to_fit();
     return XR_SUCCESS;
 }
 
@@ -1185,10 +1230,10 @@ XRESULT D3D11GraphicsEngine::FetchDisplayModeListWindows() {
 
         if ( devmode.dmPelsWidth >= 800 && devmode.dmPelsHeight >= 600 ) {
             DisplayModeInfo info( static_cast<int>(devmode.dmPelsWidth), static_cast<int>(devmode.dmPelsHeight) );
-            auto it = std::find_if( CachedDisplayModes.begin(), CachedDisplayModes.end(),
+            auto it = std::find_if( Resolutions.begin(), Resolutions.end(),
                 [&info]( DisplayModeInfo& a ) { return (a.Width == info.Width && a.Height == info.Height); } );
-            if ( it == CachedDisplayModes.end() ) {
-                CachedDisplayModes.push_back( info );
+            if ( it == Resolutions.end() ) {
+                Resolutions.push_back( info );
             }
         }
     }
@@ -1196,24 +1241,9 @@ XRESULT D3D11GraphicsEngine::FetchDisplayModeListWindows() {
 }
 
 /** Returns a list of available display modes */
-XRESULT
-D3D11GraphicsEngine::GetDisplayModeList( std::vector<DisplayModeInfo>* modeList,
-    bool includeSuperSampling ) {
-    for ( DisplayModeInfo& mode : CachedDisplayModes ) {
-        modeList->push_back( mode );
-    }
-    if ( includeSuperSampling ) {
-        // Put supersampling resolutions in, up to just below 8k
-        int i = 2;
-        DisplayModeInfo ssBase = modeList->back();
-        while ( ssBase.Width * i < 8192 && ssBase.Height * i < 8192 ) {
-            DisplayModeInfo info( static_cast<int>(ssBase.Width * i), static_cast<int>(ssBase.Height * i) );
-            modeList->push_back( info );
-            ++i;
-        }
-    }
-
-    return XR_SUCCESS;
+std::vector<DisplayModeInfo>
+D3D11GraphicsEngine::GetDisplayModeList() {
+    return Resolutions;
 }
 
 /** Presents the current frame to the screen */
@@ -1252,13 +1282,10 @@ XRESULT D3D11GraphicsEngine::Present() {
 
     SetDefaultStates();
     UpdateRenderStates();
-    Engine::AntTweakBar->Draw();
 
-    if ( UIView ) {
-        SetDefaultStates();
-        UpdateRenderStates();
-        UIView->Render( Engine::GAPI->GetFrameTimeSec() );
-    }
+    SetDefaultStates();
+    UpdateRenderStates();
+    Engine::ImGuiHandle->RenderLoop();
 
     // Don't allow presenting from different thread than mainthread
     // shouldn't happen but who knows
@@ -1269,32 +1296,15 @@ XRESULT D3D11GraphicsEngine::Present() {
     }
 
     bool vsync = Engine::GAPI->GetRendererState().RendererSettings.EnableVSync;
+    if ( Engine::GAPI->GetRendererState().RendererSettings.BinkVideoRunning || Engine::GAPI->IsInSavingLoadingState() ) {
+        vsync = false;
+    }
 
     HRESULT hr;
-    if ( dxgi_1_5 ) {
-        if ( m_flipWithTearing ) {
-            hr = SwapChain4->Present( vsync ? 1 : 0, vsync ? 0 : DXGI_PRESENT_ALLOW_TEARING );
-        } else {
-            hr = SwapChain4->Present( vsync ? 1 : 0, 0 );
-        }
-    } else if ( dxgi_1_4 ) {
-        if ( m_flipWithTearing ) {
-            hr = SwapChain3->Present( vsync ? 1 : 0, vsync ? 0 : DXGI_PRESENT_ALLOW_TEARING );
-        } else {
-            hr = SwapChain3->Present( vsync ? 1 : 0, 0 );
-        }
-    } else if ( dxgi_1_3 ) {
-        if ( m_flipWithTearing ) {
-            hr = SwapChain2->Present( vsync ? 1 : 0, vsync ? 0 : DXGI_PRESENT_ALLOW_TEARING );
-        } else {
-            hr = SwapChain2->Present( vsync ? 1 : 0, 0 );
-        }
+    if ( m_flipWithTearing ) {
+        hr = SwapChain->Present( vsync ? 1 : 0, vsync ? 0 : DXGI_PRESENT_ALLOW_TEARING );
     } else {
-        if ( m_flipWithTearing ) {
-            hr = SwapChain->Present( vsync ? 1 : 0, vsync ? 0 : DXGI_PRESENT_ALLOW_TEARING );
-        } else {
-            hr = SwapChain->Present( vsync ? 1 : 0, 0 );
-        }
+        hr = SwapChain->Present( vsync ? 1 : 0, 0 );
     }
     if ( hr == DXGI_ERROR_DEVICE_REMOVED ) {
         switch ( GetDevice()->GetDeviceRemovedReason() ) {
@@ -1330,8 +1340,6 @@ XRESULT D3D11GraphicsEngine::Present() {
         default:
             LogWarnBox() << "Device Removed! (Unknown reason)";
         }
-    } else if ( hr == S_OK && frameLatencyWaitableObject ) {
-        WaitForSingleObjectEx( frameLatencyWaitableObject, INFINITE, true );
     }
 
     PresentPending = false;
@@ -1366,9 +1374,11 @@ XRESULT D3D11GraphicsEngine::DrawVertexBuffer( D3D11VertexBuffer* vb, unsigned i
     if ( !g_LastDrawCall.Check() ) return XR_SUCCESS;
 #endif
 
-    UINT offset = 0;
-    UINT uStride = stride;
-    GetContext()->IASetVertexBuffers( 0, 1, vb->GetVertexBuffer().GetAddressOf(), &uStride, &offset );
+    if ( vb ) {
+        UINT offset = 0;
+        UINT uStride = stride;
+        GetContext()->IASetVertexBuffers( 0, 1, vb->GetVertexBuffer().GetAddressOf(), &uStride, &offset );
+    }
 
     // Draw the mesh
     GetContext()->Draw( numVertices, 0 );
@@ -1396,15 +1406,11 @@ XRESULT D3D11GraphicsEngine::DrawVertexBufferIndexed( D3D11VertexBuffer* vb,
         UINT offset = 0;
         UINT uStride = sizeof( ExVertexStruct );
         GetContext()->IASetVertexBuffers( 0, 1, vb->GetVertexBuffer().GetAddressOf(), &uStride, &offset );
+    }
 
-        if ( sizeof( VERTEX_INDEX ) == sizeof( unsigned short ) ) {
-            GetContext()->IASetIndexBuffer( ib->GetVertexBuffer().Get(),
-                DXGI_FORMAT_R16_UINT, 0 );
-        } else {
-            GetContext()->IASetIndexBuffer( ib->GetVertexBuffer().Get(),
-                DXGI_FORMAT_R32_UINT, 0 );
-        }
-}
+    if ( ib ) {
+        GetContext()->IASetIndexBuffer( ib->GetVertexBuffer().Get(), vertexIndexDxgiFormat, 0 );
+    }
 
     if ( numIndices ) {
         // Draw the mesh
@@ -1431,8 +1437,10 @@ XRESULT D3D11GraphicsEngine::DrawVertexBufferIndexedUINT(
         UINT offset = 0;
         UINT uStride = sizeof( ExVertexStruct );
         GetContext()->IASetVertexBuffers( 0, 1, vb->GetVertexBuffer().GetAddressOf(), &uStride, &offset );
-        GetContext()->IASetIndexBuffer( ib->GetVertexBuffer().Get(), DXGI_FORMAT_R32_UINT, 0 );
     }
+
+    if ( ib )
+        GetContext()->IASetIndexBuffer( ib->GetVertexBuffer().Get(), DXGI_FORMAT_R32_UINT, 0 );
 
     if ( numIndices ) {
         // Draw the mesh
@@ -1443,6 +1451,17 @@ XRESULT D3D11GraphicsEngine::DrawVertexBufferIndexedUINT(
     }
 
     return XR_SUCCESS;
+}
+
+XRESULT D3D11GraphicsEngine::DrawVertexBufferIndexedUINTFromMeshInfo( 
+    MeshInfo* meshInfo, unsigned int numIndices, unsigned int indexOffset ) {
+
+    if( meshInfo )
+        return DrawVertexBufferIndexedUINT(
+            meshInfo->MeshVertexBuffer,
+            meshInfo->MeshIndexBuffer, numIndices, indexOffset );
+
+    return XR_FAILED;
 }
 
 /** Binds viewport information to the given constantbuffer slot */
@@ -1501,11 +1520,11 @@ XRESULT D3D11GraphicsEngine::DrawScreenFade( void* c ) {
         SetActiveVertexShader( "VS_CinemaScope" );
         ActiveVS->Apply();
 
-        GhostAlphaConstantBuffer colorBuffer;
-        colorBuffer.GA_Alpha = cinemaScopeColor.bgra.alpha / 255.f;
-        colorBuffer.GA_Pad.x = cinemaScopeColor.bgra.r / 255.f;
-        colorBuffer.GA_Pad.y = cinemaScopeColor.bgra.g / 255.f;
-        colorBuffer.GA_Pad.z = cinemaScopeColor.bgra.b / 255.f;
+        ScreenFadeConstantBuffer colorBuffer;
+        colorBuffer.GA_Alpha = cinemaScopeColor.bgra.alpha * inv255f;
+        colorBuffer.GA_Pad.x = cinemaScopeColor.bgra.r * inv255f;
+        colorBuffer.GA_Pad.y = cinemaScopeColor.bgra.g * inv255f;
+        colorBuffer.GA_Pad.z = cinemaScopeColor.bgra.b * inv255f;
         ActivePS->GetConstantBuffer()[0]->UpdateBuffer( &colorBuffer );
         ActivePS->GetConstantBuffer()[0]->BindToPixelShader( 0 );
 
@@ -1571,11 +1590,11 @@ XRESULT D3D11GraphicsEngine::DrawScreenFade( void* c ) {
         SetActiveVertexShader( "VS_PFX" );
         ActiveVS->Apply();
 
-        GhostAlphaConstantBuffer colorBuffer;
-        colorBuffer.GA_Alpha = screenFadeColor.bgra.alpha / 255.f;
-        colorBuffer.GA_Pad.x = screenFadeColor.bgra.r / 255.f;
-        colorBuffer.GA_Pad.y = screenFadeColor.bgra.g / 255.f;
-        colorBuffer.GA_Pad.z = screenFadeColor.bgra.b / 255.f;
+        ScreenFadeConstantBuffer colorBuffer;
+        colorBuffer.GA_Alpha = screenFadeColor.bgra.alpha * inv255f;
+        colorBuffer.GA_Pad.x = screenFadeColor.bgra.r * inv255f;
+        colorBuffer.GA_Pad.y = screenFadeColor.bgra.g * inv255f;
+        colorBuffer.GA_Pad.z = screenFadeColor.bgra.b * inv255f;
         ActivePS->GetConstantBuffer()[0]->UpdateBuffer( &colorBuffer );
         ActivePS->GetConstantBuffer()[0]->BindToPixelShader( 0 );
 
@@ -1780,7 +1799,7 @@ XRESULT  D3D11GraphicsEngine::DrawSkeletalVertexNormals( SkeletalVobInfo* vi,
 
     GetContext()->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
 
-    VS_ExConstantBuffer_PerInstanceSkeletal cb2;
+    VS_ExConstantBuffer_PerInstanceSkeletal cb2 = {};
     cb2.World = world;
     cb2.PI_ModelColor = color;
     cb2.PI_ModelFatness = fatness;
@@ -1806,16 +1825,14 @@ XRESULT  D3D11GraphicsEngine::DrawSkeletalVertexNormals( SkeletalVobInfo* vi,
             D3D11VertexBuffer* ib = mesh->MeshIndexBuffer;
             unsigned int numIndices = mesh->Indices.size();
 
-            UINT offset = 0;
-            UINT uStride = sizeof( ExSkelVertexStruct );
-            GetContext()->IASetVertexBuffers( 0, 1, vb->GetVertexBuffer().GetAddressOf(), &uStride, &offset );
+            if ( vb ) {
+                UINT offset = 0;
+                UINT uStride = sizeof( ExSkelVertexStruct );
+                GetContext()->IASetVertexBuffers( 0, 1, vb->GetVertexBuffer().GetAddressOf(), &uStride, &offset );
 
-            if ( sizeof( VERTEX_INDEX ) == sizeof( unsigned short ) ) {
-                GetContext()->IASetIndexBuffer( ib->GetVertexBuffer().Get(),
-                    DXGI_FORMAT_R16_UINT, 0 );
-            } else {
-                GetContext()->IASetIndexBuffer( ib->GetVertexBuffer().Get(),
-                    DXGI_FORMAT_R32_UINT, 0 );
+            }
+            if ( ib ) {
+                GetContext()->IASetIndexBuffer( ib->GetVertexBuffer().Get(), vertexIndexDxgiFormat, 0 );
             }
 
             // Draw the mesh
@@ -1848,7 +1865,7 @@ XRESULT  D3D11GraphicsEngine::DrawSkeletalMesh( SkeletalVobInfo* vi,
 
     GetContext()->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
 
-    VS_ExConstantBuffer_PerInstanceSkeletal cb2;
+    VS_ExConstantBuffer_PerInstanceSkeletal cb2 = {};
     cb2.World = world;
     cb2.PI_ModelColor = color;
     cb2.PI_ModelFatness = fatness;
@@ -1883,9 +1900,6 @@ XRESULT  D3D11GraphicsEngine::DrawSkeletalMesh( SkeletalVobInfo* vi,
         }
     }
 
-#if ENABLE_TESSELATION > 0
-    const bool tesselationEnabled = Engine::GAPI->GetRendererState().RendererSettings.EnableTesselation;
-#endif
     if ( RenderingStage == DES_MAIN ) {
         if ( ActiveHDS ) {
             GetContext()->DSSetShader( nullptr, nullptr, 0 );
@@ -1894,44 +1908,34 @@ XRESULT  D3D11GraphicsEngine::DrawSkeletalMesh( SkeletalVobInfo* vi,
         }
     }
 
-    for ( auto const& itm : dynamic_cast<SkeletalMeshVisualInfo*>(vi->VisualInfo)->SkeletalMeshes ) {
-        for ( auto& mesh : itm.second ) {
-            if ( zCMaterial* mat = itm.first ) {
+    for ( auto const& itm : dynamic_cast<SkeletalMeshVisualInfo*>(vi->VisualInfo)->SkeletalMeshes ) 
+    {
+        for ( auto& mesh : itm.second ) 
+        {
+            if ( zCMaterial* mat = itm.first ) 
+            {
                 zCTexture* tex;
-                if ( ActivePS && (tex = mat->GetAniTexture()) != nullptr ) {
-                    if ( !BindTextureNRFX( tex, (RenderingStage != DES_GHOST) ) ) {
+                if ( ActivePS && (tex = mat->GetAniTexture()) != nullptr ) 
+                {
+                    if ( !BindTextureNRFX( tex, (RenderingStage != DES_GHOST) ) ) 
                         continue;
-                    }
                 }
             }
 
-            D3D11VertexBuffer* vb;
-            D3D11VertexBuffer* ib;
-            unsigned int numIndices;
-#if ENABLE_TESSELATION > 0
-            if ( tesselationEnabled && !mesh->IndicesPNAEN.empty() ) {
-                vb = mesh->MeshVertexBuffer;
-                ib = mesh->MeshIndexBufferPNAEN;
-                numIndices = mesh->IndicesPNAEN.size();
-            } else
-#endif
-            {
-                vb = mesh->MeshVertexBuffer;
-                ib = mesh->MeshIndexBuffer;
-                numIndices = mesh->Indices.size();
+            D3D11VertexBuffer* vb = mesh->MeshVertexBuffer;
+            D3D11VertexBuffer* ib = mesh->MeshIndexBuffer;
+            unsigned int numIndices = mesh->Indices.size();
+
+            if ( vb ) {
+                UINT offset = 0;
+                UINT uStride = sizeof( ExSkelVertexStruct );
+                GetContext()->IASetVertexBuffers( 0, 1, vb->GetVertexBuffer().GetAddressOf(), &uStride, &offset );
             }
 
-            UINT offset = 0;
-            UINT uStride = sizeof( ExSkelVertexStruct );
-            GetContext()->IASetVertexBuffers( 0, 1, vb->GetVertexBuffer().GetAddressOf(), &uStride, &offset );
-
-            if ( sizeof( VERTEX_INDEX ) == sizeof( unsigned short ) ) {
-                GetContext()->IASetIndexBuffer( ib->GetVertexBuffer().Get(),
-                    DXGI_FORMAT_R16_UINT, 0 );
-            } else {
-                GetContext()->IASetIndexBuffer( ib->GetVertexBuffer().Get(),
-                    DXGI_FORMAT_R32_UINT, 0 );
+            if ( ib ) {
+                GetContext()->IASetIndexBuffer( ib->GetVertexBuffer().Get(), vertexIndexDxgiFormat, 0 );
             }
+
 
             // Draw the mesh
             GetContext()->DrawIndexed( numIndices, 0, 0 );
@@ -1996,20 +2000,20 @@ XRESULT D3D11GraphicsEngine::DrawInstanced(
     vShader->Apply();
 
     GetContext()->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
-    UINT offset[] = { 0, 0 };
-    UINT uStride[] = { vertexStride, instanceDataStride };
-    ID3D11Buffer* buffers[2] = {
-        vb->GetVertexBuffer().Get(),
-        DynamicInstancingBuffer->GetVertexBuffer().Get(),
-    };
-    GetContext()->IASetVertexBuffers( 0, 2, buffers, uStride, offset );
 
-    if ( sizeof( VERTEX_INDEX ) == sizeof( unsigned short ) ) {
-        GetContext()->IASetIndexBuffer( ib->GetVertexBuffer().Get(),
-            DXGI_FORMAT_R16_UINT, 0 );
-    } else {
-        GetContext()->IASetIndexBuffer( ib->GetVertexBuffer().Get(),
-            DXGI_FORMAT_R32_UINT, 0 );
+    if ( vb ) {
+        UINT offset[] = { 0, 0 };
+        UINT uStride[] = { vertexStride, instanceDataStride };
+        ID3D11Buffer* buffers[2] = {
+            vb->GetVertexBuffer().Get(),
+            DynamicInstancingBuffer->GetVertexBuffer().Get(),
+        };
+        GetContext()->IASetVertexBuffers( 0, 2, buffers, uStride, offset );
+    }
+
+
+    if ( ib ) {
+        GetContext()->IASetIndexBuffer( ib->GetVertexBuffer().Get(), vertexIndexDxgiFormat, 0 );
     }
 
     // Draw the batch
@@ -2028,25 +2032,19 @@ XRESULT D3D11GraphicsEngine::DrawInstanced(
     unsigned int numInstances, unsigned int vertexStride,
     unsigned int startInstanceNum, unsigned int indexOffset ) {
     // Bind shader and pipeline flags
-    UINT offset[] = { 0, 0 };
-    UINT uStride[] = { vertexStride, instanceDataStride };
-    ID3D11Buffer* buffers[2] = {
-        vb->GetVertexBuffer().Get(),
-        instanceData->GetVertexBuffer().Get()
-    };
-    GetContext()->IASetVertexBuffers( 0, 2, buffers, uStride, offset );
-
-    if ( sizeof( VERTEX_INDEX ) == sizeof( unsigned short ) ) {
-        GetContext()->IASetIndexBuffer( ib->GetVertexBuffer().Get(),
-            DXGI_FORMAT_R16_UINT, 0 );
-    } else {
-        GetContext()->IASetIndexBuffer( ib->GetVertexBuffer().Get(),
-            DXGI_FORMAT_R32_UINT, 0 );
+    if ( vb ) {
+        UINT offset[] = { 0, 0 };
+        UINT uStride[] = { vertexStride, instanceDataStride };
+        ID3D11Buffer* buffers[2] = {
+            vb->GetVertexBuffer().Get(),
+            instanceData->GetVertexBuffer().Get()
+        };
+        GetContext()->IASetVertexBuffers( 0, 2, buffers, uStride, offset );
     }
 
-    unsigned int max =
-        Engine::GAPI->GetRendererState().RendererSettings.MaxNumFaces * 3;
-    numIndices = max != 0 ? (numIndices < max ? numIndices : max) : numIndices;
+    if ( ib ) {
+        GetContext()->IASetIndexBuffer( ib->GetVertexBuffer().Get(), vertexIndexDxgiFormat, 0 );
+    }
 
     // Draw the batch
     GetContext()->DrawIndexedInstanced( numIndices, numInstances, indexOffset, 0,
@@ -2181,10 +2179,6 @@ XRESULT D3D11GraphicsEngine::OnStartWorldRendering() {
         // Disable here what we can't draw in feature level 10 compatibility
         Engine::GAPI->GetRendererState().RendererSettings.HbaoSettings.Enabled = false;
         Engine::GAPI->GetRendererState().RendererSettings.EnableSMAA = false;
-#if ENABLE_TESSELATION > 0
-        Engine::GAPI->GetRendererState().RendererSettings.EnableTesselation = false;
-        Engine::GAPI->GetRendererState().RendererSettings.AllowWorldMeshTesselation = false;
-#endif
     }
 
 #if BUILD_SPACER_NET
@@ -2239,24 +2233,24 @@ XRESULT D3D11GraphicsEngine::OnStartWorldRendering() {
         Engine::GAPI->GetRendererState().RendererSettings.OutdoorVobDrawRadius,
         0, 0, 0 ).toPtr() );
 
-    // Update editor
-    if ( UIView ) {
-        UIView->Update( Engine::GAPI->GetFrameTimeSec() );
-    }
-
     Engine::GAPI->GetRendererState().RasterizerState.FrontCounterClockwise = false;
     Engine::GAPI->GetRendererState().RasterizerState.SetDirty();
 
     if ( Engine::GAPI->GetRendererState().RendererSettings.DrawSky ) {
         // Draw back of the sky if outdoor
+        auto _ = RecordGraphicsEvent( L"Draw Sky" );
         DrawSky();
     }
 
     // Draw world
-    Engine::GAPI->DrawWorldMeshNaive();
+    {
+        auto _ = RecordGraphicsEvent( L"DrawWorldMeshNaive" );
+        Engine::GAPI->DrawWorldMeshNaive();
+    }
 
     // Draw HBAO
     if ( Engine::GAPI->GetRendererState().RendererSettings.HbaoSettings.Enabled ) {
+        auto _ = RecordGraphicsEvent( L"Draw HBAO" );
         PfxRenderer->DrawHBAO( HDRBackBuffer->GetRenderTargetView() );
         GetContext()->PSSetSamplers( 0, 1, DefaultSamplerState.GetAddressOf() );
     }
@@ -2264,30 +2258,43 @@ XRESULT D3D11GraphicsEngine::OnStartWorldRendering() {
     // PfxRenderer->RenderDistanceBlur();
 
     // Draw water surfaces of current frame
-    DrawWaterSurfaces();
+    {
+        auto _ = RecordGraphicsEvent( L"Draw Water Surfaces" );
+        DrawWaterSurfaces();
+    }
 
     // Draw light-shafts
     DrawMeshInfoListAlphablended( FrameTransparencyMeshes );
 
     //draw forest / door portals
     if ( Engine::GAPI->GetRendererState().RendererSettings.DrawG1ForestPortals ) {
+        auto _ = RecordGraphicsEvent( L"Draw Forest/Door Portals" );
         DrawMeshInfoListAlphablended( FrameTransparencyMeshesPortal );
     }
 
     //draw waterfall foam
-    DrawMeshInfoListAlphablended( FrameTransparencyMeshesWaterfall );
+    {
+        auto _ = RecordGraphicsEvent( L"Draw Waterfall foam" );
+        DrawMeshInfoListAlphablended( FrameTransparencyMeshesWaterfall );
+    }
 
     // Draw ghosts
-    D3D11ENGINE_RENDER_STAGE oldStage = RenderingStage;
-    SetRenderingStage( DES_GHOST );
-    Engine::GAPI->DrawSkeletalGhosts();
-    SetRenderingStage( oldStage );
-    Engine::GAPI->DrawSkeletalVN();
+    {
+        auto _ = RecordGraphicsEvent( L"Draw ghosts" );
 
-    if ( Engine::GAPI->GetRendererState().RendererSettings.DrawFog &&
-        Engine::GAPI->GetLoadedWorldInfo()->BspTree->GetBspTreeMode() ==
-        zBSP_MODE_OUTDOOR )
-        PfxRenderer->RenderHeightfog();
+        D3D11ENGINE_RENDER_STAGE oldStage = RenderingStage;
+        SetRenderingStage( DES_GHOST );
+        Engine::GAPI->DrawTransparencyVobs();
+        SetRenderingStage( oldStage );
+        Engine::GAPI->DrawSkeletalVN();
+    }
+
+    auto& bsptree = Engine::GAPI->GetLoadedWorldInfo()->BspTree;
+    if ( bsptree )
+        if ( Engine::GAPI->GetRendererState().RendererSettings.DrawFog &&
+            bsptree->GetBspTreeMode() ==
+            zBSP_MODE_OUTDOOR )
+            PfxRenderer->RenderHeightfog();
 
     // Draw rain
     if ( Engine::GAPI->GetRainFXWeight() > 0.0f ) Effects->DrawRain();
@@ -2307,12 +2314,17 @@ XRESULT D3D11GraphicsEngine::OnStartWorldRendering() {
         DrawMQuadMarks();
     }
 
+    // Unbind temporary backbuffer copy
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv;
+    GetContext()->PSSetShaderResources( 5, 1, srv.GetAddressOf() );
+
     // TODO: TODO: GodRays need the GBuffer1 from the scene, but Particles need to
     // clear it!
-    if ( Engine::GAPI->GetRendererState().RendererSettings.EnableGodRays &&
-        Engine::GAPI->GetLoadedWorldInfo()->BspTree->GetBspTreeMode() ==
-        zBSP_MODE_OUTDOOR )
-        PfxRenderer->RenderGodRays();
+    if ( bsptree )
+        if ( Engine::GAPI->GetRendererState().RendererSettings.EnableGodRays &&
+            bsptree->GetBspTreeMode() ==
+            zBSP_MODE_OUTDOOR )
+            PfxRenderer->RenderGodRays();
 
     // DrawParticleEffects();
     Engine::GAPI->DrawParticlesSimple();
@@ -2363,7 +2375,9 @@ XRESULT D3D11GraphicsEngine::OnStartWorldRendering() {
     Engine::GAPI->GetRendererState().RasterizerState.CullMode = GothicRasterizerStateInfo::CM_CULL_NONE;
     Engine::GAPI->GetRendererState().RasterizerState.SetDirty();
     UpdateRenderStates();
-    GetContext()->PSSetSamplers( 0, 1, ClampSamplerState.GetAddressOf() );
+    // CubeSampler/Wrapping is required for UI to render like in original game
+    // As UV x/y > 1 means repeat texture.
+    GetContext()->PSSetSamplers( 0, 1, CubeSamplerState.GetAddressOf() );
 
     // Save screenshot if wanted
     if ( SaveScreenshotNextFrame ) {
@@ -2394,7 +2408,7 @@ void D3D11GraphicsEngine::SetupVS_ExConstantBuffer() {
     auto& view = Engine::GAPI->GetRendererState().TransformState.TransformView;
     auto& proj = Engine::GAPI->GetProjectionMatrix();
 
-    VS_ExConstantBuffer_PerFrame cb;
+    VS_ExConstantBuffer_PerFrame cb = {};
     cb.View = view;
     cb.Projection = proj;
     XMStoreFloat4x4( &cb.ViewProj, XMMatrixMultiply( XMLoadFloat4x4( &proj ), XMLoadFloat4x4( &view ) ) );
@@ -2439,9 +2453,7 @@ void D3D11GraphicsEngine::TestDrawWorldMesh() {
 
     DistortionTexture->BindToPixelShader( 0 );
 
-    DrawVertexBufferIndexedUINT(
-        Engine::GAPI->GetWrappedWorldMesh()->MeshVertexBuffer,
-        Engine::GAPI->GetWrappedWorldMesh()->MeshIndexBuffer, 0, 0 );
+    DrawVertexBufferIndexedUINTFromMeshInfo( Engine::GAPI->GetWrappedWorldMesh() );
 
     for ( auto const& renderItem : renderList ) {
         for ( auto const& mesh : renderItem->WorldMeshesByCustomTexture ) {
@@ -2476,21 +2488,31 @@ void D3D11GraphicsEngine::TestDrawWorldMesh() {
 }
 
 // Sets the color space for the swap chain in order to handle HDR output.
-void D3D11GraphicsEngine::UpdateColorSpace_SwapChain3()
+void D3D11GraphicsEngine::UpdateColorSpace_SwapChain()
 {
-    DXGI_COLOR_SPACE_TYPE colorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+    if ( !(m_HDR && m_swapchainflip) ) {
+        return; // no hdr, no work
+    }
+
+    Microsoft::WRL::ComPtr<IDXGISwapChain3> swapChain3;
+    if ( FAILED( SwapChain.As( &swapChain3 ) ) ) {
+        return;
+    }
 
     bool isDisplayHDR10 = false;
 
-    Microsoft::WRL::ComPtr<IDXGIOutput> output;
-    if ( SUCCEEDED( SwapChain3->GetContainingOutput( output.GetAddressOf() ) ) ) {
-        Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
-        if ( SUCCEEDED( output.As( &output6 ) ) ) {
-            DXGI_OUTPUT_DESC1 desc;
-            output6->GetDesc1( &desc );
-            if ( desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 ) {
-                // Display output is HDR10.
-                isDisplayHDR10 = true;
+    DXGI_COLOR_SPACE_TYPE colorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+    if ( m_HDR ) {
+        Microsoft::WRL::ComPtr<IDXGIOutput> output;
+        if ( SUCCEEDED( swapChain3->GetContainingOutput( output.GetAddressOf() ) ) ) {
+            Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
+            if ( SUCCEEDED( output.As( &output6 ) ) ) {
+                DXGI_OUTPUT_DESC1 desc;
+                output6->GetDesc1( &desc );
+                if ( desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 ) {
+                    // Display output is HDR10.
+                    isDisplayHDR10 = true;
+                }
             }
         }
     }
@@ -2512,58 +2534,10 @@ void D3D11GraphicsEngine::UpdateColorSpace_SwapChain3()
         }
     }
 
-    //m_colorSpace = colorSpace; //only used when access from other function required
-
     UINT colorSpaceSupport = 0;
-    if ( SUCCEEDED( SwapChain3->CheckColorSpaceSupport( colorSpace, &colorSpaceSupport ) )
+    if ( SUCCEEDED( swapChain3->CheckColorSpaceSupport( colorSpace, &colorSpaceSupport ) )
         && (colorSpaceSupport & DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT) ) {
-        SwapChain3->SetColorSpace1( colorSpace );
-        LogInfo() << "Using HDR Monitor ColorSpace";
-    }
-}
-
-void D3D11GraphicsEngine::UpdateColorSpace_SwapChain4()
-{
-    DXGI_COLOR_SPACE_TYPE colorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
-
-    bool isDisplayHDR10 = false;
-
-    Microsoft::WRL::ComPtr<IDXGIOutput> output;
-    if ( SUCCEEDED( SwapChain4->GetContainingOutput( output.GetAddressOf() ) ) ) {
-        Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
-        if ( SUCCEEDED( output.As( &output6 ) ) ) {
-            DXGI_OUTPUT_DESC1 desc;
-            output6->GetDesc1( &desc );
-            if ( desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 ) {
-                // Display output is HDR10.
-                isDisplayHDR10 = true;
-            }
-        }
-    }
-
-    if ( isDisplayHDR10 ) {
-        switch ( GetBackBufferFormat() ) {
-        case DXGI_FORMAT_R11G11B10_FLOAT: //origial DXGI_FORMAT_R10G10B10A2_UNORM
-            // The application creates the HDR10 signal.
-            colorSpace = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
-            break;
-
-        case DXGI_FORMAT_R16G16B16A16_FLOAT:
-            // The system creates the HDR10 signal; application uses linear values.
-            colorSpace = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
-            break;
-
-        default:
-            break;
-        }
-    }
-
-    //m_colorSpace = colorSpace; //only used when access from other function required
-
-    UINT colorSpaceSupport = 0;
-    if ( SUCCEEDED( SwapChain4->CheckColorSpaceSupport( colorSpace, &colorSpaceSupport ) )
-        && (colorSpaceSupport & DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT) ) {
-        SwapChain4->SetColorSpace1( colorSpace );
+        swapChain3->SetColorSpace1( colorSpace );
         LogInfo() << "Using HDR Monitor ColorSpace";
     }
 }
@@ -2606,9 +2580,7 @@ XRESULT D3D11GraphicsEngine::DrawMeshInfoListAlphablended(
     InfiniteRangeConstantBuffer->BindToPixelShader( 3 );
 
     // Bind wrapped mesh vertex buffers
-    DrawVertexBufferIndexedUINT(
-        Engine::GAPI->GetWrappedWorldMesh()->MeshVertexBuffer,
-        Engine::GAPI->GetWrappedWorldMesh()->MeshIndexBuffer, 0, 0 );
+    DrawVertexBufferIndexedUINTFromMeshInfo( Engine::GAPI->GetWrappedWorldMesh() );
 
     int lastAlphaFunc = 0;
 
@@ -2726,8 +2698,7 @@ XRESULT D3D11GraphicsEngine::DrawWorldMesh( bool noTextures ) {
     static std::vector<WorldMeshSectionInfo*> renderList; renderList.clear();
     Engine::GAPI->CollectVisibleSections( renderList );
 
-    MeshInfo* meshInfo = Engine::GAPI->GetWrappedWorldMesh();
-    DrawVertexBufferIndexedUINT( meshInfo->MeshVertexBuffer, meshInfo->MeshIndexBuffer, 0, 0 );
+    DrawVertexBufferIndexedUINTFromMeshInfo( Engine::GAPI->GetWrappedWorldMesh() );
 
     static std::vector<std::pair<MeshKey, WorldMeshInfo*>> meshList;
     auto CompareMesh = []( std::pair<MeshKey, WorldMeshInfo*>& a, std::pair<MeshKey, WorldMeshInfo*>& b ) -> bool { return a.first.Texture < b.first.Texture; };
@@ -2794,23 +2765,12 @@ XRESULT D3D11GraphicsEngine::DrawWorldMesh( bool noTextures ) {
             if ( mesh.first.Info->MaterialType == MaterialInfo::MT_Water )
                 continue;  // Don't pre-render water
 
-#if ENABLE_TESSELATION > 0
-            if ( mesh.second->TesselationSettings.buffer.VT_TesselationFactor > 0.0f )
-                continue;  // Don't pre-render tesselated surfaces
-#endif
-
             DrawVertexBufferIndexedUINT( nullptr, nullptr, mesh.second->Indices.size(), mesh.second->BaseIndexLocation );
         }
     }
 
     SetActivePixelShader( "PS_Diffuse" );
     ActivePS->Apply();
-
-#if ENABLE_TESSELATION > 0
-    bool tesselationEnabled =
-        Engine::GAPI->GetRendererState().RendererSettings.EnableTesselation &&
-        Engine::GAPI->GetRendererState().RendererSettings.AllowWorldMeshTesselation;
-#endif
 
     // Now draw the actual pixels
     zCTexture* bound = nullptr;
@@ -2866,68 +2826,13 @@ XRESULT D3D11GraphicsEngine::DrawWorldMesh( bool noTextures ) {
                 boundInfo = info;
             }
             bound = mesh.first.Texture;
-
-#if ENABLE_TESSELATION > 0
-            // Bind normalmap to HDS
-            if ( !mesh.second->IndicesPNAEN.empty() ) {
-                GetContext()->DSSetShaderResources( 0, 1, boundNormalmap.GetAddressOf() );
-                GetContext()->HSSetShaderResources( 0, 1, boundNormalmap.GetAddressOf() );
-            }
-#endif
         }
 
-#if ENABLE_TESSELATION > 0
-        // Check for tesselated mesh
-        if ( tesselationEnabled && !ActiveHDS &&
-            boundInfo->TextureTesselationSettings.buffer.VT_TesselationFactor >
-            0.0f ) {
-            // Set normal/displacement map
-            GetContext()->DSSetShaderResources( 0, 1, boundNormalmap.GetAddressOf() );
-            GetContext()->HSSetShaderResources( 0, 1, boundNormalmap.GetAddressOf() );
-            Setup_PNAEN( PNAEN_Default );
-        }
 
-        // Bind infos for this mesh
-        if ( boundInfo &&
-            boundInfo->TextureTesselationSettings.buffer.VT_TesselationFactor >
-            0.0f &&
-            !mesh.second->IndicesPNAEN.empty() &&
-            mesh.first.Material->GetAlphaFunc() <= zMAT_ALPHA_FUNC_NONE &&
-            !bound->HasAlphaChannel() )  // Only allow tesselation for materials
-                                        // without alphablending
-        {
-            boundInfo->TextureTesselationSettings.Constantbuffer->BindToDomainShader(
-                1 );
-            boundInfo->TextureTesselationSettings.Constantbuffer->BindToHullShader( 1 );
-        } else if ( ActiveHDS )  // Unbind tesselation-shaders if the mesh doesn't
-                            // support it
-        {
-            GetContext()->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
-            GetContext()->DSSetShader( nullptr, nullptr, 0 );
-            GetContext()->HSSetShader( nullptr, nullptr, 0 );
-            ActiveHDS = nullptr;
-            SetActiveVertexShader( "VS_Ex" );
-            ActiveVS->Apply();
-
-            // Bind wrapped mesh again
-            DrawVertexBufferIndexedUINT( meshInfo->MeshVertexBuffer, meshInfo->MeshIndexBuffer, 0, 0 );
-        }
-#endif
-
-        if ( Engine::GAPI->GetRendererState().RendererSettings.DrawWorldMesh > 2 ) {
-#if ENABLE_TESSELATION > 0
-            if ( ActiveHDS ) {
-                // Draw from mesh info
-                DrawVertexBufferIndexed( mesh.second->MeshVertexBuffer,
-                    mesh.second->MeshIndexBufferPNAEN,
-                    mesh.second->IndicesPNAEN.size() );
-            } else
-#endif
-            {
-                DrawVertexBufferIndexed( mesh.second->MeshVertexBuffer,
-                    mesh.second->MeshIndexBuffer,
-                    mesh.second->Indices.size() );
-            }
+        if ( mesh.second && Engine::GAPI->GetRendererState().RendererSettings.DrawWorldMesh > 2 ) {
+            DrawVertexBufferIndexed( mesh.second->MeshVertexBuffer,
+                mesh.second->MeshIndexBuffer,
+                mesh.second->Indices.size() );
         }
 
         std::pop_heap( meshList.begin(), meshList.end(), CompareMesh );
@@ -2937,247 +2842,6 @@ XRESULT D3D11GraphicsEngine::DrawWorldMesh( bool noTextures ) {
     // TODO: TODO: Remove DrawWorldMeshNaive finally and put this into a proper
     // location!
     UpdateOcclusion();
-
-    return XR_SUCCESS;
-}
-
-/** Draws the world mesh */
-XRESULT D3D11GraphicsEngine::DrawWorldMeshW( bool noTextures ) {
-    if ( !Engine::GAPI->GetRendererState().RendererSettings.DrawWorldMesh )
-        return XR_SUCCESS;
-
-    float3 camPos = Engine::GAPI->GetCameraPosition();
-
-    // Engine::GAPI->SetFarPlane(DEFAULT_FAR_PLANE);
-
-    INT2 camSection = WorldConverter::GetSectionOfPos( camPos );
-
-    XMMATRIX view = Engine::GAPI->GetViewMatrixXM();
-
-    // Setup renderstates
-    Engine::GAPI->GetRendererState().RasterizerState.SetDefault();
-    Engine::GAPI->GetRendererState().RasterizerState.CullMode = GothicRasterizerStateInfo::CM_CULL_BACK;
-    Engine::GAPI->GetRendererState().RasterizerState.SetDirty();
-
-    Engine::GAPI->GetRendererState().DepthState.SetDefault();
-    Engine::GAPI->GetRendererState().DepthState.SetDirty();
-
-    Engine::GAPI->ResetWorldTransform();
-    Engine::GAPI->SetViewTransformXM( view );
-
-    // Set shader
-    SetActivePixelShader( "PS_AtmosphereGround" );
-    auto nrmPS = ActivePS;
-    SetActivePixelShader( "PS_World" );
-    auto defaultPS = ActivePS;
-    SetActiveVertexShader( "VS_Ex" );
-    auto vsEx = ActiveVS;
-
-    // Set constant buffer
-    ActivePS->GetConstantBuffer()[0]->UpdateBuffer(
-        &Engine::GAPI->GetRendererState().GraphicsState );
-    ActivePS->GetConstantBuffer()[0]->BindToPixelShader( 0 );
-
-    GSky* sky = Engine::GAPI->GetSky();
-    ActivePS->GetConstantBuffer()[1]->UpdateBuffer( &sky->GetAtmosphereCB() );
-    ActivePS->GetConstantBuffer()[1]->BindToPixelShader( 1 );
-
-    if ( Engine::GAPI->GetRendererState().RendererSettings.WireframeWorld ) {
-        Engine::GAPI->GetRendererState().RasterizerState.Wireframe = true;
-    }
-
-    // Init drawcalls
-    SetupVS_ExMeshDrawCall();
-    SetupVS_ExConstantBuffer();
-
-    ActiveVS->GetConstantBuffer()[1]->UpdateBuffer( &XMMatrixIdentity() );
-    ActiveVS->GetConstantBuffer()[1]->BindToVertexShader( 1 );
-
-    InfiniteRangeConstantBuffer->BindToPixelShader( 3 );
-
-    int numSections = 0;
-    int sectionViewDist =
-        Engine::GAPI->GetRendererState().RendererSettings.SectionDrawRadius;
-
-    static std::vector<WorldMeshSectionInfo*> renderList; renderList.clear();
-    Engine::GAPI->CollectVisibleSections( renderList );
-
-    // Static, so we can clear the lists but leave the hashmap intact
-    static std::unordered_map<
-        zCTexture*, std::pair<MaterialInfo*, std::vector<WorldMeshInfo*>>>
-        meshesByMaterial;
-    static zCMesh* startMesh =
-        Engine::GAPI->GetLoadedWorldInfo()->BspTree->GetMesh();
-
-    if ( startMesh != Engine::GAPI->GetLoadedWorldInfo()->BspTree->GetMesh() ) {
-        meshesByMaterial.clear();  // Happens on world change
-        startMesh = Engine::GAPI->GetLoadedWorldInfo()->BspTree->GetMesh();
-    }
-
-    std::vector<MeshInfo*> WaterSurfaces;
-
-    for ( std::vector<WorldMeshSectionInfo*>::iterator itr = renderList.begin();
-        itr != renderList.end(); itr++ ) {
-        numSections++;
-        for ( std::map<MeshKey, WorldMeshInfo*>::iterator it =
-            (*itr)->WorldMeshes.begin();
-            it != (*itr)->WorldMeshes.end(); ++it ) {
-            if ( it->first.Material ) {
-                auto& p = meshesByMaterial[it->first.Material->GetTexture()];
-                p.second.emplace_back( it->second );
-
-                if ( !p.first ) {
-                    p.first = Engine::GAPI->GetMaterialInfoFrom(
-                        it->first.Material->GetTextureSingle() );
-                }
-            } else {
-                meshesByMaterial[nullptr].second.emplace_back( it->second );
-                meshesByMaterial[nullptr].first =
-                    Engine::GAPI->GetMaterialInfoFrom( nullptr );
-            }
-        }
-    }
-
-    // Bind wrapped mesh vertex buffers
-    DrawVertexBufferIndexedUINT(
-        Engine::GAPI->GetWrappedWorldMesh()->MeshVertexBuffer,
-        Engine::GAPI->GetWrappedWorldMesh()->MeshIndexBuffer, 0, 0 );
-
-    for ( auto&& textureInfo : meshesByMaterial ) {
-        if ( textureInfo.second.second.empty() ) continue;
-
-        if ( !textureInfo.first ) {
-            DistortionTexture->BindToPixelShader( 0 );
-        } else {
-            MaterialInfo* info = textureInfo.second.first;
-            if ( !info->Constantbuffer ) info->UpdateConstantbuffer();
-
-            // Check surface type
-            if ( info->MaterialType == MaterialInfo::MT_Water ) {
-                FrameWaterSurfaces[textureInfo.first] = textureInfo.second.second;
-                textureInfo.second.second.resize( 0 );
-                continue;
-            }
-
-            info->Constantbuffer->BindToPixelShader( 2 );
-
-            // Bind texture
-            if ( textureInfo.first->CacheIn( 0.6f ) == zRES_CACHED_IN )
-                textureInfo.first->Bind( 0 );
-            else
-                continue;
-
-            // Querry the second texture slot to see if there is a normalmap bound
-            {
-                wrl::ComPtr<ID3D11ShaderResourceView> nrmmap;
-                GetContext()->PSGetShaderResources( 1, 1, nrmmap.GetAddressOf() );
-                if ( !nrmmap.Get() ) {
-                    if ( ActivePS != defaultPS ) {
-                        ActivePS = defaultPS;
-                        ActivePS->Apply();
-                    }
-                } else {
-                    if ( ActivePS != nrmPS ) {
-                        ActivePS = nrmPS;
-                        ActivePS->Apply();
-                    }
-                }
-            }
-            // Check for overwrites
-            // TODO: This is slow, sort this!
-            if ( !info->VertexShader.empty() ) {
-                SetActiveVertexShader( info->VertexShader );
-                if ( ActiveVS ) ActiveVS->Apply();
-            } else if ( ActiveVS != vsEx ) {
-                ActiveVS = vsEx;
-                ActiveVS->Apply();
-            }
-
-            if ( !info->TesselationShaderPair.empty() ) {
-                info->Constantbuffer->BindToDomainShader( 2 );
-
-                GetContext()->IASetPrimitiveTopology(
-                    D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST );
-
-                auto hd =
-                    ShaderManager->GetHDShader( info->TesselationShaderPair );
-                if ( hd ) hd->Apply();
-
-                ActiveHDS = hd;
-
-                DefaultHullShaderConstantBuffer hscb = {};
-
-                // convert to EdgesPerScreenHeight
-                hscb.H_EdgesPerScreenHeight =
-                    GetResolution().y / Engine::GAPI->GetRendererState().RendererSettings.TesselationFactor;
-                hscb.H_Proj11 =
-                    Engine::GAPI->GetRendererState().TransformState.TransformProj._22;
-                hscb.H_GlobalTessFactor = Engine::GAPI->GetRendererState().RendererSettings.TesselationFactor;
-                hscb.H_ScreenResolution = float2( GetResolution().x, GetResolution().y );
-                hscb.H_FarPlane = Engine::GAPI->GetFarPlane();
-                hd->GetConstantBuffer()[0]->UpdateBuffer( &hscb );
-                hd->GetConstantBuffer()[0]->BindToHullShader( 1 );
-
-            } else if ( ActiveHDS ) {
-                ActiveHDS = nullptr;
-
-                // Bind wrapped mesh vertex buffers
-                DrawVertexBufferIndexedUINT(
-                    Engine::GAPI->GetWrappedWorldMesh()->MeshVertexBuffer,
-                    Engine::GAPI->GetWrappedWorldMesh()->MeshIndexBuffer, 0, 0 );
-                GetContext()->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
-                D3D11HDShader::Unbind();
-            }
-
-            if ( !info->PixelShader.empty() ) {
-                SetActivePixelShader( info->PixelShader );
-                if ( ActivePS ) ActivePS->Apply();
-
-            } else if ( ActivePS != defaultPS && ActivePS != nrmPS ) {
-                // Querry the second texture slot to see if there is a normalmap bound
-                Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> nrmmap;
-                GetContext()->PSGetShaderResources( 1, 1, nrmmap.GetAddressOf() );
-                if ( !nrmmap.Get() ) {
-                    if ( ActivePS != defaultPS ) {
-                        ActivePS = defaultPS;
-                        ActivePS->Apply();
-                    }
-                } else {
-                    if ( ActivePS != nrmPS ) {
-                        ActivePS = nrmPS;
-                        ActivePS->Apply();
-                    }
-                    nrmmap->Release();
-                }
-            }
-        }
-
-        if ( ActiveHDS ) {
-            for ( auto&& itr = textureInfo.second.second.begin(); itr != textureInfo.second.second.end(); itr++ ) {
-                DrawVertexBufferIndexed( (*itr)->MeshVertexBuffer,
-                    (*itr)->MeshIndexBuffer,
-                    (*itr)->Indices.size() );
-            }
-        } else {
-            for ( auto&& itr = textureInfo.second.second.begin(); itr != textureInfo.second.second.end(); itr++ ) {
-                // Draw from wrapped mesh
-                DrawVertexBufferIndexedUINT( nullptr, nullptr, (*itr)->Indices.size(), (*itr)->BaseIndexLocation );
-            }
-        }
-
-        Engine::GAPI->GetRendererState().RendererInfo.WorldMeshDrawCalls += textureInfo.second.second.size();
-
-        // Clear the list, leaving the memory allocated
-        textureInfo.second.second.resize( 0 );
-    }
-
-    if ( Engine::GAPI->GetRendererState().RendererSettings.WireframeWorld ) {
-        Engine::GAPI->GetRendererState().RasterizerState.Wireframe = false;
-    }
-
-    Engine::GAPI->GetRendererState().RendererInfo.FrameNumSectionsDrawn = numSections;
-    Engine::GAPI->GetRendererState().RasterizerState.CullMode = GothicRasterizerStateInfo::CM_CULL_FRONT;
-    Engine::GAPI->GetRendererState().RasterizerState.SetDirty();
 
     return XR_SUCCESS;
 }
@@ -3221,9 +2885,8 @@ void D3D11GraphicsEngine::DrawWaterSurfaces() {
         DepthStencilBuffer->GetDepthStencilView().Get() );
 
     // Bind wrapped mesh vertex buffers
-    DrawVertexBufferIndexedUINT(
-        Engine::GAPI->GetWrappedWorldMesh()->MeshVertexBuffer,
-        Engine::GAPI->GetWrappedWorldMesh()->MeshIndexBuffer, 0, 0 );
+    DrawVertexBufferIndexedUINTFromMeshInfo( Engine::GAPI->GetWrappedWorldMesh() );
+
     for ( const auto& [texture, meshes] : FrameWaterSurfaces ) {
         // Draw surfaces
         for ( const auto& mesh : meshes ) {
@@ -3257,7 +2920,7 @@ void D3D11GraphicsEngine::DrawWaterSurfaces() {
     DepthStencilBufferCopy->BindToPixelShader( GetContext().Get(), 2 );
 
     // Fill refraction info CB and bind it
-    RefractionInfoConstantBuffer ricb;
+    RefractionInfoConstantBuffer ricb = {};
     ricb.RI_Projection = Engine::GAPI->GetProjectionMatrix();
     ricb.RI_ViewportSize = float2( Resolution.x, Resolution.y );
     ricb.RI_Time = Engine::GAPI->GetTimeSeconds();
@@ -3284,9 +2947,6 @@ void D3D11GraphicsEngine::DrawWaterSurfaces() {
     // Draw Ocean
     if ( !FeatureLevel10Compatibility && Engine::GAPI->GetOcean() ) Engine::GAPI->GetOcean()->Draw();
 
-    // Unbind temporary backbuffer copy
-    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv;
-    GetContext()->PSSetShaderResources( 5, 1, srv.GetAddressOf() );
 
     GetContext()->OMSetRenderTargets( 1, HDRBackBuffer->GetRenderTargetView().GetAddressOf(),
         DepthStencilBuffer->GetDepthStencilView().Get() );
@@ -3358,14 +3018,15 @@ void XM_CALLCONV D3D11GraphicsEngine::DrawWorldAround(
     bool colorWritesEnabled =
         Engine::GAPI->GetRendererState().BlendState.ColorWritesEnabled;
     float alphaRef = Engine::GAPI->GetRendererState().GraphicsState.FF_AlphaRef;
-    bool isOutdoor = (Engine::GAPI->GetLoadedWorldInfo()->BspTree->GetBspTreeMode() == zBSP_MODE_OUTDOOR);
+    bool isOutdoor = true;
+    if ( Engine::GAPI->GetLoadedWorldInfo()->BspTree  )
+        isOutdoor = (Engine::GAPI->GetLoadedWorldInfo()->BspTree->GetBspTreeMode() == zBSP_MODE_OUTDOOR);
 
     std::vector<WorldMeshSectionInfo*> drawnSections;
 
     if ( Engine::GAPI->GetRendererState().RendererSettings.DrawWorldMesh ) {
         // Bind wrapped mesh vertex buffers
-        DrawVertexBufferIndexedUINT( Engine::GAPI->GetWrappedWorldMesh()->MeshVertexBuffer,
-            Engine::GAPI->GetWrappedWorldMesh()->MeshIndexBuffer, 0, 0 );
+        DrawVertexBufferIndexedUINTFromMeshInfo( Engine::GAPI->GetWrappedWorldMesh() );
 
         ActiveVS->GetConstantBuffer()[1]->UpdateBuffer( &XMMatrixIdentity() );
         ActiveVS->GetConstantBuffer()[1]->BindToVertexShader( 1 );
@@ -3582,11 +3243,9 @@ void XM_CALLCONV D3D11GraphicsEngine::DrawWorldAround(
                 }
 
                 // Ghosts shouldn't have shadows
-                if ( oCNPC* npc = skeletalMeshVob->Vob->As<oCNPC>() ) {
-                    if ( npc->HasFlag( NPC_FLAG_GHOST ) ) {
+                if ( skeletalMeshVob->Vob->GetVisualAlpha() && skeletalMeshVob->Vob->GetVobTransparency() < 0.7f ) {
                         continue;
                     }
-                }
 
                 // Check vob range
                 float dist;
@@ -3690,9 +3349,8 @@ void XM_CALLCONV D3D11GraphicsEngine::DrawWorldAround( FXMVECTOR position,
 
     if ( Engine::GAPI->GetRendererState().RendererSettings.DrawWorldMesh ) {
         // Bind wrapped mesh vertex buffers
-        DrawVertexBufferIndexedUINT(
-            Engine::GAPI->GetWrappedWorldMesh()->MeshVertexBuffer,
-            Engine::GAPI->GetWrappedWorldMesh()->MeshIndexBuffer, 0, 0 );
+        DrawVertexBufferIndexedUINTFromMeshInfo( Engine::GAPI->GetWrappedWorldMesh() );
+
 
         ActiveVS->GetConstantBuffer()[1]->UpdateBuffer( &XMMatrixIdentity() );
         ActiveVS->GetConstantBuffer()[1]->BindToVertexShader( 1 );
@@ -3748,6 +3406,7 @@ void XM_CALLCONV D3D11GraphicsEngine::DrawWorldAround( FXMVECTOR position,
     }
 
     if ( Engine::GAPI->GetRendererState().RendererSettings.DrawVOBs ) {
+        auto _ = RecordGraphicsEvent( L"Draw VOBs" );
         // Reset instances
         const std::unordered_map<zCProgMeshProto*, MeshVisualInfo*>& staticMeshVisuals =
             Engine::GAPI->GetStaticMeshVisuals();
@@ -3774,6 +3433,15 @@ void XM_CALLCONV D3D11GraphicsEngine::DrawWorldAround( FXMVECTOR position,
             GetContext()->PSSetShader( nullptr, nullptr, 0 );
         }
 
+        // timer range is between 0 and 100000, for now having bugs with huge values for sin/cos
+        VS_ExConstantBuffer_Wind windBuff;
+        windBuff.globalTime = static_cast<float>( Engine::GAPI->GetTotalTimeDW() % 100000 );
+        windBuff.windDir = float3( 0.3f, 0.15f, 0.5f );
+
+        if ( ActiveVS ) {
+            ActiveVS->GetConstantBuffer()[1]->BindToVertexShader( 1 );
+        }
+
         // Static meshes should already be in buffer from main stage rendering
         /*size_t ByteWidth = DynamicInstancingBuffer->GetSizeInBytes();
         byte* data;
@@ -3797,6 +3465,13 @@ void XM_CALLCONV D3D11GraphicsEngine::DrawWorldAround( FXMVECTOR position,
         // Draw all vobs the player currently sees
         for ( auto const& staticMeshVisual : staticMeshVisuals ) {
             if ( staticMeshVisual.second->Instances.empty() ) continue;
+
+            windBuff.minHeight = staticMeshVisual.second->BBox.Min.y;
+            windBuff.maxHeight = staticMeshVisual.second->BBox.Max.y;
+
+            if ( ActiveVS ) {
+                ActiveVS->GetConstantBuffer()[1]->UpdateBuffer( &windBuff );
+            }
 
             bool doReset = true;
             for ( auto const& itt : staticMeshVisual.second->MeshesByTexture ) {
@@ -3851,16 +3526,15 @@ void XM_CALLCONV D3D11GraphicsEngine::DrawWorldAround( FXMVECTOR position,
     }
 
     if ( Engine::GAPI->GetRendererState().RendererSettings.DrawSkeletalMeshes ) {
+        auto _ = RecordGraphicsEvent( L"Draw Skeletal Meshes" );
         // Draw skeletal meshes
         for ( auto const& skeletalMeshVob : Engine::GAPI->GetSkeletalMeshVobs() ) {
             if ( !skeletalMeshVob->VisualInfo ) continue;
 
             // Ghosts shouldn't have shadows
-            if ( oCNPC* npc = skeletalMeshVob->Vob->As<oCNPC>() ) {
-                if ( npc->HasFlag( NPC_FLAG_GHOST ) ) {
+            if ( skeletalMeshVob->Vob->GetVisualAlpha() && skeletalMeshVob->Vob->GetVobTransparency() < 0.7f ) {
                     continue;
                 }
-            }
 
             float dist; XMStoreFloat( &dist, XMVector3Length( skeletalMeshVob->Vob->GetPositionWorldXM() - position ) );
             if ( dist > Engine::GAPI->GetRendererState().RendererSettings.IndoorVobDrawRadius )
@@ -3926,10 +3600,14 @@ XRESULT D3D11GraphicsEngine::DrawVOBsInstanced() {
     SetupVS_ExMeshDrawCall();
     SetupVS_ExConstantBuffer();
 
-#if ENABLE_TESSELATION > 0
-    bool tesselationEnabled =
-        Engine::GAPI->GetRendererState().RendererSettings.EnableTesselation;
-#endif
+    // timer range is between 0 and 100000, for now having bugs with huge values for sin/cos
+    VS_ExConstantBuffer_Wind windBuff;
+    windBuff.globalTime = static_cast<float>( Engine::GAPI->GetTotalTimeDW() % 100000 );
+    windBuff.windDir = float3( 0.3f, 0.15f, 0.5f );
+
+    if ( ActiveVS ) {
+        ActiveVS->GetConstantBuffer()[1]->BindToVertexShader( 1 );
+    }
 
     static std::vector<VobInfo*> vobs;
     static std::vector<VobLightInfo*> lights;
@@ -3937,12 +3615,13 @@ XRESULT D3D11GraphicsEngine::DrawVOBsInstanced() {
 
     if ( Engine::GAPI->GetRendererState().RendererSettings.DrawVOBs ||
         Engine::GAPI->GetRendererState().RendererSettings.EnableDynamicLighting ) {
-        if ( !Engine::GAPI->GetRendererState().RendererSettings.FixViewFrustum ||
-            (Engine::GAPI->GetRendererState().RendererSettings.FixViewFrustum &&
+        if ( !Engine::GAPI->GetRendererState().RendererSettings.LockViewFrustum ||
+            (Engine::GAPI->GetRendererState().RendererSettings.LockViewFrustum &&
                 vobs.empty()) ) {
             Engine::GAPI->CollectVisibleVobs( vobs, lights, mobs );
         }
     }
+
     if ( Engine::GAPI->GetRendererState().RendererSettings.AnimateStaticVobs ) {
         UpdateMorphMeshVisual();
     }
@@ -4007,6 +3686,13 @@ XRESULT D3D11GraphicsEngine::DrawVOBsInstanced() {
                 OutdoorVobsConstantBuffer->BindToPixelShader( 3 );
             }
 
+            windBuff.minHeight = staticMeshVisual.second->BBox.Min.y;
+            windBuff.maxHeight = staticMeshVisual.second->BBox.Max.y;
+
+            if ( ActiveVS ) {
+                ActiveVS->GetConstantBuffer()[1]->UpdateBuffer( &windBuff );
+            }
+
             bool doReset = true;  // Don't reset alpha-vobs here
             for ( auto const& itt : staticMeshVisual.second->MeshesByTexture ) {
                 const std::vector<MeshInfo*>& mlist = itt.second;
@@ -4030,50 +3716,26 @@ XRESULT D3D11GraphicsEngine::DrawVOBsInstanced() {
                 for ( unsigned int i = 0; i < mlist.size(); i++ ) {
                     zCTexture* tx = itt.first.Material->GetAniTexture();
                     MeshInfo* mi = mlist[i];
+                    MaterialInfo* info = itt.first.Info;
 
                     if ( !tx ) {
-#ifndef BUILD_SPACER_NET
-#ifndef BUILD_SPACER
-                        continue;  // Don't render meshes without texture if not in spacer
-#else
-                        // This is most likely some spacer helper-vob
-                        WhiteTexture->BindToPixelShader( 0 );
-                        PS_Diffuse->Apply();
-
-                        /*// Apply colors for these meshes
-                        MaterialInfo::Buffer b;
-                        ZeroMemory(&b, sizeof(b));
-                        b.Color = itt->first.Material->GetColor();
-                        PS_Diffuse->GetConstantBuffer()[2]->UpdateBuffer(&b);
-                        PS_Diffuse->GetConstantBuffer()[2]->BindToPixelShader(2);*/
-#endif
-#else
-                        if ( !Engine::GAPI->GetRendererState().RendererSettings.RunInSpacerNet ) {
-                            continue;
-                        }
+#if defined(BUILD_SPACER_NET) || defined(BUILD_SPACER)
                         bool showHelpers = *reinterpret_cast<int*>(GothicMemoryLocations::zCVob::s_ShowHelperVisuals) != 0;
-
-                        if ( showHelpers ) {
+                        if ( showHelpers ) 
+                        {
                             WhiteTexture->BindToPixelShader( 0 );
                             PS_DiffuseAlphatest->Apply();
-
-                            MaterialInfo::Buffer b = {};
-
-                            b.Color = itt.first.Material->GetColor();
-                            PS_DiffuseAlphatest->GetConstantBuffer()[2]->UpdateBuffer( &b );
-                            PS_DiffuseAlphatest->GetConstantBuffer()[2]->BindToPixelShader( 2 );
-
+                            // The proper way to do it would be to go through all the polys and recolor the buffer, but it's not worth it as performance would drop significantly
+                            // This thing is just a piece of shit
                         } else {
                             continue;
                         }
-
 #endif
                     } else {
                         // Bind texture
                         if ( tx->CacheIn( 0.6f ) == zRES_CACHED_IN ) {
                             MyDirectDrawSurface7* surface = tx->GetSurface();
                             ID3D11ShaderResourceView* srv[3];
-                            MaterialInfo* info = itt.first.Info;
 
                             // Get diffuse and normalmap
                             srv[0] = surface->GetEngineTexture()->GetShaderResourceView().Get();
@@ -4100,12 +3762,6 @@ XRESULT D3D11GraphicsEngine::DrawVOBsInstanced() {
                             // Bind both
                             GetContext()->PSSetShaderResources( 0, 3, srv );
 
-#if ENABLE_TESSELATION > 0
-                            // Set normal/displacement map
-                            GetContext()->DSSetShaderResources( 0, 1, &srv[1] );
-                            GetContext()->HSSetShaderResources( 0, 1, &srv[1] );
-#endif
-
                             // Force alphatest on vobs for now
                             BindShaderForTexture( tx, true, 0 );
 
@@ -4115,44 +3771,17 @@ XRESULT D3D11GraphicsEngine::DrawVOBsInstanced() {
                         }
                     }
 
-#if ENABLE_TESSELATION > 0
-                    if ( tesselationEnabled && !mi->IndicesPNAEN.empty() &&
-                        RenderingStage == DES_MAIN &&
-                        staticMeshVisual.second->TesselationInfo.buffer.VT_TesselationFactor > 0.0f ) {
-                        Setup_PNAEN( PNAEN_Instanced );
-                        staticMeshVisual.second->TesselationInfo.Constantbuffer->BindToDomainShader( 1 );
-                        staticMeshVisual.second->TesselationInfo.Constantbuffer->BindToHullShader( 1 );
-                    } else if ( ActiveHDS ) {
-                        GetContext()->IASetPrimitiveTopology(
-                            D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
-                        GetContext()->DSSetShader( nullptr, nullptr, 0 );
-                        GetContext()->HSSetShader( nullptr, nullptr, 0 );
-                        ActiveHDS = nullptr;
-                        SetActiveVertexShader( "VS_ExInstancedObj" );
-                        ActiveVS->Apply();
-                    }
-
-                    if ( ActiveHDS ) {
-                        // Draw batch tesselated
-                        DrawInstanced( mi->MeshVertexBuffer, mi->MeshIndexBufferPNAEN,
-                            mi->IndicesPNAEN.size(), DynamicInstancingBuffer.get(),
-                            sizeof( VobInstanceInfo ), staticMeshVisual.second->Instances.size(),
-                            sizeof( ExVertexStruct ), staticMeshVisual.second->StartInstanceNum );
-                    } else
-#endif
-                    {
-                        // Draw batch
-                        DrawInstanced( mi->MeshVertexBuffer, mi->MeshIndexBuffer,
-                            mi->Indices.size(), DynamicInstancingBuffer.get(),
-                            sizeof( VobInstanceInfo ), staticMeshVisual.second->Instances.size(),
-                            sizeof( ExVertexStruct ), staticMeshVisual.second->StartInstanceNum );
-                    }
+                    // Draw batch
+                    DrawInstanced( mi->MeshVertexBuffer, mi->MeshIndexBuffer,
+                        mi->Indices.size(), DynamicInstancingBuffer.get(),
+                        sizeof( VobInstanceInfo ), staticMeshVisual.second->Instances.size(),
+                        sizeof( ExVertexStruct ), staticMeshVisual.second->StartInstanceNum );
                 }
             }
 
             // Reset visual
             if ( doReset &&
-                !Engine::GAPI->GetRendererState().RendererSettings.FixViewFrustum ) {
+                !Engine::GAPI->GetRendererState().RendererSettings.LockViewFrustum ) {
                 staticMeshVisual.second->StartNewFrame();
             }
         }
@@ -4190,6 +3819,7 @@ XRESULT D3D11GraphicsEngine::DrawVOBsInstanced() {
             DrawQuadMarks();
         }
 
+        auto _ = RecordGraphicsEvent( L"Draw Lighting" );
         START_TIMING();
         // Draw lighting, since everything is drawn by now and we have the lights
         // here
@@ -4261,6 +3891,13 @@ XRESULT D3D11GraphicsEngine::DrawVOBsInstanced() {
             info->Constantbuffer->BindToPixelShader( 2 );
         }
 
+        windBuff.minHeight = vi->BBox.Min.y;
+        windBuff.maxHeight = vi->BBox.Max.y;
+
+        if ( ActiveVS ) {
+            ActiveVS->GetConstantBuffer()[1]->UpdateBuffer( &windBuff );
+        }
+
         // Draw batch
         DrawInstanced( mi->MeshVertexBuffer, mi->MeshIndexBuffer, mi->Indices.size(),
             DynamicInstancingBuffer.get(), sizeof( VobInstanceInfo ),
@@ -4271,7 +3908,7 @@ XRESULT D3D11GraphicsEngine::DrawVOBsInstanced() {
         vi->StartNewFrame();
     }
 
-    if ( !Engine::GAPI->GetRendererState().RendererSettings.FixViewFrustum ) {
+    if ( !Engine::GAPI->GetRendererState().RendererSettings.LockViewFrustum ) {
         lights.clear();
         vobs.clear();
         mobs.clear();
@@ -4430,6 +4067,9 @@ void D3D11GraphicsEngine::SetDefaultStates( bool force ) {
 
 /** Draws the sky using the GSky-Object */
 XRESULT D3D11GraphicsEngine::DrawSky() {
+    if ( !Engine::GAPI->GetLoadedWorldInfo()->MainWorld )
+        return XR_FAILED;
+
     GSky* sky = Engine::GAPI->GetSky();
     sky->RenderSky();
 
@@ -4483,7 +4123,7 @@ XRESULT D3D11GraphicsEngine::DrawSky() {
     ActivePS->GetConstantBuffer()[0]->UpdateBuffer( &sky->GetAtmosphereCB() );
     ActivePS->GetConstantBuffer()[0]->BindToPixelShader( 1 );
 
-    VS_ExConstantBuffer_PerInstance cbi;
+    VS_ExConstantBuffer_PerInstance cbi = {};
     XMStoreFloat4x4( &cbi.World, world );
     ActiveVS->GetConstantBuffer()[1]->UpdateBuffer( &cbi );
     ActiveVS->GetConstantBuffer()[1]->BindToVertexShader( 1 );
@@ -4543,31 +4183,17 @@ XRESULT D3D11GraphicsEngine::DrawSky() {
 
 /** Called when a key got pressed */
 XRESULT D3D11GraphicsEngine::OnKeyDown( unsigned int key ) {
-    switch ( key ) {
-#ifndef PUBLIC_RELEASE
-    case VK_NUMPAD0:
-        Engine::GAPI->PrintMessageTimed( INT2( 30, 30 ), "Reloading shaders..." );
-        ReloadShaders();
-        break;
-#endif
-
-    case VK_NUMPAD7:
-        if ( Engine::GAPI->GetRendererState().RendererSettings.AllowNumpadKeys ) {
-            SaveScreenshotNextFrame = true;
-        }
-        break;
-    case VK_F1:
-        if ( !UIView && !Engine::GAPI->GetRendererState().RendererSettings.EnableEditorPanel ) {
-            // If the ui-view hasn't been created yet and the editorpanel is
-            // disabled, enable it here
-            Engine::GAPI->GetRendererState().RendererSettings.EnableEditorPanel =
-                true;
-            CreateMainUIView();
-        }
-        break;
-    default:
-        break;
-    }
+//    switch ( key ) {
+//#ifndef PUBLIC_RELEASE
+//    case VK_NUMPAD0:
+//        Engine::GAPI->PrintMessageTimed( INT2( 30, 30 ), "Reloading shaders..." );
+//        ReloadShaders();
+//        break;
+//#endif
+//
+//    default:
+//        break;
+//    }
 
     return XR_SUCCESS;
 }
@@ -4593,8 +4219,7 @@ XRESULT D3D11GraphicsEngine::DrawLighting( std::vector<VobLightInfo*>& lights ) 
     // Draw world shadows
     // ********************************
     CameraReplacement cr;
-    XMFLOAT3 cameraPosition;
-    XMStoreFloat3( &cameraPosition, Engine::GAPI->GetCameraPositionXM() );
+    XMFLOAT3 cameraPosition = Engine::GAPI->GetCameraPosition();
     FXMVECTOR vPlayerPosition =
         Engine::GAPI->GetPlayerVob() != nullptr
         ? Engine::GAPI->GetPlayerVob()->GetPositionWorldXM()
@@ -4604,6 +4229,7 @@ XRESULT D3D11GraphicsEngine::DrawLighting( std::vector<VobLightInfo*>& lights ) 
 
     // Draw pointlight shadows
     if ( Engine::GAPI->GetRendererState().RendererSettings.EnablePointlightShadows > 0 ) {
+        auto _ = RecordGraphicsEvent( L"Draw Pointlight Shadows" );
         std::list<VobLightInfo*> importantUpdates;
 
         for ( auto const& light : lights ) {
@@ -4738,17 +4364,19 @@ XRESULT D3D11GraphicsEngine::DrawLighting( std::vector<VobLightInfo*>& lights ) 
 
     // Indoor worlds don't need shadowmaps for the world
     static zTBspMode lastBspMode = zBSP_MODE_OUTDOOR;
-    if ( Engine::GAPI->GetLoadedWorldInfo()->BspTree->GetBspTreeMode() == zBSP_MODE_OUTDOOR ) {
-        RenderShadowmaps( WorldShadowCP, nullptr, true );
-        lastBspMode = zBSP_MODE_OUTDOOR;
-    } else if ( Engine::GAPI->GetRendererState().RendererSettings.EnableShadows ) {
-        // We need to clear shadowmap to avoid some glitches in indoor locations
-        // only need to do it once :)
-        if ( lastBspMode == zBSP_MODE_OUTDOOR ) {
-            GetContext()->ClearDepthStencilView( WorldShadowmap1->GetDepthStencilView().Get(), D3D11_CLEAR_DEPTH, 0.0f, 0 );
-            lastBspMode = zBSP_MODE_INDOOR;
+    if ( Engine::GAPI->GetLoadedWorldInfo()->BspTree )
+        if ( Engine::GAPI->GetLoadedWorldInfo()->BspTree->GetBspTreeMode() == zBSP_MODE_OUTDOOR ) {
+            auto _ = RecordGraphicsEvent( L"Draw world Shadowmap" );
+            RenderShadowmaps( WorldShadowCP, nullptr, true );
+            lastBspMode = zBSP_MODE_OUTDOOR;
+        } else if ( Engine::GAPI->GetRendererState().RendererSettings.EnableShadows ) {
+            // We need to clear shadowmap to avoid some glitches in indoor locations
+            // only need to do it once :)
+            if ( lastBspMode == zBSP_MODE_OUTDOOR ) {
+                GetContext()->ClearDepthStencilView( WorldShadowmap1->GetDepthStencilView().Get(), D3D11_CLEAR_DEPTH, 0.0f, 0 );
+                lastBspMode = zBSP_MODE_INDOOR;
+            }
         }
-    }
 
     SetDefaultStates();
 
@@ -4757,6 +4385,7 @@ XRESULT D3D11GraphicsEngine::DrawLighting( std::vector<VobLightInfo*>& lights ) 
 
     // Draw rainmap, if raining
     if ( Engine::GAPI->GetSceneWetness() > 0.00001f ) {
+        auto _ = RecordGraphicsEvent( L"Draw Rainmap" );
         Effects->DrawRainShadowmap();
     }
 
@@ -4777,7 +4406,7 @@ XRESULT D3D11GraphicsEngine::DrawLighting( std::vector<VobLightInfo*>& lights ) 
         WORLD_SECTION_SIZE );
 
     Engine::GAPI->GetRendererState().BlendState.SetAdditiveBlending();
-    if ( Engine::GAPI->GetRendererState().RendererSettings.LimitLightIntesity ) {
+    if ( Engine::GAPI->GetRendererState().RendererSettings.LimitLightIntensity ) {
         Engine::GAPI->GetRendererState().BlendState.BlendOp = GothicBlendStateInfo::BO_BLEND_OP_MAX;
     }
     Engine::GAPI->GetRendererState().BlendState.SetDirty();
@@ -4812,6 +4441,7 @@ XRESULT D3D11GraphicsEngine::DrawLighting( std::vector<VobLightInfo*>& lights ) 
     DepthStencilBufferCopy->BindToPixelShader( GetContext().Get(), 2 );
 
     // Draw all lights
+    m_UserDefinedAnnotation->SetMarker( L"Draw Lights" );
     for ( auto const& light : lights ) {
         zCVobLight* vob = light->Vob;
 
@@ -4978,27 +4608,31 @@ XRESULT D3D11GraphicsEngine::DrawLighting( std::vector<VobLightInfo*>& lights ) 
     scb.SQ_WorldAOStrength = Engine::GAPI->GetRendererState().RendererSettings.WorldAOStrength;
 
     // Modify lightsettings when indoor
-    if ( Engine::GAPI->GetLoadedWorldInfo()->BspTree->GetBspTreeMode() ==
-        zBSP_MODE_INDOOR ) {
-        // TODO: fix caves in Gothic 1 being way too dark. Remove this workaround.
-#if BUILD_GOTHIC_1_08k
-        // Kirides: Nah, just make it dark enough.
-        scb.SQ_ShadowStrength = 0.085f;
-#else
-        // Turn off shadows
-        scb.SQ_ShadowStrength = 0.0f;
-#endif
+    if ( Engine::GAPI->GetLoadedWorldInfo()->BspTree )
+        if ( Engine::GAPI->GetLoadedWorldInfo()->BspTree->GetBspTreeMode() ==
+            zBSP_MODE_INDOOR ) {
+            // TODO: fix caves in Gothic 1 being way too dark. Remove this workaround.
+    #if BUILD_GOTHIC_1_08k
+            // Kirides: Nah, just make it dark enough.
+            if ( Engine::GAPI->GetLoadedWorldInfo()->WorldName == "ORCTEMPEL" )
+                scb.SQ_ShadowStrength = 0.15f;
+            else
+                scb.SQ_ShadowStrength = 0.3f;
+    #else
+            // Turn off shadows
+            scb.SQ_ShadowStrength = 0.0f;
+    #endif
 
-        // Only use world AO
-        scb.SQ_WorldAOStrength = 1.0f;
-        // Darken the lights
-        scb.SQ_LightColor = float4( 1, 1, 1, DEFAULT_INDOOR_VOB_AMBIENT.x );
-    }
+            // Only use world AO
+            scb.SQ_WorldAOStrength = 1.0f;
+            // Darken the lights
+            scb.SQ_LightColor = float4( 1, 1, 1, DEFAULT_INDOOR_VOB_AMBIENT.x );
+        }
 
     ActivePS->GetConstantBuffer()[0]->UpdateBuffer( &scb );
     ActivePS->GetConstantBuffer()[0]->BindToPixelShader( 0 );
 
-    PFXVS_ConstantBuffer vscb;
+    PFXVS_ConstantBuffer vscb = {};
     vscb.PFXVS_InvProj = scb.SQ_InvProj;
     ActiveVS->GetConstantBuffer()[0]->UpdateBuffer( &vscb );
     ActiveVS->GetConstantBuffer()[0]->BindToVertexShader( 0 );
@@ -5152,6 +4786,7 @@ void XM_CALLCONV D3D11GraphicsEngine::RenderShadowmaps( FXMVECTOR cameraPosition
         GetContext()->ClearDepthStencilView( dsvOverwrite.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0 );
 
         // Draw the world mesh without textures
+        auto _ = RecordGraphicsEvent( L"DrawWorldAround" );
         DrawWorldAround( cameraPosition, 2, 10000.0f, cullFront, dontCull );
     } else {
         if ( Engine::GAPI->GetSky()->GetAtmoshpereSettings().LightDirection.y <= 0 ) {
@@ -5200,6 +4835,8 @@ D3D11ENGINE_RENDER_STAGE D3D11GraphicsEngine::GetRenderingStage() {
 
 /** Draws a VOB (used for inventory) */
 void D3D11GraphicsEngine::DrawVobSingle( VobInfo* vob, zCCamera& camera ) {
+    auto _ = RecordGraphicsEvent( L"DrawVobSingle(inventory)" );
+
     Engine::GAPI->SetViewTransformXM( XMLoadFloat4x4( &camera.GetTransformDX( zCCamera::ETransformType::TT_VIEW ) ) );
     GetContext()->OMSetRenderTargets( 1, HDRBackBuffer->GetRenderTargetView().GetAddressOf(),
         DepthStencilBuffer->GetDepthStencilView().Get() );
@@ -5246,6 +4883,18 @@ void D3D11GraphicsEngine::DrawVobSingle( VobInfo* vob, zCCamera& camera ) {
     GetContext()->PSSetSamplers( 0, 1, ClampSamplerState.GetAddressOf() );
 }
 
+/** Update focus window state */
+void D3D11GraphicsEngine::UpdateFocus( HWND hWnd, bool focus_state )
+{
+    bool has_focus = (GetForegroundWindow() == hWnd);
+    if ( m_isWindowActive == has_focus || has_focus != focus_state ) {
+        return;
+    }
+
+    m_isWindowActive = has_focus;
+    UpdateClipCursor( hWnd );
+}
+
 /** Update clipping cursor onto window */
 void D3D11GraphicsEngine::UpdateClipCursor( HWND hWnd )
 {
@@ -5254,7 +4903,7 @@ void D3D11GraphicsEngine::UpdateClipCursor( HWND hWnd )
     static RECT last_clipped_rect;
 
     // People use open settings window to navigate to other screens
-    if ( m_isWindowActive && !HasSettingsWindow() ) {
+    if ( m_isWindowActive ) {
         GetClientRect( hWnd, &rect );
         ClientToScreen( hWnd, reinterpret_cast<LPPOINT>(&rect) + 0 );
         ClientToScreen( hWnd, reinterpret_cast<LPPOINT>(&rect) + 1 );
@@ -5270,37 +4919,23 @@ void D3D11GraphicsEngine::UpdateClipCursor( HWND hWnd )
 #endif
 }
 
+
 /** Message-Callback for the main window */
 LRESULT D3D11GraphicsEngine::OnWindowMessage( HWND hWnd, UINT msg, WPARAM wParam,
     LPARAM lParam ) {
     switch ( msg ) {
-        case WM_ACTIVATE:
-        {
-            // Don't mark the window as active if it's activated before being shown
-            if ( !IsWindowVisible( hWnd ) ) {
-                break;
-            }
-
-            BOOL minimized = HIWORD( wParam );
-            if ( !minimized && LOWORD( wParam ) != WA_INACTIVE ) {
-                m_isWindowActive = true;
-            } else {
-                m_isWindowActive = false;
-            }
-
-            UpdateClipCursor( hWnd );
-        }
-        break;
+        case WM_NCACTIVATE: UpdateFocus( hWnd, !!wParam ); break;
+        case WM_ACTIVATE: UpdateFocus( hWnd, !!LOWORD( wParam ) ); break;
+        case WM_SETFOCUS: UpdateFocus( hWnd, true ); break;
+        case WM_KILLFOCUS:
+        case WM_ENTERIDLE: UpdateFocus( hWnd, false ); break;
         case WM_WINDOWPOSCHANGED: UpdateClipCursor( hWnd ); break;
-    }
-    if ( UIView ) {
-        UIView->OnWindowMessage( hWnd, msg, wParam, lParam );
     }
     return 0;
 }
 
 /** Draws the ocean */
-XRESULT D3D11GraphicsEngine::DrawOcean( GOcean* ocean ) {
+XRESULT D3D11GraphicsEngine::DrawOcean( GOcean* ocean ) { 
     SetDefaultStates();
 
     // Then draw the ocean
@@ -5340,11 +4975,11 @@ XRESULT D3D11GraphicsEngine::DrawOcean( GOcean* ocean ) {
     // convert to EdgesPerScreenHeight
     hscb.H_EdgesPerScreenHeight =
         GetResolution().y /
-        Engine::GAPI->GetRendererState().RendererSettings.TesselationFactor;
+        20;
     hscb.H_Proj11 =
         Engine::GAPI->GetRendererState().TransformState.TransformProj._22;
     hscb.H_GlobalTessFactor =
-        Engine::GAPI->GetRendererState().RendererSettings.TesselationFactor;
+        20;
     hscb.H_ScreenResolution = float2( GetResolution().x, GetResolution().y );
     hscb.H_FarPlane = Engine::GAPI->GetFarPlane();
     hd->GetConstantBuffer()[0]->UpdateBuffer( &hscb );
@@ -5378,7 +5013,7 @@ XRESULT D3D11GraphicsEngine::DrawOcean( GOcean* ocean ) {
 
     // DistortionTexture->BindToPixelShader(0);
 
-    RefractionInfoConstantBuffer ricb;
+    RefractionInfoConstantBuffer ricb = {};
     ricb.RI_Projection = Engine::GAPI->GetProjectionMatrix();
     ricb.RI_ViewportSize = float2( Resolution.x, Resolution.y );
     ricb.RI_Time = Engine::GAPI->GetTimeSeconds();
@@ -5443,38 +5078,6 @@ XRESULT D3D11GraphicsEngine::DrawOcean( GOcean* ocean ) {
     return XR_SUCCESS;
 }
 
-/** Handles an UI-Event */
-void D3D11GraphicsEngine::OnUIEvent( EUIEvent uiEvent ) {
-    if ( !UIView ) {
-        CreateMainUIView();
-    }
-
-    if ( uiEvent == UI_OpenSettings ) {
-        if ( UIView ) {
-            // Show settings
-            UIView->GetSettingsDialog()->SetHidden(
-                !UIView->GetSettingsDialog()->IsHidden() );
-
-            // Free mouse
-            Engine::GAPI->SetEnableGothicInput(
-                UIView->GetSettingsDialog()->IsHidden() );
-        }
-        UpdateClipCursor( OutputWindow );
-    } else if ( uiEvent == UI_ClosedSettings ) {
-        // Settings can be closed in multiple ways
-        UpdateClipCursor( OutputWindow );
-    } else if ( uiEvent == UI_OpenEditor ) {
-        if ( UIView ) {
-            // Show settings
-            Engine::GAPI->GetRendererState().RendererSettings.EnableEditorPanel =
-                true;
-
-            // Free mouse
-            Engine::GAPI->SetEnableGothicInput(
-                UIView->GetSettingsDialog()->IsHidden() );
-        }
-    }
-}
 
 /** Returns the data of the backbuffer */
 void D3D11GraphicsEngine::GetBackbufferData( byte** data, INT2& buffersize, int& pixelsize ) {
@@ -5499,6 +5102,10 @@ void D3D11GraphicsEngine::GetBackbufferData( byte** data, INT2& buffersize, int&
     HRESULT hr;
     auto rt = std::make_unique<RenderToTextureBuffer>(
         GetDevice().Get(), buffersize.x, buffersize.y, DXGI_FORMAT_B8G8R8A8_UNORM );
+    SetDebugName( rt->GetTexture().Get(), "BackbufferTex2D" );
+    SetDebugName( rt->GetShaderResView().Get(), "BackbufferSRV" );
+    SetDebugName( rt->GetRenderTargetView().Get(), "BackbufferRTV");
+
     PfxRenderer->CopyTextureToRTV( HDRBackBuffer->GetShaderResView(), rt->GetRenderTargetView(), INT2( buffersize.x, buffersize.y ),
         true );
     GetContext()->Flush();
@@ -5607,7 +5214,7 @@ void D3D11GraphicsEngine::DrawDecalList( const std::vector<zCVob*>& decals,
 
     // Set up alpha
     if ( !lighting ) {
-        SetActivePixelShader( "PS_Simple" );
+        SetActivePixelShader( "PS_Transparency" );
         Engine::GAPI->GetRendererState().DepthState.DepthWriteEnabled = false;
         Engine::GAPI->GetRendererState().DepthState.SetDirty();
     } else {
@@ -5623,18 +5230,35 @@ void D3D11GraphicsEngine::DrawDecalList( const std::vector<zCVob*>& decals,
     int lastAlphaFunc = -1;
     for ( unsigned int i = 0; i < decals.size(); i++ ) {
         zCDecal* d = static_cast<zCDecal*>(decals[i]->GetVisual());
-
         if ( !d ) {
             continue;
         }
 
-        if ( lighting && !d->GetAlphaTestEnabled() )
+        zCMaterial* material = d->GetDecalSettings()->DecalMaterial;
+        if ( !material ) {
+            continue;
+        }
+
+        zCTexture* texture = material->GetTexture();
+        if ( !texture ) {
+            continue;
+        }
+
+        int alphaFunc = material->GetAlphaFunc();
+        if ( alphaFunc == zMAT_ALPHA_FUNC_MAT_DEFAULT ) {
+            alphaFunc = zMAT_ALPHA_FUNC_BLEND;
+            if ( !texture->HasAlphaChannel() ) {
+                alphaFunc = zMAT_ALPHA_FUNC_NONE;
+            }
+        }
+
+        if ( lighting && !(alphaFunc == zMAT_ALPHA_FUNC_NONE || alphaFunc == zMAT_ALPHA_FUNC_TEST) )
             continue;  // Only allow no alpha or alpha test
 
         if ( !lighting ) {
-            int alphaFunc = d->GetDecalSettings()->DecalMaterial->GetAlphaFunc();
             switch ( alphaFunc ) {
             case zMAT_ALPHA_FUNC_BLEND:
+            case zMAT_ALPHA_FUNC_BLEND_TEST:
                 Engine::GAPI->GetRendererState().BlendState.SetAlphaBlending();
                 break;
 
@@ -5661,16 +5285,14 @@ void D3D11GraphicsEngine::DrawDecalList( const std::vector<zCVob*>& decals,
             }
         }
 
+        if ( texture->CacheIn( 0.6f ) != zRES_CACHED_IN ) {
+            continue;  // Don't render not cached surfaces
+        }
+
         int alignment = decals[i]->GetAlignment();
-
         XMMATRIX world = decals[i]->GetWorldMatrixXM();
-
         XMMATRIX offset =
             XMMatrixTranslation( d->GetDecalSettings()->DecalOffset.x, -d->GetDecalSettings()->DecalOffset.y, 0 );
-
-        XMMATRIX scale =
-            XMMatrixTranspose( XMMatrixScaling( d->GetDecalSettings()->DecalSize.x * 2,
-                -d->GetDecalSettings()->DecalSize.y * 2, 1 ) );
 
         if ( alignment == zVISUAL_CAM_ALIGN_YAW ) {
             XMFLOAT3 decalPos = decals[i]->GetPositionWorld();
@@ -5690,32 +5312,30 @@ void D3D11GraphicsEngine::DrawDecalList( const std::vector<zCVob*>& decals,
             reinterpret_cast<XMFLOAT4*>(&world.r[2])->w = decalPos.z;
         }
 
+        XMMATRIX scale =
+            XMMatrixTranspose( XMMatrixScaling( d->GetDecalSettings()->DecalSize.x * 2,
+                -d->GetDecalSettings()->DecalSize.y * 2, 1 ) );
+
         XMMATRIX mat = view * world * offset * scale;
-
-        ParticleInstanceInfo ii;
-        ii.scale = float2( 50, 50 );
-        ii.color = 0xFFFFFFFF;
-
         Engine::GAPI->SetWorldTransformXM( mat );
         SetupVS_ExPerInstanceConstantBuffer();
 
-        if ( zCMaterial* material = d->GetDecalSettings()->DecalMaterial ) {
-            if ( zCTexture* texture = material->GetTexture() ) {
-                if ( texture->CacheIn( 0.6f ) != zRES_CACHED_IN ) {
-                    continue;  // Don't render not cached surfaces
-                }
-
-                d->GetDecalSettings()->DecalMaterial->BindTexture( 0 );
-            }
+        if ( !lighting ) {
+            GhostAlphaConstantBuffer gacb;
+            gacb.GA_ViewportSize = float2( Engine::GraphicsEngine->GetResolution().x, Engine::GraphicsEngine->GetResolution().y );
+            gacb.GA_Alpha = (material->GetColor().dword >> 24) * inv255f;
+            ActivePS->GetConstantBuffer()[0]->UpdateBuffer( &gacb );
+            ActivePS->GetConstantBuffer()[0]->BindToPixelShader( 0 );
         }
 
+        texture->Bind( 0 );
         DrawVertexBufferIndexed( QuadVertexBuffer, QuadIndexBuffer, 6 );
     }
 }
 
 /** Draws quadmarks in a simple way */
 void D3D11GraphicsEngine::DrawQuadMarks() {
-    const stdext::unordered_map<zCQuadMark*, QuadMarkInfo>& quadMarks =
+    const std::unordered_map<zCQuadMark*, QuadMarkInfo>& quadMarks =
         Engine::GAPI->GetQuadMarks();
     if ( quadMarks.empty() ) return;
 
@@ -5850,7 +5470,7 @@ void D3D11GraphicsEngine::DrawUnderwaterEffects() {
     SetDefaultStates();
     UpdateRenderStates();
 
-    RefractionInfoConstantBuffer ricb;
+    RefractionInfoConstantBuffer ricb = {};
     ricb.RI_Projection = Engine::GAPI->GetProjectionMatrix();
     ricb.RI_ViewportSize = float2( Resolution.x, Resolution.y );
     ricb.RI_Time = Engine::GAPI->GetTimeSeconds();
@@ -5868,26 +5488,6 @@ void D3D11GraphicsEngine::DrawUnderwaterEffects() {
         "PS_PFX_UnderwaterFinal" );
 }
 
-/** Returns the settings window availability */
-bool D3D11GraphicsEngine::HasSettingsWindow()
-{
-    return (UIView && !UIView->GetSettingsDialog()->IsHidden());
-}
-
-/** Creates the main UI-View */
-void D3D11GraphicsEngine::CreateMainUIView() {
-    if ( !UIView ) {
-        UIView = std::make_unique<D2DView>();
-
-        wrl::ComPtr<ID3D11Texture2D> tex;
-        BackbufferRTV->GetResource( reinterpret_cast<ID3D11Resource**>(tex.ReleaseAndGetAddressOf()) );
-        if ( XR_SUCCESS != UIView->Init( Resolution, tex.Get() ) ) {
-            UIView.reset();
-            return;
-        }
-    }
-}
-
 void D3D11GraphicsEngine::EnsureTempVertexBufferSize( std::unique_ptr<D3D11VertexBuffer>& buffer, UINT size ) {
     D3D11_BUFFER_DESC desc;
     buffer->GetVertexBuffer()->GetDesc( &desc );
@@ -5903,49 +5503,6 @@ void D3D11GraphicsEngine::EnsureTempVertexBufferSize( std::unique_ptr<D3D11Verte
         SetDebugName( buffer->GetVertexBuffer().Get(), "TempVertexBuffer->VertexBuffer" );
     }
 }
-
-#if ENABLE_TESSELATION > 0
-/** Sets up everything for a PNAEN-Mesh */
-void D3D11GraphicsEngine::Setup_PNAEN( EPNAENRenderMode mode ) {
-    auto pnaen = ShaderManager->GetHDShader( "PNAEN_Tesselation" );
-
-    if ( mode == PNAEN_Instanced )
-        SetActiveVertexShader( "VS_PNAEN_Instanced" );
-    else if ( mode == PNAEN_Default )
-        SetActiveVertexShader( "VS_PNAEN" );
-    else if ( mode == PNAEN_Skeletal )
-        SetActiveVertexShader( "VS_PNAEN_Skeletal" );
-
-    ActiveVS->Apply();
-
-    ActiveHDS = pnaen;
-    pnaen->Apply();
-
-    PNAENConstantBuffer cb = {};
-    cb.f4Eye = Engine::GAPI->GetCameraPosition();
-    cb.adaptive = INT4( 1, 0, 0, 0 );
-    cb.clipping = INT4( Engine::GAPI->GetRendererState().RendererSettings.TesselationFrustumCulling
-        ? 1
-        : 0,
-        0, 0, 0 );
-
-    float f =
-        Engine::GAPI->GetRendererState().RendererSettings.TesselationFactor;
-    cb.f4TessFactors = float4(
-        f, f, Engine::GAPI->GetRendererState().RendererSettings.TesselationRange,
-        Engine::GAPI->GetRendererState().RendererSettings.TesselationFactor );
-    cb.f4ViewportScale.x = static_cast<float>(GetResolution().x / 2);
-    cb.f4ViewportScale.y = static_cast<float>(GetResolution().y / 2);
-    cb.f4x4Projection = Engine::GAPI->GetProjectionMatrix();
-
-    pnaen->GetConstantBuffer()[0]->UpdateBuffer( &cb );
-    pnaen->GetConstantBuffer()[0]->BindToDomainShader( 0 );
-    pnaen->GetConstantBuffer()[0]->BindToHullShader( 0 );
-
-    GetContext()->IASetPrimitiveTopology(
-        D3D11_PRIMITIVE_TOPOLOGY_18_CONTROL_POINT_PATCHLIST );
-}
-#endif
 
 /** Draws particle meshes */
 void D3D11GraphicsEngine::DrawFrameParticleMeshes( std::unordered_map<zCVob*, MeshVisualInfo*>& progMeshes ) {
@@ -6017,6 +5574,16 @@ void D3D11GraphicsEngine::DrawFrameParticleMeshes( std::unordered_map<zCVob*, Me
         } else {
             continue;
         }
+
+        // Scaling is problematic with particle meshes (scaling is problematic in gothic overall), recalc before sendoff
+
+        XMMATRIX matrix = it.first->GetWorldMatrixXM();
+
+        matrix.r[0] = XMVectorMultiply( matrix.r[0], XMVectorReciprocal( XMVector3Length( matrix.r[0] ) ) );
+        matrix.r[1] = XMVectorMultiply( matrix.r[1], XMVectorReciprocal( XMVector3Length( matrix.r[1] ) ) );
+        matrix.r[2] = XMVectorMultiply( matrix.r[2], XMVectorReciprocal( XMVector3Length( matrix.r[2] ) ) );
+
+        XMStoreFloat4x4( it.first->GetWorldMatrixPtr(), matrix );
 
         ActiveVS->GetConstantBuffer()[1]->UpdateBuffer( it.first->GetWorldMatrixPtr() );
         ActiveVS->GetConstantBuffer()[1]->BindToVertexShader( 1 );
@@ -6205,8 +5772,6 @@ void D3D11GraphicsEngine::DrawFrameParticles(
 
 /** Called when a vob was removed from the world */
 XRESULT D3D11GraphicsEngine::OnVobRemovedFromWorld( zCVob* vob ) {
-    if ( UIView ) UIView->GetEditorPanel()->OnVobRemovedFromWorld( vob );
-
     // Take out of shadowupdate queue
     for ( auto&& it = FrameShadowUpdateLights.begin(); it != FrameShadowUpdateLights.end(); ++it ) {
         if ( (*it)->Vob == vob ) {
@@ -6412,6 +5977,57 @@ float  D3D11GraphicsEngine::UpdateCustomFontMultiplierFontRendering( float multi
     return res; 
 }
 
+void D3D11GraphicsEngine::SetWindowMode( WindowModes mode ) {
+    if ( m_currentWindowMode == mode ) {
+        return;
+    }
+
+    if ( m_currentWindowMode == WindowModes::WINDOW_MODE_FULLSCREEN_EXCLUSIVE
+        || mode == WindowModes::WINDOW_MODE_FULLSCREEN_EXCLUSIVE ) {
+        // Can't change Fullscreen exclusive for now.
+        // TODO: Figure out how to make Swapchain-recreatable for such cases
+        return;
+    }
+
+    m_currentWindowMode = mode;
+    auto& settings = Engine::GAPI->GetRendererState().RendererSettings;
+    switch ( mode ) {
+    case WINDOW_MODE_FULLSCREEN_EXCLUSIVE: {
+        settings.DisplayFlip = false;
+        settings.LowLatency = false;
+        settings.StretchWindow = true;
+        break;
+    }
+    case WINDOW_MODE_FULLSCREEN_BORDERLESS: {
+        settings.DisplayFlip = true;
+        settings.LowLatency = false;
+        settings.StretchWindow = true;
+        break;
+    }
+    case WINDOW_MODE_FULLSCREEN_LOWLATENCY: {
+        settings.DisplayFlip = true;
+        settings.LowLatency = true;
+        settings.StretchWindow = true;
+        break;
+    }
+    case WINDOW_MODE_WINDOWED: {
+        // settings.DisplayFlip = false; // don't change flip mode
+        settings.StretchWindow = false;
+        settings.LowLatency = false;
+        break;
+    }
+    default:
+        return;
+    }
+
+    if ( m_recreateSwapChain ) {
+        // already want to recreate the swapchain in the next frame
+        return;
+    }
+
+    m_recreateSwapChain = true;
+}
+
 void D3D11GraphicsEngine::DrawString( const std::string& str, float x, float y, const zFont* font, zColor& fontColor ) {
     if ( !font ) return;
     if ( !font->tex ) return;
@@ -6526,3 +6142,4 @@ void D3D11GraphicsEngine::DrawString( const std::string& str, float x, float y, 
     graphicState.FF_Stages[0].ColorArg1 = copyColorArg1;
     graphicState.FF_Stages[0].ColorArg2 = copyColorArg2;
 }
+

@@ -116,10 +116,10 @@ public:
             LogInfo() << "Forcing zVidResFullscreenY";
             LogInfo() << "Forcing zVidResFullscreenBPP = 32";
             LogInfo() << "Forcing zTexMaxSize = 16384";
-            LogInfo() << "Forcing zTexCacheOutTimeMSec = 9120000";
-            LogInfo() << "Forcing zTexCacheSizeMaxBytes = 1000000000";
-            LogInfo() << "Forcing zSndCacheOutTimeMSec = 10000";
-            LogInfo() << "Forcing zSndCacheSizeMaxBytes = 40000000";
+            LogInfo() << "Forcing zTexCacheOutTimeMSec = 9120000"; // G2A Engine default: 240000
+            LogInfo() << "Forcing zTexCacheSizeMaxBytes = 2147483648"; // G2A Engine default: 32 MB (not MiB)
+            LogInfo() << "Forcing zSndCacheOutTimeMSec = 10000"; // G2A Engine default: 10000
+            LogInfo() << "Forcing zSndCacheSizeMaxBytes = 536870912"; // G2A Engine default: 20 MB (not MiB)
         }
 
         if ( _stricmp( var, "zVidResFullscreenX" ) == 0 ) {
@@ -134,15 +134,14 @@ public:
             return 32;
         } else if ( _stricmp( var, "zTexMaxSize" ) == 0 ) {
             return Engine::GAPI->GetRendererState().RendererSettings.textureMaxSize;
-        } else if ( _stricmp( var, "zTexCacheOutTimeMSec" ) == 0 ) // Following values are from Marcellos L'Hiver config
-        {
+        } else if ( _stricmp( var, "zTexCacheOutTimeMSec" ) == 0 ) { // Following values are from Marcellos L'Hiver config
             return 9120000;
         } else if ( _stricmp( var, "zTexCacheSizeMaxBytes" ) == 0 ) {
-            return 1000000000;
+            return 2147483648;
         } else if ( _stricmp( var, "zSndCacheOutTimeMSec" ) == 0 ) {
             return 10000;
         } else if ( _stricmp( var, "zSndCacheSizeMaxBytes" ) == 0 ) {
-            return 40000000;
+            return 536870912;
         } else if ( _stricmp( var, "zVidDevice" ) == 0 ) {
             return 0;
         }
@@ -160,11 +159,11 @@ public:
         {
             return 9120000;
         } else if ( _stricmp( var, "zTexCacheSizeMaxBytes" ) == 0 ) {
-            return 1000000000;
+            return 2147483648;
         } else if ( _stricmp( var, "zSndCacheOutTimeMSec" ) == 0 ) {
             return 10000;
         } else if ( _stricmp( var, "zSndCacheSizeMaxBytes" ) == 0 ) {
-            return 40000000;
+            return 536870912;
         }
 
         return HookedFunctions::OriginalFunctions.original_zCOptionReadDWORD( thisptr, section, var, def );

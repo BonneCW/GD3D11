@@ -118,7 +118,7 @@ void MyDirectDrawSurface7::LoadAdditionalResources( zCTexture* ownedTexture ) {
             Engine::GraphicsEngine->CreateTexture( &nrmmapTexture );
             if ( XR_SUCCESS != nrmmapTexture->Init( normalmap ) ) {
                 SAFE_DELETE( nrmmapTexture );
-                LogWarn() << "Failed to load normalmap!";
+                LogWarn() << "Failed to load normalmap: " << normalmap;
             }
             break; // No need to check the other folders
         }
@@ -131,7 +131,7 @@ void MyDirectDrawSurface7::LoadAdditionalResources( zCTexture* ownedTexture ) {
         Engine::GraphicsEngine->CreateTexture( &nrmmapTexture );
         if ( XR_SUCCESS != nrmmapTexture->Init( normalmap ) ) {
             SAFE_DELETE( nrmmapTexture );
-            LogWarn() << "Failed to load normalmap!";
+            LogWarn() << "Failed to load normalmap: " << normalmap;
         }
     }
 
@@ -144,7 +144,7 @@ void MyDirectDrawSurface7::LoadAdditionalResources( zCTexture* ownedTexture ) {
             Engine::GraphicsEngine->CreateTexture( &fxMapTexture );
             if ( XR_SUCCESS != fxMapTexture->Init( fxMap ) ) {
                 SAFE_DELETE( fxMapTexture );
-                LogWarn() << "Failed to load normalmap!";
+                LogWarn() << "Failed to load fxMap: " << fxMap;
             }
             break; // No need to check the other folders
         }
@@ -157,7 +157,7 @@ void MyDirectDrawSurface7::LoadAdditionalResources( zCTexture* ownedTexture ) {
         Engine::GraphicsEngine->CreateTexture( &fxMapTexture );
         if ( XR_SUCCESS != fxMapTexture->Init( fxMap ) ) {
             SAFE_DELETE( fxMapTexture );
-            LogWarn() << "Failed to load normalmap!";
+            LogWarn() << "Failed to load fxMap: " << fxMap;
         }
     }
 
@@ -457,15 +457,16 @@ HRESULT MyDirectDrawSurface7::Restore() {
 
 HRESULT MyDirectDrawSurface7::SetClipper( LPDIRECTDRAWCLIPPER lpDDClipper ) {
     DebugWriteTex( "IDirectDrawSurface7(%p)::SetClipper()" );
+
     hook_infunc
 
-    HWND hWnd;
-    lpDDClipper->GetHWnd( &hWnd );
-    Engine::GAPI->OnSetWindow( hWnd );
+        HWND hWnd;
+        lpDDClipper->GetHWnd( &hWnd );
+        Engine::GAPI->OnSetWindow( hWnd );
 
     hook_outfunc
 
-        return S_OK;
+    return S_OK;
 }
 
 HRESULT MyDirectDrawSurface7::SetColorKey( DWORD dwFlags, LPDDCOLORKEY lpDDColorKey ) {

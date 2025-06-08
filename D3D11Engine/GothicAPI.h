@@ -129,15 +129,9 @@ struct MaterialInfo {
     D3D11ConstantBuffer* Constantbuffer;
 
     std::string VertexShader;
-    std::string TesselationShaderPair;
     std::string PixelShader;
     EMaterialType MaterialType;
     Buffer buffer;
-
-#if ENABLE_TESSELATION > 0
-    /** Base tesselationsettings for this texture. Can be overwritten by ZEN-Resources */
-    VisualTesselationSettings TextureTesselationSettings;
-#endif
 };
 
 struct ParticleFrameData {
@@ -169,7 +163,22 @@ class GOcean;
 class zCMorphMesh;
 class zCDecal;
 
+struct TransparencyVobInfo {
+    TransparencyVobInfo( float distance, float alpha, SkeletalVobInfo* skeletalVob, VobInfo* normalVob ) :
+        distance( distance ), alpha( alpha ), skeletalVob( skeletalVob ), normalVob( normalVob ) {}
+
+    float distance;
+    float alpha;
+    SkeletalVobInfo* skeletalVob;
+    VobInfo* normalVob;
+};
+
 class GothicAPI {
+    friend static void ProcessVobAnimation( zCVob* vob, zTAnimationMode aniMode, VobInstanceInfo& vobInstance );
+    friend void CVVH_AddNotDrawnVobToList( std::vector<VobInfo*>& target, std::vector<VobInfo*>& source, float dist );
+    friend void CVVH_AddNotDrawnVobToList( std::vector<VobLightInfo*>& target, std::vector<VobLightInfo*>& source, float dist );
+    friend void CVVH_AddNotDrawnVobToList( std::vector<SkeletalVobInfo*>& target, std::vector<SkeletalVobInfo*>& source, float dist );
+
 public:
     GothicAPI();
     ~GothicAPI();
@@ -262,7 +271,7 @@ public:
 
     /** Draws a skeletal mesh-vob */
     void DrawSkeletalMeshVob( SkeletalVobInfo* vi, float distance, bool updateState = true );
-    void DrawSkeletalGhosts();
+    void DrawTransparencyVobs();
     void DrawSkeletalVN();
 
     /** Draws the inventory */
@@ -338,14 +347,6 @@ public:
     /** Removes the given quadmark */
     void RemoveQuadMark( zCQuadMark* mark );
 
-#if ENABLE_TESSELATION > 0
-    /** Saves all sections information */
-    void SaveSectionInfos();
-
-    /** Loads all sections information */
-    void LoadSectionInfos();
-#endif
-
     /** Returns wether the camera is underwater or not */
     bool IsUnderWater();
 
@@ -353,7 +354,7 @@ public:
     QuadMarkInfo* GetQuadMarkInfo( zCQuadMark* mark );
 
     /** Returns all quad marks */
-    const stdext::unordered_map<zCQuadMark*, QuadMarkInfo>& GetQuadMarks();
+    const std::unordered_map<zCQuadMark*, QuadMarkInfo>& GetQuadMarks();
 
     /** Returns the loaded sections */
     std::map<int, std::map<int, WorldMeshSectionInfo>>& GetWorldSections();
@@ -395,13 +396,11 @@ public:
     /** Traces a visual info. Returns -1 if not hit, distance otherwise */
     float TraceVisualInfo( const XMFLOAT3& origin, const XMFLOAT3& dir, BaseVisualInfo* visual, zCMaterial** hitMaterial = nullptr );
 
-#if ENABLE_TESSELATION > 0
-    /** Applies tesselation-settings for all mesh-parts using the given info */
-    void ApplyTesselationSettingsForAllMeshPartsUsing( MaterialInfo* info, int amount = 1 );
-#endif
-
     /** Returns the GSky-Object */
     GSky* GetSky() const;
+
+    /** Returns the far Z */
+    float GetFarZ();
 
     /** Returns the fog-color */
     FXMVECTOR GetFogColor();
@@ -430,8 +429,17 @@ public:
     /** Returns true, if the game was paused */
     bool IsGamePaused();
 
+    /** Checks if a game is being saved now */
+    bool IsSavingGameNow();
+
+    /** Checks if a game is being saved or loaded now */
+    bool IsInSavingLoadingState();
+
     /** Returns total time */
     float GetTotalTime();
+
+    /** Returns total time DWORD */
+    DWORD GetTotalTimeDW();
 
     /** Returns the current frame time */
     float GetFrameTimeSec();
@@ -526,6 +534,7 @@ public:
 
     /** Returns the material info associated with the given material */
     MaterialInfo* GetMaterialInfoFrom( zCTexture* tex );
+    MaterialInfo* GetMaterialInfoFrom( zCTexture* tex, const std::string& textureName );
 
     /** Adds a surface */
     void AddSurface( const std::string& name, MyDirectDrawSurface7* surface );
@@ -661,6 +670,10 @@ public:
     SkeletalMeshVisualInfo* LoadzCModelData( zCModel* model );
     SkeletalMeshVisualInfo* LoadzCModelData( oCNPC* npc );
 
+    /** Returns lowest lod of zCModel polys */
+    int GetLowestLODNumPolys_SkeletalMesh( zCModel* model );
+    float3* GetLowestLODPoly_SkeletalMesh( zCModel* model, const int polyId, float3*& polyNormal );
+
     /** Prints a message to the screen for the given amount of time */
     void PrintMessageTimed( const INT2& position, const std::string& strMessage, float time = 3000.0f, DWORD color = 0xFFFFFFFF );
 
@@ -725,7 +738,7 @@ private:
     /** List of vobs with skeletal meshes (Having a zCModel-Visual) */
     std::list<SkeletalVobInfo*> SkeletalMeshVobs;
     std::list<SkeletalVobInfo*> AnimatedSkeletalVobs;
-    std::vector<std::pair<float, SkeletalVobInfo*>> GhostSkeletalVobs;
+    std::vector<TransparencyVobInfo> TransparencyVobs;
     std::vector<SkeletalVobInfo*> VNSkeletalVobs;
 
     /** List of Vobs having a zCParticleFX-Visual */
@@ -824,7 +837,7 @@ private:
     std::list<MyDirectDrawSurface7*> FrameLoadedTextures;
 
     /** Quad marks loaded in the world */
-    stdext::unordered_map<zCQuadMark*, QuadMarkInfo> QuadMarks;
+    std::unordered_map<zCQuadMark*, QuadMarkInfo> QuadMarks;
 
     /** Map of parameters from the .ini */
     std::map<std::string, int> ConfigIntValues;

@@ -35,7 +35,6 @@ class D3D11PfxRenderer;
 class D3D11LineRenderer;
 class zCVobLight;
 class zCVob;
-class D2DView;
 struct VobLightInfo;
 class GMesh;
 class GOcean;
@@ -95,7 +94,7 @@ public:
     XRESULT FetchDisplayModeListWindows();
 
     /** Returns a list of available display modes */
-    virtual XRESULT GetDisplayModeList( std::vector<DisplayModeInfo>* modeList, bool includeSuperSampling = false );
+    virtual std::vector<DisplayModeInfo> GetDisplayModeList();
 
     /** Presents the current frame to the screen */
     virtual XRESULT Present() override;
@@ -111,8 +110,9 @@ public:
     virtual XRESULT DrawVertexBuffer( D3D11VertexBuffer* vb, unsigned int numVertices, unsigned int stride = sizeof( ExVertexStruct ) ) override;
 
     /** Draws a vertexbuffer, non-indexed */
-    virtual XRESULT DrawVertexBufferIndexed( D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, unsigned int indexOffset = 0 ) override;
-    virtual XRESULT DrawVertexBufferIndexedUINT( D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, unsigned int indexOffset ) override;
+    virtual XRESULT DrawVertexBufferIndexed( D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices = 0, unsigned int indexOffset = 0 ) override;
+    virtual XRESULT DrawVertexBufferIndexedUINT( D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices = 0, unsigned int indexOffset = 0 ) override;
+    virtual XRESULT DrawVertexBufferIndexedUINTFromMeshInfo( MeshInfo* meshInfo, unsigned int numIndices = 0, unsigned int indexOffset = 0 ) override;
 
     /** Draws a vertexbuffer, non-indexed, binding the FF-Pipe values */
     virtual XRESULT DrawVertexBufferFF( D3D11VertexBuffer* vb, unsigned int numVertices, unsigned int startVertex, unsigned int stride = sizeof( ExVertexStruct ) ) override;
@@ -128,24 +128,8 @@ public:
     /** Puts the current world matrix into a CB and binds it to the given slot */
     void SetupPerInstanceConstantBuffer( int slot = 1 );
 
-    /**Colorspace for HDR-Monitors on Windows 10 */
-    /** HDR Support */
-    //DXGI_COLOR_SPACE_TYPE   m_colorSpace; //only used when access from other function required
-    //DXGI_COLOR_SPACE_TYPE   GetColorSpace() const noexcept { return m_colorSpace; } //only used when access from other function required
-
-    void UpdateColorSpace_SwapChain3();
-    void UpdateColorSpace_SwapChain4();
-
-#if ENABLE_TESSELATION > 0
-    enum EPNAENRenderMode {
-        PNAEN_Default,
-        PNAEN_Instanced,
-        PNAEN_Skeletal,
-    };
-
-    /** Sets up everything for a PNAEN-Mesh */
-    void Setup_PNAEN( EPNAENRenderMode mode = PNAEN_Default );
-#endif
+    /** Colorspace for HDR-Monitors on Windows 10 */
+    void UpdateColorSpace_SwapChain();
 
     /** Sets up texture with normalmap and fxmap for rendering */
     bool BindTextureNRFX( zCTexture* tex, bool bindShader );
@@ -228,8 +212,6 @@ public:
     /** Draws a list of mesh infos */
     XRESULT DrawMeshInfoListAlphablended( const std::vector<std::pair<MeshKey, MeshInfo*>>& list );
 
-    XRESULT DrawWorldMeshW( bool noTextures = false );
-
     /** Draws the static VOBs */
     virtual XRESULT DrawVOBs( bool noTextures = false );
 
@@ -292,6 +274,9 @@ public:
     /** Returns the current rendering stage */
     D3D11ENGINE_RENDER_STAGE GetRenderingStage();
 
+    /** Update focus window state */
+    void UpdateFocus( HWND hWnd, bool focus_state );
+
     /** Update clipping cursor onto window */
     void UpdateClipCursor( HWND hWnd );
 
@@ -303,9 +288,6 @@ public:
 
     /** Draws the given mesh infos as water */
     void DrawWaterSurfaces();
-
-    /** Handles an UI-Event */
-    void OnUIEvent( EUIEvent uiEvent );
 
     /** Draws the given list of decals */
     void DrawDecalList( const std::vector<zCVob*>& decals, bool lighting );
@@ -325,21 +307,13 @@ public:
     /** Draws particle effects */
     void DrawFrameParticles( std::map<zCTexture*, std::vector<ParticleInstanceInfo>>& particles, std::map<zCTexture*, ParticleRenderInfo>& info );
 
-    /** Returns the UI-View */
-    D2DView* GetUIView() { return UIView.get(); }
-
-    /** Returns the settings window availability */
-    bool HasSettingsWindow();
-
-    /** Creates the main UI-View */
-    void CreateMainUIView();
-
     /** Returns a dummy cube-rendertarget used for pointlight shadowmaps */
     RenderToTextureBuffer* GetDummyCubeRT() { return DummyShadowCubemapTexture.get(); }
 
     void EnsureTempVertexBufferSize( std::unique_ptr<D3D11VertexBuffer>& buffer, UINT size );
 
     float UpdateCustomFontMultiplierFontRendering( float multiplier );
+    void SetWindowMode( WindowModes mode ) override;
 
 protected:
     std::unique_ptr<FpsLimiter> m_FrameLimiter;
@@ -394,9 +368,6 @@ protected:
     /** The current rendering stage */
     D3D11ENGINE_RENDER_STAGE RenderingStage;
 
-    /** The editorcontrols */
-    std::unique_ptr<D2DView> UIView;
-
     /** List of water surfaces for this frame */
     std::unordered_map<zCTexture*, std::vector<WorldMeshInfo*>> FrameWaterSurfaces;
 
@@ -433,7 +404,7 @@ protected:
     std::unique_ptr<D3D11VertexBuffer> TempHUDVertexBuffer;
 
     /** Cached display modes */
-    std::vector<DisplayModeInfo> CachedDisplayModes;
+    std::vector<DisplayModeInfo> Resolutions;
     DXGI_RATIONAL CachedRefreshRate;
 
     /** Low latency object handle */
@@ -449,4 +420,5 @@ protected:
     int m_previousFpsLimit;
     bool m_isWindowActive;
     float unionCurrentCustomFontMultiplier;
+    bool m_recreateSwapChain;
 };

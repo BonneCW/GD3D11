@@ -175,6 +175,10 @@ struct GothicMemoryLocations {
         static const unsigned int SetDeviceEnabled = 0x00662400;
     };
 
+    struct zCInput_Win32 {
+        static const unsigned int GetKey = 0;
+    };
+
     struct GlobalObjects {
         static const unsigned int zCResourceManager = 0x00B18550;
         static const unsigned int zCCamera = 0x009BDDF4;
@@ -318,8 +322,11 @@ struct GothicMemoryLocations {
         static const unsigned int GetBBoxLocal = 0x007A6080;
         static const unsigned int Offset_HomeWorld = 0x0B8;
         static const unsigned int Offset_GroundPoly = 0x0BC;
+
         static const unsigned int Offset_Flags = 0x104;
+		static const unsigned int Offset_VobAlpha = 0xCC;
         static const unsigned int MASK_ShowVisual = 0x1;
+		static const unsigned int MASK_VisualAlpha = 0x4;
         static const unsigned int Offset_CameraAlignment = 0x110;
         static const unsigned int SHIFTLR_CameraAlignment = 0x1E;
 
@@ -341,7 +348,13 @@ struct GothicMemoryLocations {
         static const unsigned int Destructor = 0x00791970;
     };
 
-
+    struct oCVisualFX {
+        static const unsigned int Offset_emAdjustShpToOrigin = 0x2D0;
+        static const unsigned int AdjustShapeToOrigin = 0x004c7fa0; //vVvVv starts as
+        // if (((*(int *)(param_1 + 0x2d0) != 0) && (*(int *)(param_1 + 0x4a8) != 0))
+        // which is:
+        // if (this->emAdjustShpToOrigin && this->origin)
+    };
 
     struct zCDecal {
         static const unsigned int Offset_DecalSettings = 0x34;
@@ -465,5 +478,6 @@ struct GothicMemoryLocations {
     struct zCClassDef {
         static const unsigned int oCNpc = 0x009A7978;
         static const unsigned int zCTexture = 0x00B18D18;
+        static const unsigned int oCVisualFX = 0x0096f654;
     };
 };

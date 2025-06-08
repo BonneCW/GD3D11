@@ -5,7 +5,6 @@
 #include "Logger.h"
 #include "Detours/detours.h"
 #include "DbgHelp.h"
-#include "BaseAntTweakBar.h"
 #include "HookedFunctions.h"
 #include <signal.h>
 #include "VersionCheck.h"
@@ -13,19 +12,22 @@
 #include "D3D11GraphicsEngine.h"
 
 #include <shlwapi.h>
+#include "GSky.h"
+#include <imgui_impl_win32.h>
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "Imagehlp.lib") // Used in VersionCheck.cpp to get Gothic.exe Checksum.
 #pragma comment(lib, "shlwapi.lib")
 
-// Signal NVIDIA/AMD drivers that we want the high-performance card on laptops
-extern "C" {
-    _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
-    _declspec(dllexport) DWORD AmdPowerXpressRequestHighPerformance = 0x00000001;
-}
+ZQuantizeHalfFloat QuantizeHalfFloat;
+ZQuantizeHalfFloat_X4 QuantizeHalfFloat_X4;
+ZUnquantizeHalfFloat UnquantizeHalfFloat;
+ZUnquantizeHalfFloat_X4 UnquantizeHalfFloat_X4;
+ZUnquantizeHalfFloat_X4 UnquantizeHalfFloat_X8;
 
 static HINSTANCE hLThis = 0;
+static bool comInitialized = false;
 
 typedef void (WINAPI* DirectDrawSimple)();
 typedef HRESULT( WINAPI* DirectDrawCreateEx_type )(GUID FAR*, LPVOID*, REFIID, IUnknown FAR*);
@@ -36,7 +38,170 @@ WinMainFunc originalWinMain = reinterpret_cast<WinMainFunc>(GothicMemoryLocation
 #endif
 
 bool FeatureLevel10Compatibility = false;
-bool GMPModeActive = false;
+
+unsigned short QuantizeHalfFloat_Scalar( float input )
+{
+    union { float f; unsigned int ui; } u = { input };
+    unsigned int ui = u.ui;
+
+    int s = ( ui >> 16 ) & 0x8000;
+    int em = ui & 0x7fffffff;
+
+    int h = ( em - ( 112 << 23 ) + ( 1 << 12 ) ) >> 13;
+    h = ( em < ( 113 << 23 ) ) ? 0 : h;
+    h = ( em >= ( 143 << 23 ) ) ? 0x7c00 : h;
+    h = ( em > ( 255 << 23 ) ) ? 0x7e00 : h;
+    return static_cast<unsigned short>(s | h);
+}
+
+void QuantizeHalfFloats_X4_SSE2( float* input, unsigned short* output )
+{
+    __m128i v = _mm_castps_si128( _mm_load_ps( input ) );
+    __m128i s = _mm_and_si128( _mm_srli_epi32( v, 16 ), _mm_set1_epi32( 0x8000 ) );
+    __m128i em = _mm_and_si128( v, _mm_set1_epi32( 0x7FFFFFFF ) );
+    __m128i h = _mm_srli_epi32( _mm_sub_epi32( em, _mm_set1_epi32( 0x37FFF000 ) ), 13 );
+
+    __m128i mask = _mm_cmplt_epi32( em, _mm_set1_epi32( 0x38800000 ) );
+    h = _mm_or_si128( _mm_and_si128( mask, _mm_setzero_si128() ), _mm_andnot_si128( mask, h ) );
+
+    mask = _mm_cmpgt_epi32( em, _mm_set1_epi32( 0x47800000 - 1 ) );
+    h = _mm_or_si128( _mm_and_si128( mask, _mm_set1_epi32( 0x7C00 ) ), _mm_andnot_si128( mask, h ) );
+
+    mask = _mm_cmpgt_epi32( em, _mm_set1_epi32( 0x7F800000 ) );
+    h = _mm_or_si128( _mm_and_si128( mask, _mm_set1_epi32( 0x7E00 ) ), _mm_andnot_si128( mask, h ) );
+
+    // We need to stay in int16_t range due to signed saturation
+    __m128i halfs = _mm_sub_epi32( _mm_or_si128( s, h ), _mm_set1_epi32( 32768 ) );
+    _mm_store_sd( reinterpret_cast<double*>(output), _mm_castsi128_pd( _mm_add_epi16( _mm_packs_epi32( halfs, halfs ), _mm_set1_epi16( 32768u ) ) ) );
+}
+
+void QuantizeHalfFloats_X4_SSE41( float* input, unsigned short* output )
+{
+    __m128i v = _mm_castps_si128( _mm_load_ps( input ) );
+    __m128i s = _mm_and_si128( _mm_srli_epi32( v, 16 ), _mm_set1_epi32( 0x8000 ) );
+    __m128i em = _mm_and_si128( v, _mm_set1_epi32( 0x7FFFFFFF ) );
+    __m128i h = _mm_srli_epi32( _mm_sub_epi32( em, _mm_set1_epi32( 0x37FFF000 ) ), 13 );
+
+    __m128i mask = _mm_cmplt_epi32( em, _mm_set1_epi32( 0x38800000 ) );
+    h = _mm_blendv_epi8( h, _mm_setzero_si128(), mask );
+
+    mask = _mm_cmpgt_epi32( em, _mm_set1_epi32( 0x47800000 - 1 ) );
+    h = _mm_blendv_epi8( h, _mm_set1_epi32( 0x7C00 ), mask );
+
+    mask = _mm_cmpgt_epi32( em, _mm_set1_epi32( 0x7F800000 ) );
+    h = _mm_blendv_epi8( h, _mm_set1_epi32( 0x7E00 ), mask );
+
+    __m128i halfs = _mm_or_si128( s, h );
+    _mm_store_sd( reinterpret_cast<double*>(output), _mm_castsi128_pd( _mm_packus_epi32( halfs, halfs ) ) );
+}
+
+#ifdef _XM_AVX_INTRINSICS_
+unsigned short QuantizeHalfFloat_F16C( float input )
+{
+    return static_cast<unsigned short>(_mm_cvtsi128_si32( _mm_cvtps_ph( _mm_set_ss( input ), _MM_FROUND_CUR_DIRECTION ) ));
+}
+
+void QuantizeHalfFloats_X4_F16C( float* input, unsigned short* output )
+{
+    _mm_store_sd( reinterpret_cast<double*>(output), _mm_castsi128_pd( _mm_cvtps_ph( _mm_load_ps( input ), _MM_FROUND_CUR_DIRECTION ) ) );
+}
+#endif
+
+float UnquantizeHalfFloat_Scalar( unsigned short input )
+{
+    unsigned int s = input & 0x8000;
+    unsigned int m = input & 0x03FF;
+    unsigned int e = input & 0x7C00;
+    e += 0x0001C000;
+
+    float out;
+    unsigned int r = (s << 16) | (m << 13) | (e << 13);
+    memcpy( &out, &r, sizeof( float ) );
+    return out;
+}
+
+void UnquantizeHalfFloat_X4_SSE2( unsigned short* input, float* output )
+{
+    const __m128i mask_zero = _mm_setzero_si128();
+    const __m128i mask_s = _mm_set1_epi16( 0x8000u );
+    const __m128i mask_m = _mm_set1_epi16( 0x03FF );
+    const __m128i mask_e = _mm_set1_epi16( 0x7C00 );
+    const __m128i bias_e = _mm_set1_epi32( 0x0001C000 );
+
+    __m128i halfs = _mm_loadl_epi64( reinterpret_cast<const __m128i*>(input) );
+
+    __m128i s = _mm_and_si128( halfs, mask_s );
+    __m128i m = _mm_and_si128( halfs, mask_m );
+    __m128i e = _mm_and_si128( halfs, mask_e );
+
+    __m128i s4 = _mm_unpacklo_epi16( s, mask_zero );
+    s4 = _mm_slli_epi32( s4, 16 );
+
+    __m128i m4 = _mm_unpacklo_epi16( m, mask_zero );
+    m4 = _mm_slli_epi32( m4, 13 );
+
+    __m128i e4 = _mm_unpacklo_epi16( e, mask_zero );
+    e4 = _mm_add_epi32( e4, bias_e );
+    e4 = _mm_slli_epi32( e4, 13 );
+
+    _mm_store_si128( reinterpret_cast<__m128i*>(output), _mm_or_si128( s4, _mm_or_si128( e4, m4 ) ) );
+}
+
+void UnquantizeHalfFloat_X8_SSE2( unsigned short* input, float* output )
+{
+    const __m128i mask_zero = _mm_setzero_si128();
+    const __m128i mask_s = _mm_set1_epi16( 0x8000u );
+    const __m128i mask_m = _mm_set1_epi16( 0x03FF );
+    const __m128i mask_e = _mm_set1_epi16( 0x7C00 );
+    const __m128i bias_e = _mm_set1_epi32( 0x0001C000 );
+
+    __m128i halfs = _mm_load_si128( reinterpret_cast<const __m128i*>(input) );
+
+    __m128i s = _mm_and_si128( halfs, mask_s );
+    __m128i m = _mm_and_si128( halfs, mask_m );
+    __m128i e = _mm_and_si128( halfs, mask_e );
+
+    __m128i s4 = _mm_unpacklo_epi16( s, mask_zero );
+    s4 = _mm_slli_epi32( s4, 16 );
+
+    __m128i m4 = _mm_unpacklo_epi16( m, mask_zero );
+    m4 = _mm_slli_epi32( m4, 13 );
+
+    __m128i e4 = _mm_unpacklo_epi16( e, mask_zero );
+    e4 = _mm_add_epi32( e4, bias_e );
+    e4 = _mm_slli_epi32( e4, 13 );
+
+    _mm_store_si128( reinterpret_cast<__m128i*>(output + 0), _mm_or_si128( s4, _mm_or_si128( e4, m4 ) ) );
+
+    s4 = _mm_unpackhi_epi16( s, mask_zero );
+    s4 = _mm_slli_epi32( s4, 16 );
+
+    m4 = _mm_unpackhi_epi16( m, mask_zero );
+    m4 = _mm_slli_epi32( m4, 13 );
+
+    e4 = _mm_unpackhi_epi16( e, mask_zero );
+    e4 = _mm_add_epi32( e4, bias_e );
+    e4 = _mm_slli_epi32( e4, 13 );
+
+    _mm_store_si128( reinterpret_cast<__m128i*>(output + 4), _mm_or_si128( s4, _mm_or_si128( e4, m4 ) ) );
+}
+
+#ifdef _XM_AVX_INTRINSICS_
+float UnquantizeHalfFloat_F16C( unsigned short input )
+{
+    return _mm_cvtss_f32( _mm_cvtph_ps( _mm_cvtsi32_si128( input ) ) );
+}
+
+void UnquantizeHalfFloat_X4_F16C( unsigned short* input, float* output )
+{
+    _mm_store_ps( output, _mm_cvtph_ps( _mm_loadl_epi64( reinterpret_cast<const __m128i*>(input) ) ) );
+}
+
+void UnquantizeHalfFloat_X8_F16C( unsigned short* input, float* output )
+{
+    _mm256_store_ps( output, _mm256_cvtph_ps( _mm_load_si128( reinterpret_cast<const __m128i*>(input) ) ) );
+}
+#endif
 
 void SignalHandler( int signal ) {
     LogInfo() << "Signal:" << signal;
@@ -44,7 +209,7 @@ void SignalHandler( int signal ) {
 }
 
 struct ddraw_dll {
-    HMODULE dll;
+    HMODULE dll = NULL;
     FARPROC	AcquireDDThreadLock;
     FARPROC	CheckFullscreen;
     FARPROC	CompleteCreateSysmemSurface;
@@ -68,6 +233,7 @@ struct ddraw_dll {
     FARPROC	RegisterSpecialCase;
     FARPROC	ReleaseDDThreadLock;
     FARPROC	UpdateCustomFontMultiplier;
+    FARPROC	SetCustomSkyTexture;
 } ddraw;
 
 HRESULT DoHookedDirectDrawCreateEx( GUID FAR* lpGuid, LPVOID* lplpDD, REFIID  iid, IUnknown FAR* pUnkOuter ) {
@@ -92,7 +258,7 @@ extern "C" HRESULT WINAPI HookedDirectDrawCreateEx( GUID FAR * lpGuid, LPVOID * 
 
     hook_outfunc
 
-        return S_OK;
+    return S_OK;
 }
 
 extern "C" void WINAPI HookedAcquireDDThreadLock() {
@@ -113,12 +279,33 @@ extern "C" void WINAPI HookedReleaseDDThreadLock() {
     LogInfo() << "ReleaseDDThreadLock called!";
 }
 
-
-extern "C" float WINAPI  UpdateCustomFontMultiplierFontRendering( float multiplier ) {
+extern "C" float WINAPI UpdateCustomFontMultiplierFontRendering( float multiplier ) {
     D3D11GraphicsEngine* engine = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
     return engine ? engine->UpdateCustomFontMultiplierFontRendering( multiplier ) : 1.0;
 }
 
+extern "C" void WINAPI SetCustomCloudAndNightTexture( int idxTexture, bool isNightTexture ) {
+    GSky* sky = Engine::GAPI->GetSky();
+    WorldInfo* currentWorld = Engine::GAPI->GetLoadedWorldInfo();
+    if ( sky && currentWorld ) {
+        sky->SetCustomCloudAndNightTexture( idxTexture, isNightTexture, currentWorld->WorldName == "OLDWORLD" || currentWorld->WorldName == "WORLD" );
+    }
+}
+
+extern "C" void WINAPI SetCustomSkyTexture_ZenGin( bool isNightTexture, zCTexture* texture ) {
+    GSky* sky = Engine::GAPI->GetSky();
+    WorldInfo* currentWorld = Engine::GAPI->GetLoadedWorldInfo();
+    if ( sky && currentWorld ) {
+        sky->SetCustomSkyTexture_ZenGin( isNightTexture, texture, currentWorld->WorldName == "OLDWORLD" || currentWorld->WorldName == "WORLD" );
+    }
+}
+
+extern "C" void WINAPI SetCustomSkyWavelengths( float X, float Y, float Z ) {
+    GSky* sky = Engine::GAPI->GetSky();
+    if ( sky ) {
+        sky->SetCustomSkyWavelengths( X, Y, Z );
+    }
+}
 
 __declspec(naked) void FakeAcquireDDThreadLock() { _asm { jmp[ddraw.AcquireDDThreadLock] } }
 __declspec(naked) void FakeCheckFullscreen() { _asm { jmp[ddraw.CheckFullscreen] } }
@@ -206,21 +393,49 @@ void CheckPlatformSupport() {
 #elif __SSE__
     support_message( "SSE", InstructionSet::SSE() );
 #endif
+
+#ifdef _XM_AVX_INTRINSICS_
+    if ( InstructionSet::F16C() ) {
+        QuantizeHalfFloat = QuantizeHalfFloat_F16C;
+        QuantizeHalfFloat_X4 = QuantizeHalfFloats_X4_F16C;
+        UnquantizeHalfFloat = UnquantizeHalfFloat_F16C;
+        UnquantizeHalfFloat_X4 = UnquantizeHalfFloat_X4_F16C;
+        UnquantizeHalfFloat_X8 = UnquantizeHalfFloat_X8_F16C;
+    } else
+#endif
+    if ( InstructionSet::SSE41() ) {
+        QuantizeHalfFloat = QuantizeHalfFloat_Scalar;
+        QuantizeHalfFloat_X4 = QuantizeHalfFloats_X4_SSE41;
+        UnquantizeHalfFloat = UnquantizeHalfFloat_Scalar;
+        UnquantizeHalfFloat_X4 = UnquantizeHalfFloat_X4_SSE2;
+        UnquantizeHalfFloat_X8 = UnquantizeHalfFloat_X8_SSE2;
+    } else {
+        QuantizeHalfFloat = QuantizeHalfFloat_Scalar;
+        QuantizeHalfFloat_X4 = QuantizeHalfFloats_X4_SSE2;
+        UnquantizeHalfFloat = UnquantizeHalfFloat_Scalar;
+        UnquantizeHalfFloat_X4 = UnquantizeHalfFloat_X4_SSE2;
+        UnquantizeHalfFloat_X8 = UnquantizeHalfFloat_X8_SSE2;
+    }
+}
+
+inline void CheckForFreetardisms() {
+    HMODULE ntdll = GetModuleHandleA( "ntdll.dll" );
+    if ( ntdll ) 
+    {
+        Wine_GetVersion = reinterpret_cast<const char* (CDECL*)(void)>(GetProcAddress( ntdll, "wine_get_version" ));
+        Wine_GetUnderlyingOSVersion = reinterpret_cast<void (CDECL*)(const char** sysname, const char** release)>(GetProcAddress( ntdll, "wine_get_host_version" ));
+        if ( Wine_GetVersion && Wine_GetUnderlyingOSVersion )
+        {
+            const char* sysname = nullptr;
+            const char* release = nullptr;
+            Wine_GetUnderlyingOSVersion( &sysname , &release );
+            LogInfo() << "Running on " << sysname << " " << release << " through Wine " << Wine_GetVersion() << ", noice.";
+        }
+    }
 }
 
 #if defined(BUILD_GOTHIC_2_6_fix)
 int WINAPI hooked_WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd ) {
-    if ( GetModuleHandleA( "gmp.dll" ) ) {
-        GMPModeActive = true;
-        LogInfo() << "GMP Mode Enabled";
-    }
-    // Remove automatic volume change of sounds regarding whether the camera is indoor or outdoor
-    // TODO: Implement!
-    if ( !GMPModeActive ) {
-        DetourTransactionBegin();
-        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCActiveSndAutoCalcObstruction), HookedFunctionInfo::hooked_zCActiveSndAutoCalcObstruction );
-        DetourTransactionCommit();
-    }
     return originalWinMain( hInstance, hPrevInstance, lpCmdLine, nShowCmd );
 }
 #endif
@@ -248,14 +463,22 @@ BOOL WINAPI DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
         if ( !Engine::PassThrough ) {
             Log::Clear();
             LogInfo() << "Starting DDRAW Proxy DLL.";
+            ImGui_ImplWin32_EnableDpiAwareness(); // enable dpi awareness
 
-            if ( CoInitializeEx( NULL, COINIT::COINIT_APARTMENTTHREADED ) == S_OK ) {
+            HRESULT hr = CoInitializeEx( NULL, COINIT_APARTMENTTHREADED );
+            if ( hr == RPC_E_CHANGED_MODE ) {
+                hr = CoInitializeEx( NULL, COINIT_MULTITHREADED );
+            }
+
+            if ( hr == S_FALSE || hr == S_OK ) {
+                comInitialized = true;
                 LogInfo() << "COM initialized";
             }
 
             // Check for right version
             VersionCheck::CheckExecutable();
             CheckPlatformSupport();
+            CheckForFreetardisms();
 
             Engine::GAPI = nullptr;
             Engine::GraphicsEngine = nullptr;
@@ -269,13 +492,13 @@ BOOL WINAPI DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
         }
         DetourTransactionCommit();
 
-        char infoBuf[MAX_PATH];
-        GetSystemDirectoryA( infoBuf, MAX_PATH );
+        char dllBuf[MAX_PATH];
+        GetSystemDirectoryA( dllBuf, MAX_PATH );
         // We then append \ddraw.dll, which makes the string:
         // C:\windows\system32\ddraw.dll
-        strcat_s( infoBuf, MAX_PATH, "\\ddraw.dll" );
+        strcat_s( dllBuf, MAX_PATH, "\\ddraw.dll" );
 
-        ddraw.dll = LoadLibraryA( infoBuf );
+        ddraw.dll = LoadLibraryA( dllBuf );
         if ( !ddraw.dll ) return FALSE;
 
         ddraw.AcquireDDThreadLock = GetProcAddress( ddraw.dll, "AcquireDDThreadLock" );
@@ -303,8 +526,13 @@ BOOL WINAPI DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
     } else if ( reason == DLL_PROCESS_DETACH ) {
         Engine::OnShutDown();
 
-        CoUninitialize();
-        FreeLibrary( ddraw.dll );
+        if ( comInitialized ) {
+            comInitialized = false;
+            CoUninitialize();
+        }
+        if ( ddraw.dll ) {
+            FreeLibrary( ddraw.dll );
+        }
 
         LogInfo() << "DDRAW Proxy DLL signing off.\n";
     }
