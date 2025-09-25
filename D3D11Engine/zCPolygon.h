@@ -37,8 +37,8 @@ public:
 
     float3 Position;
 
-    int TransformedIndex = 0;
-    int MyIndex = 0;
+    int TransformedIndex;
+    int MyIndex;
 };
 
 class zCVertFeature {

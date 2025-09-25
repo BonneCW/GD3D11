@@ -332,9 +332,18 @@ XRESULT WorldConverter::LoadWorldMeshFromFile( const std::string& file, std::map
 
 bool AdditionalCheckWaterFall(zCTexture* texture)
 {
-    std::string textureName = texture->GetNameWithoutExt();
+    if ( !texture ) {
+        return false;
+    }
+
+    std::string textureName = texture->GetName();
     std::transform( textureName.begin(), textureName.end(), textureName.begin(), toupper );
+#ifdef BUILD_GOTHIC_2_6_fix
+    if ( textureName.find( "FALL" ) != std::string::npos && textureName.find( "SURFACE" ) == std::string::npos && textureName.find( "STONE" ) == std::string::npos
+        && textureName.find( "A0" ) != std::string::npos ) {
+#else
     if ( textureName.find( "FALL" ) != std::string::npos && (textureName.find( "SURFACE" ) != std::string::npos || textureName.find( "STONE" ) != std::string::npos) ) {
+#endif
         // Let's make it work at least with og waterfall foam
         return true;
     }
@@ -363,7 +372,7 @@ HRESULT WorldConverter::ConvertWorldMesh( zCPolygon** polys, unsigned int numPol
                 } else {
                     // unsafe hack to avoid portal polys assigning material for valid normal polygons
                     // it only work because DrawMeshInfoListAlphablended use texture from material
-                    _tex = reinterpret_cast<zCTexture*>(reinterpret_cast<DWORD>(polymat->GetTextureSingle()) + 1);
+                    _tex = reinterpret_cast<zCTexture*>(reinterpret_cast<DWORD>(tex) + 1);
 
                     MaterialInfo* info = Engine::GAPI->GetMaterialInfoFrom( _tex, textureName );
                     info->MaterialType = MaterialInfo::MT_Portal;
@@ -385,9 +394,32 @@ HRESULT WorldConverter::ConvertWorldMesh( zCPolygon** polys, unsigned int numPol
         XMFLOAT3& bbmax = sectionInfo.BoundingBox.Max;
 
         zCMaterial* mat = poly->GetMaterial();
+        if ( !mat ) {
+            continue;
+        }
         if ( poly->GetNumPolyVertices() < 3 ) {
             LogWarn() << "Poly with less than 3 vertices!";
         }
+
+        // Use the map to put the polygon to those using the same material
+        MeshKey key;
+        key.Texture = _tex ? _tex : mat->GetTextureSingle();
+        key.Material = mat;
+
+        auto it = sectionInfo.WorldMeshes.find( key );
+        if ( it == sectionInfo.WorldMeshes.end() ) {
+            key.Info = Engine::GAPI->GetMaterialInfoFrom( key.Texture );
+            it = sectionInfo.WorldMeshes.emplace( key, new WorldMeshInfo ).first;
+        }
+
+        int matGroup = mat->GetMatGroup();
+#ifdef BUILD_GOTHIC_2_6_fix
+        if ( matGroup != zMAT_GROUP_WATER && !_tex ) {
+            if ( AdditionalCheckWaterFall( key.Texture ) ) {
+                matGroup = zMAT_GROUP_WATER;
+            }
+        }
+#endif
 
         // Extract poly vertices
         std::vector<ExVertexStruct> polyVertices;
@@ -420,38 +452,30 @@ HRESULT WorldConverter::ConvertWorldMesh( zCPolygon** polys, unsigned int numPol
                 t.Color = DEFAULT_LIGHTMAP_POLY_COLOR;
             } else {
                 t.TexCoord2 = float2( 0.0f, 0.0f );
-
-                if ( mat && mat->GetMatGroup() == zMAT_GROUP_WATER ) {
-                    t.Normal = float3( 0.0f, 1.0f, 0.0f ); // Get rid of ugly shadows on water
-                    // Static light generated for water sucks and we can't use it to block the sun specular lighting
-                    // so we'll limit ourselves to only block it in indoor locations
+                if ( matGroup == zMAT_GROUP_WATER ) {
                     t.Color = 0xFFFFFFFF;
                 }
             }
 
-            if ( mat && mat->GetMatGroup() == zMAT_GROUP_WATER ) {
+            if ( matGroup == zMAT_GROUP_WATER ) {
                 if ( mat->HasTexAniMap() ) {
                     t.TexCoord2 = mat->GetTexAniMapDelta();
                 } else {
                     t.TexCoord2 = float2( 0.0f, 0.0f );
                 }
+
+                if ( mat->GetWaveMode() != zTMode_NONE ) {
+                    reinterpret_cast<BYTE*>(&t.Color)[2] = static_cast<BYTE>(mat->GetWaveMaxAmplitude() / 5.f);
+                    reinterpret_cast<BYTE*>(&t.Color)[3] = static_cast<BYTE>(mat->GetWaveSpeed() * 10.f);
+                } else {
+                    reinterpret_cast<BYTE*>(&t.Color)[2] = 0;
+                    reinterpret_cast<BYTE*>(&t.Color)[3] = 0;
+                }
             }
         }
 
-        // Use the map to put the polygon to those using the same material
-        MeshKey key;
-        key.Texture = _tex ? _tex : mat ? mat->GetTextureSingle() : nullptr;
-        key.Material = mat;
-
-        if ( sectionInfo.WorldMeshes.count( key ) == 0 ) {
-            key.Info = Engine::GAPI->GetMaterialInfoFrom( key.Texture );
-            sectionInfo.WorldMeshes[key] = new WorldMeshInfo;
-        }
-        TriangleFanToList( &polyVertices[0], polyVertices.size(), &sectionInfo.WorldMeshes[key]->Vertices );
-
-        if ( mat && mat->GetMatGroup() == zMAT_GROUP_WATER // Check for water
-            && !mat->HasAlphaTest() ) 
-        {
+        TriangleFanToList( &polyVertices[0], polyVertices.size(), &it->second->Vertices );
+        if ( matGroup == zMAT_GROUP_WATER && !mat->HasAlphaTest() ) {
 #ifdef BUILD_GOTHIC_1_08k
             MaterialInfo* info = Engine::GAPI->GetMaterialInfoFrom( key.Texture );
             if ( !(AdditionalCheckWaterFall( key.Texture )) ) { 
@@ -716,7 +740,6 @@ void WorldConverter::Extract3DSMeshFromVisual( zCProgMeshProto* visual, MeshVisu
 
             vertices[idx].TexCoord.x = m->WedgeList.Get( n ).texUV.x; // This produces wrong results
             vertices[idx].TexCoord.y = m->WedgeList.Get( n ).texUV.y;
-            //vertices[idx].Color = m->Material->GetColor().dword;
             vertices[idx].Color = 0xFFFFFFFF;
             *vertices[idx].Normal.toXMFLOAT3() = (*m->WedgeList.Get( n ).normal.toXMFLOAT3());
         }
@@ -819,7 +842,6 @@ void WorldConverter::ExtractSkeletalMeshFromVob( zCModel* model, SkeletalMeshVis
                 indices.emplace_back( triangle.wedge[0] );
             }
 
-            zCMaterial* mat = s->GetSubmesh( i )->Material;
             // Get vertices
             vertices.reserve( m->WedgeList.NumInArray );
             bindPoseVertices.reserve( m->WedgeList.NumInArray );
@@ -845,9 +867,9 @@ void WorldConverter::ExtractSkeletalMeshFromVob( zCModel* model, SkeletalMeshVis
                 pvx.Normal = vx.Normal;
                 pvx.TexCoord = vx.TexCoord;
                 pvx.Color = 0xFFFFFFFF;
-                //pvx.Color = mat->GetColor().dword;
             }
 
+            zCMaterial* mat = s->GetSubmesh( i )->Material;
 
             SkeletalMeshInfo* mi = new SkeletalMeshInfo;
             mi->Vertices = vertices;
@@ -950,7 +972,6 @@ void WorldConverter::ExtractProgMeshProtoFromModel( zCModel* model, MeshVisualIn
                 vx.TexCoord = wedge.texUV;
                 vx.Normal = wedge.normal;
                 vx.Color = 0xFFFFFFFF;
-                //vx.Color = m->Material->GetColor().dword;
             }
 
             // Create the buffers and sort the mesh into the structure
@@ -1159,7 +1180,6 @@ void WorldConverter::UpdateMorphMeshVisual( void* v, MeshVisualInfo* meshInfo ) 
             vx.Normal = wedge.normal;
             vx.TexCoord = wedge.texUV;
             vx.Color = 0xFFFFFFFF;
-            //vx.Color = s->Material->GetColor().dword;
         }
 
         for ( auto const& it : meshInfo->Meshes ) {
@@ -1209,7 +1229,8 @@ void WorldConverter::Extract3DSMeshFromVisual2( zCProgMeshProto* visual, MeshVis
             vx.Normal = wedge.normal;
             vx.TexCoord = wedge.texUV;
             vx.Color = 0xFFFFFFFF;
-            //vx.Color = s->Material->GetColor().dword; // Bake materialcolor into the mesh. This is ok for the most meshes.
+            //if (visual->GetSubmeshes()[i].Material)
+            //	vx.Color = visual->GetSubmeshes()[i].Material->GetColor(); // Bake materialcolor into the mesh. This is ok for the most meshes.
 
             // Check bounding box
             bbmin.x = bbmin.x > vx.Position.x ? vx.Position.x : bbmin.x;
@@ -1233,7 +1254,7 @@ void WorldConverter::Extract3DSMeshFromVisual2( zCProgMeshProto* visual, MeshVis
         mi->Vertices = vertices;
         mi->Indices = indices;
         mi->MeshIndex = i;
-        
+
         // Create the buffers
         Engine::GraphicsEngine->CreateVertexBuffer( &mi->MeshVertexBuffer );
         Engine::GraphicsEngine->CreateVertexBuffer( &mi->MeshIndexBuffer );
@@ -1470,7 +1491,7 @@ void WorldConverter::WrapVertexBuffers( const std::list<std::vector<ExVertexStru
     outOffsets.emplace_back( 0 );
     int off = 0;
     for ( auto const& iti : indexBuffers ) {
-        for ( auto vi = iti->begin(); vi != iti->end(); ++vi ) {
+        for ( auto& vi = iti->begin(); vi != iti->end(); ++vi ) {
             outIndices.emplace_back( *vi + vxOffsets[off] );
         }
         off++;
@@ -1604,4 +1625,3 @@ void WorldConverter::ConvertExVerticesTozCPolygons( const std::vector<ExVertexSt
         polyArray.emplace_back( poly );
     }
 }
-

@@ -23,8 +23,5 @@
     <None Include="ddraw.def">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="..\AssemblePackage.ps1">
-      <Filter>Source Files</Filter>
-    </None>
   </ItemGroup>
 </Project>

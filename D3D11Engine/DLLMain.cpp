@@ -5,6 +5,7 @@
 #include "Logger.h"
 #include "Detours/detours.h"
 #include "DbgHelp.h"
+#include "BaseAntTweakBar.h"
 #include "HookedFunctions.h"
 #include <signal.h>
 #include "VersionCheck.h"
@@ -13,10 +14,7 @@
 
 #include <shlwapi.h>
 #include "GSky.h"
-#include <imgui_impl_win32.h>
 
-#pragma comment(lib, "d3d11.lib")
-#pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "Imagehlp.lib") // Used in VersionCheck.cpp to get Gothic.exe Checksum.
 #pragma comment(lib, "shlwapi.lib")
 
@@ -28,6 +26,9 @@ ZUnquantizeHalfFloat_X4 UnquantizeHalfFloat_X8;
 
 static HINSTANCE hLThis = 0;
 static bool comInitialized = false;
+#if defined(BUILD_GOTHIC_1_08k) && !defined(BUILD_1_12F)
+bool haveWindAnimations = false;
+#endif
 
 typedef void (WINAPI* DirectDrawSimple)();
 typedef HRESULT( WINAPI* DirectDrawCreateEx_type )(GUID FAR*, LPVOID*, REFIID, IUnknown FAR*);
@@ -37,7 +38,7 @@ using WinMainFunc = decltype(&WinMain);
 WinMainFunc originalWinMain = reinterpret_cast<WinMainFunc>(GothicMemoryLocations::Functions::WinMain);
 #endif
 
-bool FeatureLevel10Compatibility = false;
+bool GMPModeActive = false;
 
 unsigned short QuantizeHalfFloat_Scalar( float input )
 {
@@ -280,8 +281,10 @@ extern "C" void WINAPI HookedReleaseDDThreadLock() {
 }
 
 extern "C" float WINAPI UpdateCustomFontMultiplierFontRendering( float multiplier ) {
+    // Using this function is unrecommended if you respect your players
+    // there are a lot of players that don't play with GD3D11 mod
     D3D11GraphicsEngine* engine = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
-    return engine ? engine->UpdateCustomFontMultiplierFontRendering( multiplier ) : 1.0;
+    return engine ? engine->UpdateCustomFontMultiplierFontRendering( multiplier ) : 1.0f;
 }
 
 extern "C" void WINAPI SetCustomCloudAndNightTexture( int idxTexture, bool isNightTexture ) {
@@ -305,6 +308,12 @@ extern "C" void WINAPI SetCustomSkyWavelengths( float X, float Y, float Z ) {
     if ( sky ) {
         sky->SetCustomSkyWavelengths( X, Y, Z );
     }
+}
+
+extern "C" void WINAPI EnableWindAnimations( void ) {
+#if defined(BUILD_GOTHIC_1_08k) && !defined(BUILD_1_12F)
+    haveWindAnimations = true;
+#endif
 }
 
 __declspec(naked) void FakeAcquireDDThreadLock() { _asm { jmp[ddraw.AcquireDDThreadLock] } }
@@ -418,27 +427,39 @@ void CheckPlatformSupport() {
     }
 }
 
-inline void CheckForFreetardisms() {
-    HMODULE ntdll = GetModuleHandleA( "ntdll.dll" );
-    if ( ntdll ) 
-    {
-        Wine_GetVersion = reinterpret_cast<const char* (CDECL*)(void)>(GetProcAddress( ntdll, "wine_get_version" ));
-        Wine_GetUnderlyingOSVersion = reinterpret_cast<void (CDECL*)(const char** sysname, const char** release)>(GetProcAddress( ntdll, "wine_get_host_version" ));
-        if ( Wine_GetVersion && Wine_GetUnderlyingOSVersion )
-        {
-            const char* sysname = nullptr;
-            const char* release = nullptr;
-            Wine_GetUnderlyingOSVersion( &sysname , &release );
-            LogInfo() << "Running on " << sysname << " " << release << " through Wine " << Wine_GetVersion() << ", noice.";
-        }
-    }
-}
-
 #if defined(BUILD_GOTHIC_2_6_fix)
 int WINAPI hooked_WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd ) {
+    if ( GetModuleHandleA( "gmp.dll" ) ) {
+        GMPModeActive = true;
+        LogInfo() << "GMP Mode Enabled";
+    }
+    // Remove automatic volume change of sounds regarding whether the camera is indoor or outdoor
+    // TODO: Implement!
+    if ( !GMPModeActive ) {
+        DetourTransactionBegin();
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCActiveSndAutoCalcObstruction), HookedFunctionInfo::hooked_zCActiveSndAutoCalcObstruction );
+        DetourTransactionCommit();
+    }
     return originalWinMain( hInstance, hPrevInstance, lpCmdLine, nShowCmd );
 }
 #endif
+
+[[noreturn]] void badAllocationHandler()
+{
+    D3D11GraphicsEngine* engine = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
+    while ( ShowCursor( true ) < 0 );
+    if ( engine ) {
+        if ( HWND outputWindow = engine->GetOutputWindow() ) {
+            ShowWindow( outputWindow, SW_HIDE );
+        }
+    }
+
+    LogErrorBox() << "Allocation failed due to running out of memory!\n"
+        "You might experience random crashes when saving game due"
+        " to heavy memory overhead caused by AMD drivers.\n"
+        "It is recommended to use 32-bit DXVK on top of GD3D11 for AMD users.";
+    exit( -1 );
+}
 
 BOOL WINAPI DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
     if ( DetourIsHelperProcess() ) {
@@ -448,6 +469,9 @@ BOOL WINAPI DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
     if ( reason == DLL_PROCESS_ATTACH ) {
         DetourRestoreAfterWith();
         DetourTransactionBegin();
+
+        // Setup bad allocation handler
+        std::set_new_handler( badAllocationHandler );
 
         //DebugWrite_i("DDRAW Proxy DLL starting.\n", 0);
         hLThis = hInst;
@@ -463,7 +487,6 @@ BOOL WINAPI DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
         if ( !Engine::PassThrough ) {
             Log::Clear();
             LogInfo() << "Starting DDRAW Proxy DLL.";
-            ImGui_ImplWin32_EnableDpiAwareness(); // enable dpi awareness
 
             HRESULT hr = CoInitializeEx( NULL, COINIT_APARTMENTTHREADED );
             if ( hr == RPC_E_CHANGED_MODE ) {
@@ -478,7 +501,6 @@ BOOL WINAPI DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
             // Check for right version
             VersionCheck::CheckExecutable();
             CheckPlatformSupport();
-            CheckForFreetardisms();
 
             Engine::GAPI = nullptr;
             Engine::GraphicsEngine = nullptr;

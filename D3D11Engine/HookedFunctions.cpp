@@ -1,5 +1,4 @@
 #include "pch.h"
-#include "ImGuiShim.h"
 #include "HookedFunctions.h"
 
 #include "zCBspTree.h"
@@ -21,8 +20,10 @@
 #include "zCThread.h"
 #include "zCResourceManager.h"
 #include "zCQuadMark.h"
+#include "zCFlash.h"
 #include "oCNPC.h"
 #include "zCSkyController_Outdoor.h"
+#include "zCInput_Win32.h"
 
 #include "zQuat.h"
 #include "zMat4.h"
@@ -32,7 +33,6 @@
 #endif
 
 #include "StackWalker.h"
-#include "zCInput_Win32.h"
 
 bool IsRunningUnderUnion = false;
 
@@ -68,6 +68,7 @@ void HookedFunctionInfo::InitHooks() {
     //zCThread::Hook();
     //zCResourceManager::Hook();
     zCQuadMark::Hook();
+    zCFlash::Hook();
     oCNPC::Hook();
     zCSkyController_Outdoor::Hook();
     zCInput_Win32::Hook();
@@ -143,8 +144,8 @@ void HookedFunctionInfo::InitHooks() {
         PatchAddr( 0x00557276, "\xE9\x00\x00\x00\x00" );
         PatchJMP( 0x00557276, reinterpret_cast<DWORD>(&HookedFunctionInfo::hooked_SetLightmap) );
     }
-
 #endif
+
     LogInfo() << "Patching: Fix using settings in freelook mode";
     PatchAddr( 0x00478FE2, "\x0F\x84\x9A\x00\x00\x00" );
 
@@ -376,9 +377,7 @@ void __fastcall HookedFunctionInfo::hooked_zCActiveSndAutoCalcObstruction( void*
 }
 
 int __cdecl HookedFunctionInfo::hooked_GetNumDevices() {
-    Engine::ImGuiHandle->IsActive = true;
-    Engine::ImGuiHandle->SettingsVisible = true;
-    Engine::GAPI->SetEnableGothicInput( false );
+    Engine::GraphicsEngine->OnUIEvent( BaseGraphicsEngine::EUIEvent::UI_OpenSettings );
     return 1;
 }
 

@@ -46,8 +46,9 @@ public:
     }
     */
 
-    const char* GetName() {
-        return __GetName().ToChar();
+    std::string GetName() {
+        const zSTRING& str = __GetName();
+        return std::string( str.ToChar(), static_cast<size_t>( str.Length() ) );
     }
 
     std::string GetNameWithoutExt() {

@@ -514,7 +514,6 @@ struct GothicRendererSettings {
     };
     enum EWindQuality {
         WIND_QUALITY_NONE = 0,
-        WIND_QUALITY_SIMPLE,
         WIND_QUALITY_ADVANCED,
     };
 
@@ -523,7 +522,7 @@ struct GothicRendererSettings {
     void SetDefault() {
         SectionDrawRadius = 4;
 
-        FpsLimit = 59;
+        FpsLimit = 0;
         DrawVOBs = true;
         DrawWorldMesh = 3;
         DrawSkeletalMeshes = true;
@@ -546,6 +545,7 @@ struct GothicRendererSettings {
                                         //these are only applicable to G1, they don't appear to have been used in G2
 
         FastShadows = false;
+        MaxNumFaces = 0;
         IndoorVobDrawRadius = 5000.0f;
         OutdoorVobDrawRadius = 30000.0f;
         SkeletalMeshDrawRadius = 6000.0f;
@@ -558,14 +558,15 @@ struct GothicRendererSettings {
         OutdoorSmallVobDrawRadius = 10000.0f;
         SmallVobSize = 1500.0f;
 
-#if BUILD_SPACER_NET
+
+#ifdef  BUILD_SPACER_NET
         OutdoorSmallVobDrawRadius = 30000.0f;
         IndoorVobDrawRadius = 10000.0f;
         SectionDrawRadius = 8;
 #endif //  BUILD_SPACER_NET
 
 
-#if defined(BUILD_GOTHIC_1_08k) || defined(BUILD_1_12F)
+#ifdef BUILD_GOTHIC_1_08k
         SetupOldWorldSpecificValues();
 #else
         SetupNewWorldSpecificValues();
@@ -581,11 +582,20 @@ struct GothicRendererSettings {
         WireframeVobs = false;
         WireframeWorld = false;
         DrawShadowGeometry = true;
-        LockViewFrustum = false;
+        FixViewFrustum = false;
+        DisableWatermark = true;
         DisableRendering = false;
         DisableDrawcalls = false;
 
+#ifdef BUILD_SPACER
+        EnableEditorPanel = true;
+#else
+        EnableEditorPanel = false;
+#endif
         EnableSMAA = true;
+
+        TesselationFactor = 20.0f;
+        TesselationRange = 8.0f;
 
         textureMaxSize = 16384;
         ShadowMapSize = 2048;
@@ -610,7 +620,8 @@ struct GothicRendererSettings {
         SortRenderQueue = true;
         DrawThreaded = true;
 
-        WindQuality = WIND_QUALITY_SIMPLE;
+        WindQuality = WIND_QUALITY_ADVANCED;
+        HeroAffectsObjects = true;
         EnablePointlightShadows = PLS_UPDATE_DYNAMIC;
         MinLightShadowUpdateRange = 300.0f;
         PartialDynamicShadowUpdates = true;
@@ -632,7 +643,7 @@ struct GothicRendererSettings {
         RainSceneWettness = 0.0f;
         RainSunLightStrength = 0.50f;
         RainFogColor = XMFLOAT3( 0.28f, 0.28f, 0.28f );
-        RainFogDensity = 0.00500f;
+        RainFogDensity = 0.00050f;
 
         EnableRain = true;
         EnableRainEffects = true;
@@ -651,18 +662,20 @@ struct GothicRendererSettings {
         GothicUIScale = 1.0f;
         //DisableEverything();
 
-        LimitLightIntensity = false;
+        LimitLightIntesity = false;
         AllowNormalmaps = false;
 
+        AllowNumpadKeys = false;
         EnableDebugLog = true;
         EnableCustomFontRendering = true;
 
         ForceFOV = false;
-        WindowMode = 0; //Borderless fullscreen as default
-        StretchWindow = true; //Borderless fullscreen as default
+
+        ChangeWindowPreset = 0;
+        StretchWindow = true;
         SmoothShadowCameraUpdate = true;
-        DisplayFlip = true; //Borderless fullscreen as default
-        LowLatency = false; //Borderless fullscreen as default
+        DisplayFlip = false;
+        LowLatency = false;
         HDR_Monitor = false;
         EnableInactiveFpsLock = true;
         MTResoureceManager = false;
@@ -670,6 +683,7 @@ struct GothicRendererSettings {
         AnimateStaticVobs = true;
         RunInSpacerNet = false;
         BinkVideoRunning = false;
+        EnableWaterAnimation = false;
     }
 
     void SetupOldWorldSpecificValues() {
@@ -707,6 +721,7 @@ struct GothicRendererSettings {
     bool DrawFog;
     int FogRange;
     int WindQuality;
+    bool HeroAffectsObjects;
     bool DrawG1ForestPortals;
     bool EnableHDR;
     E_HDRToneMap HDRToneMap;
@@ -723,9 +738,12 @@ struct GothicRendererSettings {
     bool EnableShadows;
     bool DrawShadowGeometry;
     bool VegetationAlphaToCoverage;
+    bool DisableWatermark;
     bool DisableRendering;
     bool DisableDrawcalls;
+    bool EnableEditorPanel;
     bool DoZPrepass;
+    bool EnableAutoupdates;
     bool EnableOcclusionCulling;
     bool SortRenderQueue;
     bool DrawThreaded;
@@ -733,6 +751,8 @@ struct GothicRendererSettings {
     float MinLightShadowUpdateRange;
     bool PartialDynamicShadowUpdates;
     bool DrawSectionIntersections;
+
+    int MaxNumFaces;
 
     float SharpenFactor;
 
@@ -758,6 +778,8 @@ struct GothicRendererSettings {
     float SunLightStrength;
     INT2 LoadedResolution;
 
+    float TesselationFactor;
+    float TesselationRange;
     float HDRLumWhite;
     float HDRMiddleGray;
     float BloomThreshold;
@@ -778,7 +800,7 @@ struct GothicRendererSettings {
 
     HBAOSettings HbaoSettings;
 
-    bool LockViewFrustum;
+    bool FixViewFrustum;
 
     float RainRadiusRange;
     float RainHeightRange;
@@ -795,9 +817,10 @@ struct GothicRendererSettings {
     bool EnableRain;
     bool EnableRainEffects;
 
-    bool LimitLightIntensity;
+    bool LimitLightIntesity;
     bool AllowNormalmaps;
 
+    bool AllowNumpadKeys;
     bool EnableDebugLog;
 
     bool EnableCustomFontRendering;
@@ -806,14 +829,15 @@ struct GothicRendererSettings {
     bool LowLatency;
     bool HDR_Monitor;
     bool StretchWindow;
-    int WindowMode;
+    int ChangeWindowPreset;
     bool SmoothShadowCameraUpdate;
     bool EnableInactiveFpsLock;
     bool MTResoureceManager;
     bool CompressBackBuffer;
     bool AnimateStaticVobs;
     bool RunInSpacerNet;
-	bool BinkVideoRunning;
+    bool BinkVideoRunning;
+    bool EnableWaterAnimation;
 };
 
 struct GothicRendererTiming {

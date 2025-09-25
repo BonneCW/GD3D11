@@ -25,6 +25,7 @@
 #define DIRECTINPUT_VERSION 0x0700
 #include <charconv>
 #include <dinput.h>
+#include "BaseAntTweakBar.h"
 #include "ImGuiShim.h"
 #include "zCInput.h"
 #include "zCBspTree.h"
@@ -36,15 +37,17 @@
 #include "oCNPC.h"
 #include "oCVisFX.h"
 #include "zCMeshSoftSkin.h"
-#include "GOcean.h"
 #include "zCVobLight.h"
 #include "zCQuadMark.h"
+#include "zCFlash.h"
 #include "zCOption.h"
 #include "zCRndD3D.h"
 #include "win32ClipboardWrapper.h"
 #include "zCSoundSystem.h"
 #include "zCView.h"
 
+// TODO: REMOVE THIS!
+#include "D3D11GraphicsEngine.h"
 
 #ifndef PUBLIC_RELEASE
 #define OPT_DBG_NOINLINE __declspec(noinline)
@@ -115,6 +118,28 @@ void MaterialInfo::UpdateConstantbuffer() {
     } else {
         Engine::GraphicsEngine->CreateConstantBuffer( &Constantbuffer, &buffer, sizeof( buffer ) );
     }
+}
+
+GothicAPI::GothicAPI() {
+    OriginalGothicWndProc = 0;
+
+    TextureTestBindMode = false;
+
+    ZeroMemory( BoundTextures, sizeof( BoundTextures ) );
+
+    CameraReplacementPtr = nullptr;
+    WrappedWorldMesh = nullptr;
+    CurrentCamera = nullptr;
+
+    MainThreadID = GetCurrentThreadId();
+
+    _canRain = false;
+    _canClearVobsByVisual = false;
+}
+
+GothicAPI::~GothicAPI() {
+    //ResetWorld(); // Just let it leak for now. // TODO: Do this properly
+    SAFE_DELETE( WrappedWorldMesh );
 }
 
 namespace
@@ -240,10 +265,11 @@ namespace
         }
     }
 
+    template<typename T>
     OPT_DBG_NOINLINE void GetPrivateProfileRGB(
         const LPCSTR lpAppName,
-        const LPCSTR lpKeyName, 
-        float3& values,
+        const LPCSTR lpKeyName,
+        T& values,
         const std::string& lpFileName
     ) {
         const int defaults[3] = {
@@ -314,29 +340,6 @@ namespace
         return GetPrivateProfileIntA( lpAppName, lpKeyName, nDefault, lpFileName.c_str() ) ? true : false;
     }
 
-}
-
-GothicAPI::GothicAPI() {
-    OriginalGothicWndProc = 0;
-
-    TextureTestBindMode = false;
-
-    ZeroMemory( BoundTextures, sizeof( BoundTextures ) );
-
-    CameraReplacementPtr = nullptr;
-    WrappedWorldMesh = nullptr;
-    Ocean = nullptr;
-    CurrentCamera = nullptr;
-
-    MainThreadID = GetCurrentThreadId();
-
-    _canRain = false;
-    _canClearVobsByVisual = false;
-}
-
-GothicAPI::~GothicAPI() {
-    //ResetWorld(); // Just let it leak for now. // TODO: Do this properly
-    SAFE_DELETE( WrappedWorldMesh );
 }
 
 /** Called when the game starts */
@@ -428,7 +431,7 @@ void GothicAPI::OnWorldUpdate() {
     if ( !root->OriginalNode )
         Engine::GAPI->OnWorldLoaded();
 #endif
-#if BUILD_SPACER_NET
+#ifdef BUILD_SPACER_NET
     if ( RendererState.RendererSettings.RunInSpacerNet ) {
         zCBspBase* rootBsp = oCGame::GetGame()->_zCSession_world->GetBspTree()->GetRootNode();
         BspInfo* root = &BspLeafVobLists[rootBsp];
@@ -453,13 +456,23 @@ void GothicAPI::OnWorldUpdate() {
     // Apply the hints for the sound system to fix voices in indoor locations being quiet
     // This was originally done in zCBspTree::Render
     zCWorld* world = oCGame::GetGame()->_zCSession_world;
+    if ( !GMPModeActive ) {
+        if ( IsCameraIndoor() ) {
+            // Set mode to 2, which means we are indoors, but can see the outside
+            if ( zCSoundSystem* sndSystem = zCSoundSystem::GetSoundSystem() )
+                sndSystem->SetGlobalReverbPreset( 2, 0.6f );
 
-    // Set mode to 0, which is the default
-    if ( zCSoundSystem* sndSystem = zCSoundSystem::GetSoundSystem() )
-        sndSystem->SetGlobalReverbPreset( 0, 0.0f );
+            if ( world && world->GetSkyControllerOutdoor() )
+                world->GetSkyControllerOutdoor()->SetCameraLocationHint( 1 );
+        } else {
+            // Set mode to 0, which is the default
+            if ( zCSoundSystem* sndSystem = zCSoundSystem::GetSoundSystem() )
+                sndSystem->SetGlobalReverbPreset( 0, 0.0f );
 
-    if ( world && world->GetSkyControllerOutdoor() )
-        world->GetSkyControllerOutdoor()->SetCameraLocationHint( 0 );
+            if ( world && world->GetSkyControllerOutdoor() )
+                world->GetSkyControllerOutdoor()->SetCameraLocationHint( 0 );
+        }
+    }
 
     // Do rain-effects
     zCSkyController_Outdoor* skyController;
@@ -623,7 +636,8 @@ void GothicAPI::SetEnableGothicInput( bool value ) {
             return;
     }
 
-#if !defined( BUILD_SPACER ) && !defined(BUILD_SPACER_NET)
+#ifndef BUILD_SPACER
+#ifndef BUILD_SPACER_NET
     // zMouse, false
     input->SetDeviceEnabled( 2, value ? 1 : 0 );
     input->SetDeviceEnabled( 1, value ? 1 : 0 );
@@ -653,6 +667,7 @@ void GothicAPI::SetEnableGothicInput( bool value ) {
         else
             dInputKeyboard->Acquire();
     }
+#endif
 #endif
 
 }
@@ -743,6 +758,8 @@ void GothicAPI::ResetVobs() {
         DestroyParticleEffect( vob );
     }
 
+    FrameThunderPolyStrips.clear();
+    FlashVisuals.clear();
     ParticleEffectVobs.clear();
     RegisteredVobs.clear();
     BspLeafVobLists.clear();
@@ -789,8 +806,14 @@ void GothicAPI::ResetVobs() {
 }
 
 /** Called when the game loaded a new level */
-void GothicAPI::OnGeometryLoaded( zCPolygon** polys, unsigned int numPolygons ) {
+void GothicAPI::OnGeometryLoaded( zCBspTree* tree ) {
+    LogInfo() << "World loaded, getting Levelmesh now!";
+    LogInfo() << " - Found " << tree->GetNumPolys() << " polygons";
     LogInfo() << "Extracting world";
+
+    std::vector<zCPolygon*> polys;
+    tree->GetLOD0Polygons( polys );
+    GetLoadedWorldInfo()->BspTree = tree;
 
     ResetWorld();
     ResetMaterialInfo();
@@ -799,13 +822,13 @@ void GothicAPI::OnGeometryLoaded( zCPolygon** polys, unsigned int numPolygons ) 
     std::string worldStr = "system\\GD3D11\\meshes\\WLD_" + LoadedWorldInfo->WorldName + ".obj";
     // Convert world to our own format
 #ifdef BUILD_GOTHIC_2_6_fix
-    WorldConverter::ConvertWorldMesh( polys, numPolygons, &WorldSections, LoadedWorldInfo.get(), &WrappedWorldMesh, indoorLocation );
+    WorldConverter::ConvertWorldMesh( &polys[0], polys.size(), &WorldSections, LoadedWorldInfo.get(), &WrappedWorldMesh, indoorLocation );
 #else
     if ( Toolbox::FileExists( worldStr ) ) {
         WorldConverter::LoadWorldMeshFromFile( worldStr, &WorldSections, LoadedWorldInfo.get(), &WrappedWorldMesh );
         LoadedWorldInfo->CustomWorldLoaded = true;
     } else {
-        WorldConverter::ConvertWorldMesh( polys, numPolygons, &WorldSections, LoadedWorldInfo.get(), &WrappedWorldMesh, indoorLocation );
+        WorldConverter::ConvertWorldMesh( &polys[0], polys.size(), &WorldSections, LoadedWorldInfo.get(), &WrappedWorldMesh, indoorLocation );
     }
 #endif
     LogInfo() << "Done extracting world!";
@@ -901,6 +924,11 @@ void GothicAPI::OnWorldLoaded() {
     SetEnableGothicInput( true );
 #endif
 
+    // Enable the editorpanel, if in spacer
+#ifdef BUILD_SPACER
+    Engine::GraphicsEngine->OnUIEvent( BaseGraphicsEngine::UI_OpenEditor );
+#endif
+
     _canClearVobsByVisual = false;
 }
 
@@ -945,12 +973,24 @@ void GothicAPI::LoadRendererWorldSettings( GothicRendererSettings& s ) {
     );
 
     GetPrivateProfileRGB("Atmoshpere", "FogColorMod", s.FogColorMod, ini);
-    
-    s.VisualFXDrawRadius = GetPrivateProfileFloatA( "General", "VisualFXDrawRadius", s.VisualFXDrawRadius, ini );
-    s.OutdoorVobDrawRadius = GetPrivateProfileFloatA( "General", "OutdoorVobDrawRadius", s.OutdoorVobDrawRadius, ini );
-    s.OutdoorSmallVobDrawRadius = GetPrivateProfileFloatA( "General", "OutdoorSmallVobDrawRadius", s.OutdoorSmallVobDrawRadius, ini );
-    s.SkeletalMeshDrawRadius = GetPrivateProfileFloatA( "General", "SkeletalMeshDrawRadius", s.SkeletalMeshDrawRadius, ini );
-    s.SectionDrawRadius = GetPrivateProfileFloatA( "General", "SectionDrawRadius", s.SectionDrawRadius, ini );
+
+    if ( !GMPModeActive ) {
+	    s.VisualFXDrawRadius = GetPrivateProfileFloatA( "General", "VisualFXDrawRadius", s.VisualFXDrawRadius, ini );
+	    s.OutdoorVobDrawRadius = GetPrivateProfileFloatA( "General", "OutdoorVobDrawRadius", s.OutdoorVobDrawRadius, ini );
+        s.OutdoorSmallVobDrawRadius = GetPrivateProfileFloatA( "General", "OutdoorSmallVobDrawRadius", s.OutdoorSmallVobDrawRadius, ini );
+        s.IndoorVobDrawRadius = GetPrivateProfileFloatA( "General", "IndoorVobDrawRadius", s.IndoorVobDrawRadius, ini );
+	    s.SkeletalMeshDrawRadius = GetPrivateProfileFloatA( "General", "SkeletalMeshDrawRadius", s.SkeletalMeshDrawRadius, ini );
+	    s.SectionDrawRadius = GetPrivateProfileFloatA( "General", "SectionDrawRadius", s.SectionDrawRadius, ini );
+    }
+
+    s.RainRadiusRange = GetPrivateProfileFloatA( "Rain", "RadiusRange", s.RainRadiusRange, ini );
+    s.RainHeightRange = GetPrivateProfileFloatA( "Rain", "HeightRange", s.RainHeightRange, ini );
+    s.RainNumParticles = GetPrivateProfileIntA( "Rain", "NumParticles", s.RainNumParticles, ini.c_str() );
+    GetPrivateProfileArray( "Rain", "GlobalVelocity", &s.RainGlobalVelocity.x, 3, &s.RainGlobalVelocity.x, ini );
+    s.RainSceneWettness = GetPrivateProfileFloatA( "Rain", "SceneWettness", s.RainSceneWettness, ini );
+    s.RainSunLightStrength = GetPrivateProfileFloatA( "Rain", "SunLightStrength", s.RainSunLightStrength, ini );
+    GetPrivateProfileRGB( "Rain", "FogColor", s.RainFogColor, ini );
+    s.RainFogDensity = GetPrivateProfileFloatA( "Rain", "FogDensity", s.RainFogDensity, ini );
 
     s.ReplaceSunDirection = GetPrivateProfileBoolA( "Atmoshpere", "ReplaceSunDirection", s.ReplaceSunDirection, ini );
 
@@ -995,8 +1035,18 @@ void GothicAPI::SaveRendererWorldSettings( const GothicRendererSettings& s ) {
     WritePrivateProfileStringA( "General", "VisualFXDrawRadius", std::to_string( s.VisualFXDrawRadius ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "General", "OutdoorVobDrawRadius", std::to_string( s.OutdoorVobDrawRadius ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "General", "OutdoorSmallVobDrawRadius", std::to_string( s.OutdoorSmallVobDrawRadius ).c_str(), ini.c_str() );
+    WritePrivateProfileStringA( "General", "IndoorVobDrawRadius", std::to_string( s.IndoorVobDrawRadius ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "General", "SkeletalMeshDrawRadius", std::to_string( s.SkeletalMeshDrawRadius ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "General", "SectionDrawRadius", std::to_string( s.SectionDrawRadius ).c_str(), ini.c_str() );
+
+    WritePrivateProfileStringA( "Rain", "RadiusRange", std::to_string( s.RainRadiusRange ).c_str(), ini.c_str() );
+    WritePrivateProfileStringA( "Rain", "HeightRange", std::to_string( s.RainHeightRange ).c_str(), ini.c_str() );
+    WritePrivateProfileStringA( "Rain", "NumParticles", std::to_string( s.RainNumParticles ).c_str(), ini.c_str() );
+    WritePrivateProfileArray( "Rain", "GlobalVelocity", &s.RainGlobalVelocity.x, 3, ini.c_str() );
+    WritePrivateProfileStringA( "Rain", "SceneWettness", std::to_string( s.RainSceneWettness ).c_str(), ini.c_str() );
+    WritePrivateProfileStringA( "Rain", "SunLightStrength", std::to_string( s.RainSunLightStrength ).c_str(), ini.c_str() );
+    WritePrivateProfileRGB( "Rain", "FogColor", s.RainFogColor, ini.c_str() );
+    WritePrivateProfileStringA( "Rain", "FogDensity", std::to_string( s.RainFogDensity ).c_str(), ini.c_str() );
 
     WritePrivateProfileStringA( "Atmoshpere", "ReplaceSunDirection", std::to_string( s.ReplaceSunDirection ? TRUE : FALSE ).c_str(), ini.c_str() );
 
@@ -1121,12 +1171,13 @@ void GothicAPI::DrawWorldMeshNaive() {
     FrameParticles.clear();
     FrameMeshInstances.clear();
 
-    {
-        auto _ = Engine::GraphicsEngine->RecordGraphicsEvent( L"Draw World Mesh" );
-        START_TIMING();
+    START_TIMING();
+    if ( FeatureLevel10Compatibility ) {
         Engine::GraphicsEngine->DrawWorldMesh();
-        STOP_TIMING( GothicRendererTiming::TT_WorldMesh );
+    } else {
+        Engine::GraphicsEngine->DrawWorldMesh_Indirect();
     }
+    STOP_TIMING( GothicRendererTiming::TT_WorldMesh );
 
     for ( auto const& vegetationBox : VegetationBoxes ) {
         vegetationBox->RenderVegetation( GetCameraPosition() );
@@ -1134,7 +1185,6 @@ void GothicAPI::DrawWorldMeshNaive() {
 
     START_TIMING();
     if ( RendererState.RendererSettings.DrawSkeletalMeshes ) {
-        auto _ = Engine::GraphicsEngine->RecordGraphicsEvent( L"Draw Skeletal Meshes" );
         // Set up frustum for the camera
         RendererState.RasterizerState.SetDefault();
         RendererState.RasterizerState.SetDirty();
@@ -1172,8 +1222,8 @@ void GothicAPI::DrawWorldMeshNaive() {
             if ( vobInfo->Vob->GetVisualAlpha() ) {
                 TransparencyVobs.emplace_back( dist, vobInfo->Vob->GetVobTransparency(), vobInfo, nullptr );
                 std::push_heap( TransparencyVobs.begin(), TransparencyVobs.end(), CompareGhostDistance );
-                    continue;
-                }
+                continue;
+            }
 
             DrawSkeletalMeshVob( vobInfo, dist );
             if( RendererState.RendererSettings.ShowSkeletalVertexNormals )
@@ -1183,10 +1233,7 @@ void GothicAPI::DrawWorldMeshNaive() {
     STOP_TIMING( GothicRendererTiming::TT_SkeletalMeshes );
 
     // Draw vobs in view
-    {
-        auto _ = Engine::GraphicsEngine->RecordGraphicsEvent( L"Draw VOBs" );
-        Engine::GraphicsEngine->DrawVOBs();
-    }
+    Engine::GraphicsEngine->DrawVOBs();
 
     //DebugDrawBSPTree();
 
@@ -1217,12 +1264,10 @@ void GothicAPI::DrawParticlesSimple() {
 
 // Converts poly strip visuals to render ready geometry
 void GothicAPI::CalcPolyStripMeshes() {
-
     ExVertexStruct polyFan[4];
     PolyStripInfos.clear();
 
     for ( const auto& pStrip : PolyStripVisuals ) {
-
         if ( !pStrip ) return;
 
         //Pointer passed is a placeholder, it'll not be used inside the function.
@@ -1304,9 +1349,122 @@ void GothicAPI::CalcPolyStripMeshes() {
             WorldConverter::TriangleFanToList( &polyFan[0], 4, &PolyStripInfos[tx].vertices );
             PolyStripInfos[tx].material = mat;
         }
-
     }
 };
+
+void GothicAPI::CalcFlashMeshes() {
+    if ( !RendererState.RendererSettings.DrawParticleEffects || (FlashVisuals.empty() && FrameThunderPolyStrips.empty()) ) {
+        return;
+    }
+
+    FXMVECTOR camPos = GetCameraPositionXM();
+    static std::vector<zCPolyStrip*> polyStrips; polyStrips.clear();
+    for ( auto it = FlashVisuals.begin(); it != FlashVisuals.end();) {
+        zCFlash* flash = it->first;
+        float dist1, dist2;
+        XMStoreFloat( &dist1, XMVector3Length( flash->GetStartPositionWorld() - camPos ) );
+        XMStoreFloat( &dist2, XMVector3Length( flash->GetEndPositionWorld() - camPos ) );
+        if ( dist1 > RendererState.RendererSettings.VisualFXDrawRadius &&
+            dist2 > RendererState.RendererSettings.VisualFXDrawRadius )
+            continue;
+
+        if ( flash->RenderFlash( polyStrips ) ) {
+            zCVob* connectedVob = it->second;
+            it = FlashVisuals.erase( it );
+            if ( connectedVob ) {
+                connectedVob->GetHomeWorld()->RemoveVob( connectedVob );
+            }
+            continue;
+        }
+        ++it;
+    }
+
+    if ( !FrameThunderPolyStrips.empty() ) {
+        polyStrips.insert( polyStrips.end(), FrameThunderPolyStrips.begin(), FrameThunderPolyStrips.end() );
+        FrameThunderPolyStrips.clear();
+    }
+
+    ExVertexStruct polyFan[4];
+    for ( const auto& pStrip : polyStrips ) {
+        //Pointer passed is a placeholder, it'll not be used inside the function.
+        //We need gothic engine to only execute relevant calculations inside native Render()
+        //without actually rendering polygons. Inside Render() polygons are rendered
+        //with zCRnd_D3D::DrawPoly(). Hook created inside zCRndD3D.h prevents native rendering.
+        pStrip->Render( pStrip );
+
+        zCPolyStripInstance* pStripInst = pStrip->GetInstanceData();
+        zCMaterial* mat = pStripInst->material;
+        zCTexture* tx = mat->GetAniTexture();
+        if ( !tx ) {
+            tx = mat->GetTextureSingle();
+        }
+        if ( !tx ) {
+            continue;
+        }
+
+        //These values go back to 0 after reaching maxSegAmount
+        int firstSeg = pStripInst->firstSeg;
+        int lastSeg = pStripInst->lastSeg;
+        int maxSegAmount = pStripInst->numVert / 2;
+
+        float* alphaList = pStripInst->alphaList;
+        zCVertex* vertList = pStripInst->vertList;
+        zCPolygon* poly = &(pStripInst->polyList[0]);
+
+        //order of vertex indeces that make up a single poly
+        int vertOrder[4] = { 0, 1, 3, 2 };
+
+        //Loop though segment while allowing segment index to overflow maxSegAmount
+        for ( int i = firstSeg; ; i++ ) {
+            int segIndex = i % maxSegAmount;
+
+            if ( segIndex == lastSeg ) {
+                //Triangles for the last segment are created during previous iteration, so break here.
+                break;
+            }
+
+#ifdef BUILD_GOTHIC_1_08k
+            //For G1 vertices are taken from polygons in polyList
+            poly = &pStripInst->polyList[segIndex];
+            zCVertex** polyVertices = poly->getVertices();
+
+            for ( int n = 0; n < 4; n++ ) {
+                ExVertexStruct& vert = polyFan[n];
+                vert.Position = polyVertices[n]->Position;
+                vert.TexCoord = poly->getFeatures()[n]->texCoord;
+                vert.Normal = poly->getFeatures()[n]->normal;
+                vert.Color = poly->getFeatures()[n]->lightStatic;
+            }
+#endif
+#ifdef BUILD_GOTHIC_2_6_fix
+            //For G2 polyList only contains a single polygon (supposed to be kind of a reference it seems) 
+            //and vertices should be taken from vertList, while preserving a correct order making up a
+            //properly winded polygon
+            for ( int n = 0; n < 4; n++ ) {
+                //In similar fashion to segment index - vertex index should overflow numVert.
+                int vInd = ((segIndex << 1) + vertOrder[n]) % pStripInst->numVert;
+                //Segment index of the current vertex (it's not always equals `i` since we loop through next segment's vertices as well).
+                int vSegInd = (((segIndex << 1) + vertOrder[n]) >> 1) % maxSegAmount;
+
+                ExVertexStruct& vert = polyFan[n];
+                vert.Position = vertList[vInd].Position;
+                //Vertex features are hooked up from reference polygon's vertices
+                vert.TexCoord = poly->getFeatures()[n]->texCoord;
+                vert.Normal = poly->getFeatures()[n]->normal;
+                vert.Color = poly->getFeatures()[n]->lightStatic;
+
+                float alpha = alphaList[vSegInd];
+                if ( alpha < 0.f ) alpha = 0.f;
+                reinterpret_cast<uint8_t*>( &vert.Color )[3] = alpha;
+            }
+#endif
+
+            //Convert list of quads to list of triangles
+            WorldConverter::TriangleFanToList( &polyFan[0], 4, &PolyStripInfos[tx].vertices );
+            PolyStripInfos[tx].material = mat;
+        }
+    }
+}
 
 /** Returns a list of visible particle-effects */
 void GothicAPI::GetVisibleParticleEffectsList( std::vector<zCVob*>& pfxList ) {
@@ -1413,7 +1571,15 @@ bool GothicAPI::IsMaterialActive( zCMaterial* mat ) {
 /** Called when a vob moved */
 void GothicAPI::OnVobMoved( zCVob* vob ) {
     auto checkMatrix = []( XMMATRIX& a, XMMATRIX& b ) -> bool {
-        return memcmp( &a, &b, sizeof( XMMATRIX ) ) == 0;
+        const uint32_t mask = _mm_movemask_epi8( _mm_packs_epi16(
+            _mm_packs_epi32 (
+            _mm_castps_si128( _mm_cmpeq_ps( a.r[0], b.r[0] ) ),
+            _mm_castps_si128( _mm_cmpeq_ps( a.r[1], b.r[1] ) ) ),
+            _mm_packs_epi32 (
+            _mm_castps_si128( _mm_cmpeq_ps( a.r[2], b.r[2] ) ),
+            _mm_castps_si128( _mm_cmpeq_ps( a.r[3], b.r[3] ) ) )
+        ) );
+        return (mask == 0xFFFF);
     };
 
     auto it = VobMap.find( vob );
@@ -1599,6 +1765,24 @@ void GothicAPI::DrawMeshInfo( zCMaterial* mat, MeshInfo* msh ) {
     }
 }
 
+void GothicAPI::DrawMeshInfo_Layered( zCMaterial* mat, MeshInfo* msh ) {
+    // Check for material and bind the texture if it exists
+    if ( mat ) {
+        // Setup alphatest //TODO: This has to be done earlier!
+        if ( mat->GetAlphaFunc() == zRND_ALPHA_FUNC_TEST )
+            RendererState.GraphicsState.FF_GSwitches |= GSWITCH_ALPHAREF;
+        else
+            RendererState.GraphicsState.FF_GSwitches &= ~GSWITCH_ALPHAREF;
+    }
+
+    D3D11GraphicsEngine* g = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
+    if ( !msh->MeshIndexBuffer ) {
+        g->DrawVertexBufferInstanced( msh->MeshVertexBuffer, msh->Vertices.size(), 6 );
+    } else {
+        g->DrawVertexBufferInstancedIndexed( msh->MeshVertexBuffer, msh->MeshIndexBuffer, msh->Indices.size(), 6 );
+    }
+}
+
 /** Locks the resource CriticalSection */
 void GothicAPI::EnterResourceCriticalSection() {
 
@@ -1635,7 +1819,7 @@ void GothicAPI::OnRemovedVob( zCVob* vob, zCWorld* world ) {
 
     // Erase the vob from visual-vob map
     std::list<BaseVobInfo*>& list = VobsByVisual[vob->GetVisual()];
-    for ( auto vit = list.begin(); vit != list.end(); ++vit ) {
+    for ( auto& vit = list.begin(); vit != list.end(); ++vit ) {
         if ( (*vit)->Vob == vob ) {
             list.erase( vit );
             break; // Can (should!) only be in here once
@@ -1755,7 +1939,7 @@ void GothicAPI::OnRemovedVob( zCVob* vob, zCWorld* world ) {
         vi->VobSection->Vobs.remove( vi );
     }
     // Erase it from the skeletal vob-list
-    for ( auto vit = SkeletalMeshVobs.begin(); vit != SkeletalMeshVobs.end(); ++vit ) {
+    for ( auto& vit = SkeletalMeshVobs.begin(); vit != SkeletalMeshVobs.end(); ++vit ) {
         if ( (*vit)->Vob == vob ) {
             //SkeletalVobInfo* vi = *vit;
             SkeletalMeshVobs.erase( vit );
@@ -1763,7 +1947,7 @@ void GothicAPI::OnRemovedVob( zCVob* vob, zCWorld* world ) {
         }
     }
 
-    for ( auto vit = AnimatedSkeletalVobs.begin(); vit != AnimatedSkeletalVobs.end(); ++vit ) {
+    for ( auto& vit = AnimatedSkeletalVobs.begin(); vit != AnimatedSkeletalVobs.end(); ++vit ) {
         if ( (*vit)->Vob == vob ) {
             //SkeletalVobInfo* vi = *it;
             AnimatedSkeletalVobs.erase( vit );
@@ -1772,7 +1956,7 @@ void GothicAPI::OnRemovedVob( zCVob* vob, zCWorld* world ) {
     }
 
     // Erase it from dynamically loaded vobs
-    for ( auto vit = DynamicallyAddedVobs.begin(); vit != DynamicallyAddedVobs.end(); ++vit ) {
+    for ( auto& vit = DynamicallyAddedVobs.begin(); vit != DynamicallyAddedVobs.end(); ++vit ) {
         if ( (*vit)->Vob == vob ) {
             DynamicallyAddedVobs.erase( vit );
             break;
@@ -2119,9 +2303,6 @@ float3* GothicAPI::GetLowestLODPoly_SkeletalMesh( zCModel* model, const int poly
     return returnPositions;
 }
 
-// TODO: REMOVE THIS!
-#include "D3D11GraphicsEngine.h"
-
 /** Called to update the compress backbuffer state */
 void GothicAPI::UpdateCompressBackBuffer() {
     reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine)->OnResetBackBuffer();
@@ -2139,7 +2320,6 @@ void GothicAPI::DrawSkeletalMeshVob( SkeletalVobInfo* vi, float distance, bool u
         return; // Gothic fortunately sets this to 0 when it throws the model out of the cache
 
     model->SetIsVisible( true );
-
     if ( !vi->Vob->GetShowVisual() )
         return;
 
@@ -2167,9 +2347,9 @@ void GothicAPI::DrawSkeletalMeshVob( SkeletalVobInfo* vi, float distance, bool u
         }
     }
 
-    XMMATRIX matScale = XMMatrixScalingFromVector( model->GetModelScaleXM() );
+    XMMATRIX scale = XMMatrixScalingFromVector( model->GetModelScaleXM() );
 
-    XMMATRIX world = vi->Vob->GetWorldMatrixXM() * matScale;
+    XMMATRIX world = vi->Vob->GetWorldMatrixXM() * scale;
 
     zCCamera::GetCamera()->SetTransformXM( zCCamera::TT_WORLD, world );
 
@@ -2342,6 +2522,215 @@ void GothicAPI::DrawSkeletalMeshVob( SkeletalVobInfo* vi, float distance, bool u
     RendererState.RendererInfo.FrameDrawnVobs++;
 }
 
+void GothicAPI::DrawSkeletalMeshVob_Layered( SkeletalVobInfo* vi, float distance, bool updateState ) {
+    // TODO: Put this into the renderer!!
+    D3D11GraphicsEngine* g = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
+
+    zCModel* model = static_cast<zCModel*>(vi->Vob->GetVisual());
+    SkeletalMeshVisualInfo* visual = static_cast<SkeletalMeshVisualInfo*>(vi->VisualInfo);
+
+    if ( !model || !vi->VisualInfo )
+        return; // Gothic fortunately sets this to 0 when it throws the model out of the cache
+
+    model->SetIsVisible( true );
+    if ( !vi->Vob->GetShowVisual() )
+        return;
+
+    float4 modelColor;
+    if ( Engine::GAPI->GetRendererState().RendererSettings.EnableShadows ) {
+        // Let shadows do the work
+        modelColor = 0xFFFFFFFF;
+    } else {
+        if ( vi->Vob->IsIndoorVob() ) {
+            // All lightmapped polys have this color, so just use it
+            modelColor = DEFAULT_LIGHTMAP_POLY_COLOR;
+        } else {
+            // Get the color from vob position of the ground poly
+            if ( zCPolygon* polygon = vi->Vob->GetGroundPoly() ) {
+                static const float inv255f = (1.0f / 255.0f);
+                float3 vobPos = vi->Vob->GetPositionWorld();
+                float3 polyLightStat = polygon->GetLightStatAtPos( vobPos );
+                modelColor.x = polyLightStat.z * inv255f;
+                modelColor.y = polyLightStat.y * inv255f;
+                modelColor.z = polyLightStat.x * inv255f;
+                modelColor.w = 1.f;
+            } else {
+                modelColor = 0xFFFFFFFF;
+            }
+        }
+    }
+
+    XMMATRIX scale = XMMatrixScalingFromVector( model->GetModelScaleXM() );
+
+    XMMATRIX world = vi->Vob->GetWorldMatrixXM() * scale;
+
+    zCCamera::GetCamera()->SetTransformXM( zCCamera::TT_WORLD, world );
+
+    XMMATRIX view = GetViewMatrixXM();
+    SetWorldViewTransform( world, view );
+
+    float fatness = model->GetModelFatness();
+
+    // Get the bone transforms
+    std::vector<XMFLOAT4X4> transforms;
+    model->GetBoneTransforms( &transforms );
+
+    if ( updateState ) {
+        // Update attachments
+        model->UpdateAttachedVobs();
+        model->UpdateMeshLibTexAniState();
+    }
+
+    if ( !static_cast<SkeletalMeshVisualInfo*>(vi->VisualInfo)->SkeletalMeshes.empty() ) {
+#ifdef BUILD_GOTHIC_2_6_fix
+        if ( !model->GetDrawHandVisualsOnly() || *reinterpret_cast<BYTE*>(0x57A694) == 0x90 ) {
+#else
+        if ( !model->GetDrawHandVisualsOnly() ) {
+#endif
+            g->DrawSkeletalMesh_Layered( vi, transforms, modelColor, fatness );
+        }
+    } else {
+        if ( model->GetMeshSoftSkinList()->NumInArray > 0 ) {
+            // Just in case somehow we end up without skeletal meshes and they are available
+            WorldConverter::ExtractSkeletalMeshFromVob( model, static_cast<SkeletalMeshVisualInfo*>(vi->VisualInfo) );
+        }
+    }
+    g->SetActiveVertexShader( "VS_ExNodeLayered" );
+
+    // Set up instance info
+    VS_ExConstantBuffer_PerInstanceNode instanceInfo;
+    instanceInfo.Color = modelColor;
+
+    // Init the constantbuffer if not already done
+    if ( !vi->VobConstantBuffer )
+        vi->UpdateVobConstantBuffer();
+
+    g->SetupVS_ExMeshDrawCall();
+    g->SetupVS_ExConstantBuffer();
+
+    std::map<int, std::vector<MeshVisualInfo*>>& nodeAttachments = vi->NodeAttachments;
+    for ( unsigned int i = 0; i < transforms.size(); i++ ) {
+        // Check for new visual
+        zCModel* mvis = static_cast<zCModel*>(vi->Vob->GetVisual());
+        zCModelNodeInst* node = mvis->GetNodeList()->Array[i];
+
+        if ( !node->NodeVisual )
+            continue; // Happens when you pull your sword for example
+
+        // Check if this is loaded
+        if ( node->NodeVisual && nodeAttachments.find( i ) == nodeAttachments.end() ) {
+            // It's not, extract it
+            WorldConverter::ExtractNodeVisual( i, node, nodeAttachments );
+        }
+
+        // Check for changed visual
+        if ( nodeAttachments[i].size() && node->NodeVisual != nodeAttachments[i][0]->Visual ) {
+            // Check for deleted attachment
+            if ( !node->NodeVisual ) {
+                // Remove attachment
+                delete nodeAttachments[i][0];
+                nodeAttachments[i].clear();
+
+                LogInfo() << "Removed attachment from model " << vi->VisualInfo->VisualName;
+
+                continue; // Go to next attachment
+            }
+            // Load the new one
+            WorldConverter::ExtractNodeVisual( i, node, nodeAttachments );
+        }
+
+        if ( model->GetDrawHandVisualsOnly() ) {
+            std::string NodeName = node->ProtoNode->NodeName.ToChar();
+#ifdef BUILD_GOTHIC_2_6_fix
+            if ( NodeName.find( "HAND" ) == std::string::npos && (*reinterpret_cast<BYTE*>(0x57A694) != 0x90 || NodeName.find( "ARM" ) == std::string::npos) ) {
+#else
+            if ( NodeName.find( "HAND" ) == std::string::npos ) {
+#endif
+                continue;
+            }
+        }
+
+        if ( nodeAttachments.find( i ) != nodeAttachments.end() ) {
+            // Go through all attachments this node has
+            for ( MeshVisualInfo* mvi : nodeAttachments[i] ) {
+                XMMATRIX curTransform = XMLoadFloat4x4( &transforms[i] );
+                SetWorldViewTransform( world * curTransform, view );
+
+                if ( !mvi->Visual ) {
+                    LogWarn() << "Attachment without visual on model: " << model->GetVisualName();
+                    continue;
+                }
+
+                // Setup pixel shader here so that we get correct normals
+                // Somehow BindShaderForTexture make normals to be inversed
+                if ( g->GetRenderingStage() == DES_MAIN ) {
+                    g->SetActivePixelShader( "PS_DiffuseAlphaTest" );
+                    g->BindActivePixelShader();
+                }
+
+                // Update animated textures
+                bool isMMS = std::string( mvi->Visual->GetFileExtension( 0 ) ) == ".MMS";
+                if ( updateState ) {
+                    node->TexAniState.UpdateTexList();
+                    if ( isMMS ) {
+                        zCMorphMesh* mm = reinterpret_cast<zCMorphMesh*>(mvi->Visual);
+                        mm->GetTexAniState()->UpdateTexList();
+                    }
+                }
+
+                if ( isMMS ) {
+                    // Only 0.35f of the fatness wanted by gothic.
+                    // They seem to compensate for that with the scaling.
+                    instanceInfo.Fatness = std::max<float>( 0.f, fatness * 0.35f );
+                    instanceInfo.Scaling = fatness * 0.02f + 1.f;
+                } else {
+                    instanceInfo.Fatness = 0.f;
+                    instanceInfo.Scaling = 1.f;
+                }
+
+                auto& VShader = g->GetActiveVS();
+                if ( distance < 1000 && isMMS ) {
+                    zCMorphMesh* mm = reinterpret_cast<zCMorphMesh*>(mvi->Visual);
+                    // Only draw this as a morphmesh when rendering the main scene or when rendering as ghost
+                    if ( g->GetRenderingStage() == DES_MAIN || g->GetRenderingStage() == DES_GHOST ) {
+                        // Update constantbuffer
+                        instanceInfo.World = RendererState.TransformState.TransformWorld;
+                        VShader->GetConstantBuffer()[1]->UpdateBuffer( &instanceInfo );
+                        VShader->GetConstantBuffer()[1]->BindToVertexShader( 1 );
+
+                        if ( updateState ) {
+                            mm->AdvanceAnis();
+                            mm->CalcVertexPositions();
+                        }
+                        DrawMorphMesh_Layered( mm, mvi->Meshes );
+                        continue;
+                    }
+                }
+
+                instanceInfo.World = RendererState.TransformState.TransformWorld;
+                VShader->GetConstantBuffer()[1]->UpdateBuffer( &instanceInfo );
+                VShader->GetConstantBuffer()[1]->BindToVertexShader( 1 );
+
+                // Go through all materials registered here
+                for ( auto const& itm : mvi->Meshes ) {
+                    zCTexture* texture;
+                    if ( itm.first && (texture = itm.first->GetAniTexture()) != nullptr ) {
+                        if ( !g->BindTextureNRFX( texture, (g->GetRenderingStage() == DES_MAIN) ) )
+                            continue;
+                    }
+
+                    // Go through all meshes using that material
+                    for ( unsigned int m = 0; m < itm.second.size(); m++ ) {
+                        DrawMeshInfo_Layered( itm.first, itm.second[m] );
+                    }
+                }
+            }
+        }
+    }
+
+    RendererState.RendererInfo.FrameDrawnVobs++;
+}
+
 void GothicAPI::DrawTransparencyVobs() {
     D3D11GraphicsEngine* g = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
     if ( !TransparencyVobs.empty() ) {
@@ -2366,10 +2755,10 @@ void GothicAPI::DrawTransparencyVobs() {
 
             // Now actually draw mesh using transparency pixel shader
             g->SetActivePixelShader( "PS_Transparency" );
-        g->BindActivePixelShader();
+            g->BindActivePixelShader();
 
             // Update transparency alpha information
-        GhostAlphaConstantBuffer gacb;
+            GhostAlphaConstantBuffer gacb;
             gacb.GA_ViewportSize = float2( Engine::GraphicsEngine->GetResolution().x, Engine::GraphicsEngine->GetResolution().y );
             gacb.GA_Alpha = TransVobInfo.alpha;
             g->GetActivePS()->GetConstantBuffer()[0]->UpdateBuffer( &gacb );
@@ -2408,8 +2797,8 @@ void GothicAPI::DrawTransparencyVobs() {
             GhostAlphaConstantBuffer gacb;
             gacb.GA_ViewportSize = float2( Engine::GraphicsEngine->GetResolution().x, Engine::GraphicsEngine->GetResolution().y );
             gacb.GA_Alpha = TransVobInfo.alpha;
-        g->GetActivePS()->GetConstantBuffer()[0]->UpdateBuffer( &gacb );
-        g->GetActivePS()->GetConstantBuffer()[0]->BindToPixelShader( 0 );
+            g->GetActivePS()->GetConstantBuffer()[0]->UpdateBuffer( &gacb );
+            g->GetActivePS()->GetConstantBuffer()[0]->BindToPixelShader( 0 );
 
             for ( auto const& materialMesh : TransVobInfo.normalVob->VisualInfo->Meshes ) {
                 if ( materialMesh.first && materialMesh.first->GetTexture() ) {
@@ -2449,9 +2838,9 @@ void GothicAPI::DrawSkeletalVN() {
         SkeletalMeshVisualInfo* visual = static_cast<SkeletalMeshVisualInfo*>(vi->VisualInfo);
 
         if ( model && vi->VisualInfo ) {
-            XMMATRIX matScale = XMMatrixScalingFromVector( model->GetModelScaleXM() );
+            XMMATRIX scale = XMMatrixScalingFromVector( model->GetModelScaleXM() );
 
-            XMMATRIX world = vi->Vob->GetWorldMatrixXM() * matScale;
+            XMMATRIX world = vi->Vob->GetWorldMatrixXM() * scale;
 
             zCCamera::GetCamera()->SetTransformXM( zCCamera::TT_WORLD, world );
 
@@ -2501,24 +2890,26 @@ void GothicAPI::DrawParticleFX( zCVob* source, zCParticleFX* fx, ParticleFrameDa
 
     zTParticle* pfx = fx->GetFirstParticle();
     if ( pfx ) {
-        zCParticleEmitter* emitter = fx->GetEmitter();
-        if ( !emitter )
-            return;
-
-        zCTexture* texture = emitter->GetVisTexture();
-        if ( !texture )
-            return;
-
-        if ( emitter->GetVisShpType() == 5 && ParticleEffectProgMeshes.find( source ) == ParticleEffectProgMeshes.end() ) {
-            AddParticleEffect( source );
-            if ( texture->CacheIn(0.6f) != zRES_CACHED_IN)
+        // Get texture
+        zCTexture* texture = nullptr;
+        if ( zCParticleEmitter* emitter = fx->GetEmitter() ) {
+            if ( emitter->GetVisShpType() == 5 && ParticleEffectProgMeshes.find(source) == ParticleEffectProgMeshes.end() ) {
+                AddParticleEffect( source );
+            }
+            if ( (texture = emitter->GetVisTexture( pfx )) != nullptr ) {
+                // Check if it's loaded
+                if ( texture->CacheIn( 0.6f ) != zRES_CACHED_IN ) {
+                    return;
+                }
+            } else {
                 return;
+            }
         }
 
         // Set render states for this type
         ParticleRenderInfo& inf = FrameParticleInfo[texture];
 
-        switch ( emitter->GetVisAlphaFunc() ) {
+        switch ( fx->GetEmitter()->GetVisAlphaFunc() ) {
         case zRND_ALPHA_FUNC_ADD:
             inf.BlendState.SetAdditiveBlending();
             inf.BlendMode = zRND_ALPHA_FUNC_ADD;
@@ -2541,37 +2932,37 @@ void GothicAPI::DrawParticleFX( zCVob* source, zCParticleFX* fx, ParticleFrameDa
         zTParticle* kill = nullptr;
         zTParticle* p = nullptr;
 
+        for ( ;;) {
+            kill = pfx;
+            if ( kill && (kill->LifeSpan < *fx->GetPrivateTotalTime()) ) {
+                if ( kill->PolyStrip )
+                    zCObject_Release( kill->PolyStrip ); // TODO: MEMLEAK RIGHT HERE!
+
+                pfx = kill->Next;
+                fx->SetFirstParticle( pfx );
+
+                kill->Next = *reinterpret_cast<zTParticle**>(GothicMemoryLocations::GlobalObjects::s_globFreePart);
+                *reinterpret_cast<zTParticle**>(GothicMemoryLocations::GlobalObjects::s_globFreePart) = kill;
+                continue;
+            }
+            break;
+        }
+
+        int i = 0;
+        for ( p = pfx; p; p = p->Next ) {
             for ( ;;) {
-                kill = pfx;
+                kill = p->Next;
                 if ( kill && (kill->LifeSpan < *fx->GetPrivateTotalTime()) ) {
                     if ( kill->PolyStrip )
-                        zCObject_Release( kill->PolyStrip ); // TODO: MEMLEAK RIGHT HERE!
+                        zCObject_Release( kill->PolyStrip );
 
-                    pfx = kill->Next;
-                    fx->SetFirstParticle( pfx );
-
+                    p->Next = kill->Next;
                     kill->Next = *reinterpret_cast<zTParticle**>(GothicMemoryLocations::GlobalObjects::s_globFreePart);
                     *reinterpret_cast<zTParticle**>(GothicMemoryLocations::GlobalObjects::s_globFreePart) = kill;
                     continue;
                 }
                 break;
             }
-
-        int i = 0;
-        for ( p = pfx; p; p = p->Next ) {
-                for ( ;;) {
-                    kill = p->Next;
-                    if ( kill && (kill->LifeSpan < *fx->GetPrivateTotalTime()) ) {
-                        if ( kill->PolyStrip )
-                            zCObject_Release( kill->PolyStrip );
-
-                        p->Next = kill->Next;
-                        kill->Next = *reinterpret_cast<zTParticle**>(GothicMemoryLocations::GlobalObjects::s_globFreePart);
-                        *reinterpret_cast<zTParticle**>(GothicMemoryLocations::GlobalObjects::s_globFreePart) = kill;
-                        continue;
-                    }
-                    break;
-                }
 
             if ( p->PolyStrip ) {
                 PolyStripVisuals.insert( p->PolyStrip );
@@ -2593,10 +2984,10 @@ void GothicAPI::DrawParticleFX( zCVob* source, zCParticleFX* fx, ParticleFrameDa
             color.y = p->Color.y / 255.0f;
             color.z = p->Color.z / 255.0f;
 
-            if ( emitter->GetVisTexAniIsLooping() != 2 ) { // 2 seems to be some magic case with sinus smoothing
+            if ( fx->GetEmitter()->GetVisTexAniIsLooping() != 2 ) { // 2 seems to be some magic case with sinus smoothing
                 color.w = std::min( p->Alpha, 255.0f ) / 255.0f;
             } else {
-                color.w = std::min( (zCParticleFX::SinSmooth( fabs( (p->Alpha - emitter->GetVisAlphaStart()) * emitter->GetAlphaDist() ) ) * p->Alpha) / 255.0f, 1.0f );
+                color.w = std::min( (zCParticleFX::SinSmooth( fabs( (p->Alpha - fx->GetEmitter()->GetVisAlphaStart()) * fx->GetEmitter()->GetAlphaDist() ) ) * p->Alpha) / 255.0f, 1.0f );
             }
 
             color.w = std::max( color.w, 0.0f );
@@ -2965,7 +3356,7 @@ XMFLOAT3 GothicAPI::GetCameraPosition() {
 /** Returns the current cameraposition */
 FXMVECTOR GothicAPI::GetCameraPositionXM() {
     if ( !oCGame::GetGame()->_zCSession_camVob )
-        return XMVectorZero();
+        return g_XMZero;
 
     if ( CameraReplacementPtr )
         return XMLoadFloat3( &CameraReplacementPtr->PositionReplacement );
@@ -3152,45 +3543,32 @@ LRESULT GothicAPI::OnWindowMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
                 LogInfo() << ss.str();
             }
             break;
-
+       
 #endif
         case VK_F11:
-            if ( (GetAsyncKeyState( VK_CONTROL ) & 0x8000) ) {
-                if ( !Engine::ImGuiHandle->AdvancedSettingsVisible ) {
-                    Engine::ImGuiHandle->SettingsVisible = false;
-                    SetEnableGothicInput( true );
-                }
-
-                Engine::ImGuiHandle->AdvancedSettingsVisible = !Engine::ImGuiHandle->AdvancedSettingsVisible;
-                Engine::ImGuiHandle->IsActive = Engine::ImGuiHandle->AdvancedSettingsVisible;
-                SetEnableGothicInput( !Engine::ImGuiHandle->IsActive );
+            if ( ( GetAsyncKeyState( VK_CONTROL ) & 0x8000 ) && !GMPModeActive ) {
+                Engine::GraphicsEngine->OnUIEvent( BaseGraphicsEngine::EUIEvent::UI_ToggleAdvancedSettings );
             } else {
-                if ( !Engine::ImGuiHandle->SettingsVisible ) {
-                    Engine::ImGuiHandle->AdvancedSettingsVisible = false;
-                    SetEnableGothicInput( true );
-                }
+                Engine::GraphicsEngine->OnUIEvent( BaseGraphicsEngine::EUIEvent::UI_OpenSettings );
+            }
+            break;
 
-                Engine::ImGuiHandle->SettingsVisible = !Engine::ImGuiHandle->SettingsVisible;
-                Engine::ImGuiHandle->IsActive = Engine::ImGuiHandle->SettingsVisible;
-                SetEnableGothicInput( !Engine::ImGuiHandle->IsActive );
-            }
-            break;
         case VK_ESCAPE:
-            if ( Engine::ImGuiHandle->IsActive ) 
-            {
-                    Engine::ImGuiHandle->IsActive = false;
-                    Engine::ImGuiHandle->SettingsVisible = false;
-                    Engine::ImGuiHandle->AdvancedSettingsVisible = false;
-                    SetEnableGothicInput( true );
-            }
+            Engine::GraphicsEngine->OnUIEvent( BaseGraphicsEngine::EUIEvent::UI_ClosedSettings );
             break;
+
+        case VK_NUMPAD1:
+            if ( !Engine::AntTweakBar->GetActive() && !GMPModeActive && Engine::GAPI->GetRendererState().RendererSettings.AllowNumpadKeys )
+                SpawnVegetationBoxAt( GetCameraPosition() );
+            break;
+        }
         default:
             if ( Engine::ImGuiHandle->IsActive ) {
                 // do not delegate input further if settings is open
                 Engine::ImGuiHandle->OnWindowMessage( hWnd, msg, wParam, lParam );
                 return DefWindowProc( hWnd, msg, wParam, lParam );
             }
-     }
+        break;
     case WM_KEYUP:
         if ( Engine::ImGuiHandle->IsActive ) {
             // do not delegate input further if settings is open
@@ -3202,13 +3580,17 @@ LRESULT GothicAPI::OnWindowMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
     case WM_NCPAINT:
         return DefWindowProc( hWnd, msg, wParam, lParam );
 
+#ifdef BUILD_SPACER
     case WM_SIZE:
         // Reset resolution to windowsize
         Engine::GraphicsEngine->SetWindow( hWnd );
         break;
+#endif
     }
 
+    // This is only processed when the bar is activated, so just call this here
     Engine::ImGuiHandle->OnWindowMessage( hWnd, msg, wParam, lParam );
+    Engine::AntTweakBar->OnWindowMessage( hWnd, msg, wParam, lParam );
     Engine::GraphicsEngine->OnWindowMessage( hWnd, msg, wParam, lParam );
 
 #ifdef BUILD_SPACER
@@ -3218,8 +3600,8 @@ LRESULT GothicAPI::OnWindowMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 
     if ( OriginalGothicWndProc ) {
         return CallWindowProc( (WNDPROC)OriginalGothicWndProc, hWnd, msg, wParam, lParam );
-} else
-    return 0;
+    } else
+        return 0;
 }
 
 /** Recursive helper function to draw the BSP-Tree */
@@ -3295,8 +3677,6 @@ void GothicAPI::DebugDrawBSPTree() {
 
 /** Collects vobs using gothics BSP-Tree */
 void GothicAPI::CollectVisibleVobs( std::vector<VobInfo*>& vobs, std::vector<VobLightInfo*>& lights, std::vector<SkeletalVobInfo*>& mobs ) {
-    if ( !LoadedWorldInfo->BspTree )
-        return;
     zCBspTree* tree = LoadedWorldInfo->BspTree;
 
     zCBspBase* rootBsp = tree->GetRootNode();
@@ -3305,10 +3685,8 @@ void GothicAPI::CollectVisibleVobs( std::vector<VobInfo*>& vobs, std::vector<Vob
         zCCamera::GetCamera()->Activate();
     }
 
-    if ( root && root->OriginalNode ) {
-        // Recursively go through the tree and draw all nodes
-        CollectVisibleVobsHelper( root, root->OriginalNode->BBox3D, 63, vobs, lights, mobs );
-    }
+    // Recursively go through the tree and draw all nodes
+    CollectVisibleVobsHelper( root, root->OriginalNode->BBox3D, 63, vobs, lights, mobs );
 
     FXMVECTOR camPos = GetCameraPositionXM();
     const float vobIndoorDist = Engine::GAPI->GetRendererState().RendererSettings.IndoorVobDrawRadius;
@@ -3316,10 +3694,8 @@ void GothicAPI::CollectVisibleVobs( std::vector<VobInfo*>& vobs, std::vector<Vob
     const float vobOutdoorSmallDist = Engine::GAPI->GetRendererState().RendererSettings.OutdoorSmallVobDrawRadius;
     const float vobSmallSize = Engine::GAPI->GetRendererState().RendererSettings.SmallVobSize;
 
-#ifdef BUILD_GOTHIC_1_08k
     std::list<VobInfo*> removeList; // TODO: This should not be needed!
-#endif
-
+    
     // Add visible dynamically added vobs
     if ( Engine::GAPI->GetRendererState().RendererSettings.DrawVOBs ) {
         float dist;
@@ -3349,10 +3725,11 @@ void GothicAPI::CollectVisibleVobs( std::vector<VobInfo*>& vobs, std::vector<Vob
                 vii.world = it->WorldMatrix;
                 vii.color = it->GroundColor;
                 vii.windStrenth = 0.0f;
-                vii.windSpeed = 0.0f;
+                vii.canBeAffectedByPlayer = 0;
 
                 zTAnimationMode aniMode = it->Vob->GetVisualAniMode();
                 if ( aniMode != zVISUAL_ANIMODE_NONE ) {
+                    vii.canBeAffectedByPlayer = (!it->Vob->GetDynColl() ? 1.0f : 0.0f);
                     ProcessVobAnimation( it->Vob, aniMode, vii );
                 }
 
@@ -3441,8 +3818,9 @@ void GothicAPI::MoveVobFromBspToDynamic( SkeletalVobInfo* vob ) {
 /** Moves the given vob from a BSP-Node to the dynamic vob list */
 void GothicAPI::MoveVobFromBspToDynamic( VobInfo* vob ) {
     // Remove from all nodes
-    auto& parentBspNodes = vob->ParentBSPNodes;
-    for ( auto const& node : parentBspNodes ) {
+    for ( size_t i = 0; i < vob->ParentBSPNodes.size(); i++ ) {
+        BspInfo* node = vob->ParentBSPNodes[i];
+
         // Remove from possible lists
         for ( std::vector<VobInfo*>::iterator it = node->IndoorVobs.begin(); it != node->IndoorVobs.end(); ++it ) {
             if ( (*it) == vob ) {
@@ -3468,7 +3846,7 @@ void GothicAPI::MoveVobFromBspToDynamic( VobInfo* vob ) {
             }
         }
     }
-    parentBspNodes.clear();
+    vob->ParentBSPNodes.clear();
 
     // Add to dynamic vob list
     DynamicallyAddedVobs.push_back( vob );
@@ -3479,8 +3857,8 @@ std::vector<VobInfo*>::iterator GothicAPI::MoveVobFromBspToDynamic( VobInfo* vob
     std::vector<VobInfo*>::iterator itc;
 
     // Remove from all nodes
-    auto& parentBspNodes = vob->ParentBSPNodes;
-    for ( auto const& node : parentBspNodes ) {
+    for ( size_t i = 0; i < vob->ParentBSPNodes.size(); i++ ) {
+        BspInfo* node = vob->ParentBSPNodes[i];
 
         // Remove from possible lists
         for ( auto it = node->IndoorVobs.begin(); it != node->IndoorVobs.end(); ++it ) {
@@ -3522,51 +3900,8 @@ std::vector<VobInfo*>::iterator GothicAPI::MoveVobFromBspToDynamic( VobInfo* vob
 
 static void ProcessVobAnimation( zCVob* vob, zTAnimationMode aniMode, VobInstanceInfo& vobInstance ) {
     if ( Engine::GAPI->GetRendererState().RendererSettings.WindQuality == GothicRendererSettings::EWindQuality::WIND_QUALITY_ADVANCED ) {
-        // get rain weight
-        float rainWeight = Engine::GAPI->GetRainFXWeight();
-
-        // limit in 0..1 range
-        rainWeight = std::max<float>( 0.0f, std::min<float>( 1.0f, rainWeight ) );
-
-        // max multiplayers when rain is 1.0 (max)
-        constexpr float rainMaxStrengthMultiplier = 3.0f;
-        constexpr float rainMaxSpeedMultiplier = 1.75f;
-
-        vobInstance.windStrenth = std::max<float>( 0.1f, vob->GetVisualAniModeStrength() ) * (1.0f + rainWeight * (rainMaxStrengthMultiplier - 1.0f));
-        vobInstance.windSpeed = 1.5f * (1.0f + rainWeight * (rainMaxSpeedMultiplier - 1.0f));
-    } else if ( Engine::GAPI->GetRendererState().RendererSettings.WindQuality == GothicRendererSettings::EWindQuality::WIND_QUALITY_SIMPLE ) {
-        const DWORD windCycleTime = 6000;
-        const DWORD totalTime = Engine::GAPI->GetTotalTimeDW();
-
-        float angleTime = static_cast<float>( totalTime % windCycleTime ) / static_cast<float>( windCycleTime );
-        angleTime = angleTime * 2.f - 1.f;
-
-        float windDirX;
-        float windDirY;
-        float windDirZ;
-        float aniStrength = vob->GetVisualAniModeStrength() * 0.1f;
-        if ( aniMode == zVISUAL_ANIMODE_WIND ) {
-            // trees
-            if ( aniStrength < 0.03f ) aniStrength = 0.03f;
-
-            windDirX = 0.6f;
-            windDirY = 0.15f;
-            windDirZ = 1.f;
-        } else {
-            // grass
-            if ( aniStrength < 0.02f ) aniStrength = 0.02f;
-
-            windDirX = 0.5f;
-            windDirY = 0.15f;
-            windDirZ = 0.5f;
-        }
-
-        const float shift = vobInstance.world.m[3][0] * windDirX + vobInstance.world.m[3][1] * windDirY + vobInstance.world.m[3][2] * windDirZ;
-        const float anim = aniStrength * cos( angleTime * XM_PI + shift * 0.0001f );
-
-        vobInstance.world.m[0][2] += windDirX * anim;
-        vobInstance.world.m[1][2] += windDirY * anim;
-        vobInstance.world.m[2][2] += windDirZ * anim;
+        extern float vobAnimation_WindStrength;
+        vobInstance.windStrenth = std::max<float>( 0.1f, vob->GetVisualAniModeStrength() ) * vobAnimation_WindStrength;
     }
 }
 
@@ -3588,10 +3923,11 @@ static void CVVH_AddNotDrawnVobToList( std::vector<VobInfo*>& target, std::vecto
                 vii.world = it->WorldMatrix;
                 vii.color = it->GroundColor;
                 vii.windStrenth = 0.0f;
-                vii.windSpeed = 0.0f;
+                vii.canBeAffectedByPlayer = 0;
 
                 zTAnimationMode aniMode = it->Vob->GetVisualAniMode();
                 if ( aniMode != zVISUAL_ANIMODE_NONE ) {
+                    vii.canBeAffectedByPlayer = (!it->Vob->GetDynColl() ? 1.0f : 0.0f);
                     ProcessVobAnimation( it->Vob, aniMode, vii );
                 }
 
@@ -3645,9 +3981,6 @@ void GothicAPI::CollectVisibleVobsHelper( BspInfo* base, zTBBox3D boxCell, int c
         }
 
         if ( clipFlags > 0 ) {
-            if ( !Engine::GAPI->GetLoadedWorldInfo()->BspTree )
-                return;
-
             float yMaxWorld = Engine::GAPI->GetLoadedWorldInfo()->BspTree->GetRootNode()->BBox3D.Max.y;
 
             zTBBox3D nodeBox = base->OriginalNode->BBox3D;
@@ -3675,6 +4008,7 @@ void GothicAPI::CollectVisibleVobsHelper( BspInfo* base, zTBBox3D boxCell, int c
 
         if ( base->OriginalNode->IsLeaf() ) {
             // Check if this leaf is inside the frustum
+            bool insideFrustum = true;
 
             zCBspLeaf* leaf = static_cast<zCBspLeaf*>(base->OriginalNode);
             std::vector<VobInfo*>& listA = base->IndoorVobs;
@@ -3686,81 +4020,85 @@ void GothicAPI::CollectVisibleVobsHelper( BspInfo* base, zTBBox3D boxCell, int c
             const float dist = Toolbox::ComputePointAABBDistance( camPos, base->OriginalNode->BBox3D.Min, base->OriginalNode->BBox3D.Max );
             // float dist = XMVector3Length(XMLoadFloat3(&base->BBox3D.Min) - XMLoadFloat3(&camPos));
 
-            if ( Engine::GAPI->GetRendererState().RendererSettings.DrawVOBs ) {
-                if ( dist < vobIndoorDist ) {
-                    CVVH_AddNotDrawnVobToList( vobs, listA, vobIndoorDist );
-                }
+            if ( insideFrustum ) {
+                if ( Engine::GAPI->GetRendererState().RendererSettings.DrawVOBs ) {
+                    if ( dist < vobIndoorDist ) {
+                        CVVH_AddNotDrawnVobToList( vobs, listA, vobIndoorDist );
+                    }
 
-                if ( dist < vobOutdoorSmallDist ) {
-                    CVVH_AddNotDrawnVobToList( vobs, listB, vobOutdoorSmallDist );
+                    if ( dist < vobOutdoorSmallDist ) {
+                        CVVH_AddNotDrawnVobToList( vobs, listB, vobOutdoorSmallDist );
+                    }
                 }
 
                 if ( dist < vobOutdoorDist ) {
-                    CVVH_AddNotDrawnVobToList( vobs, listC, vobOutdoorDist );
-                }
-            }
-
-            if ( Engine::GAPI->GetRendererState().RendererSettings.DrawMobs && dist < vobOutdoorSmallDist ) {
-                CVVH_AddNotDrawnVobToList( mobs, listD, vobOutdoorDist );
-            }
-
-            if ( RendererState.RendererSettings.EnableDynamicLighting && dist < visualFXDrawRadius ) {
-                // Add dynamic lights
-                float minDynamicUpdateLightRange = Engine::GAPI->GetRendererState().RendererSettings.MinLightShadowUpdateRange;
-                XMVECTOR playerPosition = Engine::GAPI->GetPlayerVob() != nullptr ? Engine::GAPI->GetPlayerVob()->GetPositionWorldXM() : XMVectorSet( FLT_MAX, FLT_MAX, FLT_MAX, 0 );
-                FXMVECTOR cameraPosition = Engine::GAPI->GetCameraPositionXM();
-
-                // Take cameraposition if we are freelooking
-                if ( zCCamera::IsFreeLookActive() ) {
-                    playerPosition = cameraPosition;
+                    if ( Engine::GAPI->GetRendererState().RendererSettings.DrawVOBs ) {
+                        CVVH_AddNotDrawnVobToList( vobs, listC, vobOutdoorDist );
+                    }
                 }
 
-                for ( int i = 0; i < leaf->LightVobList.NumInArray; i++ ) {
-                    zCVobLight* vob = leaf->LightVobList.Array[i];
+                if ( Engine::GAPI->GetRendererState().RendererSettings.DrawMobs && dist < vobOutdoorSmallDist ) {
+                    CVVH_AddNotDrawnVobToList( mobs, listD, vobOutdoorDist );
+                }
 
-                    float lightCameraDist;
-                    XMStoreFloat( &lightCameraDist, XMVector3Length( cameraPosition - vob->GetPositionWorldXM() ) );
-                    if ( lightCameraDist + vob->GetLightRange() < visualFXDrawRadius ) {
-                        // Check if we already have this light
-                        auto vit = VobLightMap.find( vob );
-                        if ( vit == VobLightMap.end() ) {
-                            bool PFXVobLight = false;
-                            if ( zCVob* parent = vob->GetVobParent() ) {
-                                if ( parent->As<oCVisualFX>() ) {
-                                    PFXVobLight = true;
+                if ( RendererState.RendererSettings.EnableDynamicLighting && dist < visualFXDrawRadius ) {
+                    // Add dynamic lights
+                    float minDynamicUpdateLightRange = Engine::GAPI->GetRendererState().RendererSettings.MinLightShadowUpdateRange;
+                    XMVECTOR playerPosition = Engine::GAPI->GetPlayerVob() != nullptr ? Engine::GAPI->GetPlayerVob()->GetPositionWorldXM() : XMVectorSet( FLT_MAX, FLT_MAX, FLT_MAX, 0 );
+                    FXMVECTOR cameraPosition = Engine::GAPI->GetCameraPositionXM();
+
+                    // Take cameraposition if we are freelooking
+                    if ( zCCamera::IsFreeLookActive() ) {
+                        playerPosition = cameraPosition;
+                    }
+
+                    for ( int i = 0; i < leaf->LightVobList.NumInArray; i++ ) {
+                        zCVobLight* vob = leaf->LightVobList.Array[i];
+
+                        float lightCameraDist;
+                        XMStoreFloat( &lightCameraDist, XMVector3Length( cameraPosition - vob->GetPositionWorldXM() ) );
+                        if ( lightCameraDist + vob->GetLightRange() < visualFXDrawRadius ) {
+                            // Check if we already have this light
+                            auto vit = VobLightMap.find( vob );
+                            if ( vit == VobLightMap.end() ) {
+                                bool PFXVobLight = false;
+                                if ( zCVob* parent = vob->GetVobParent() ) {
+                                    if ( parent->As<oCVisualFX>() ) {
+                                        PFXVobLight = true;
+                                    }
                                 }
+
+                                // Add if not. This light must have been added during gameplay
+                                VobLightInfo* vi = new VobLightInfo;
+                                vi->Vob = vob;
+                                vi->IsPFXVobLight = PFXVobLight;
+                                vi->UpdateShadows = !PFXVobLight;
+                                vit = VobLightMap.emplace( vob, vi ).first;
+
+                                // Create shadow-buffers for these lights since it was dynamically added to the world
+                                if ( !vi->IsPFXVobLight && RendererState.RendererSettings.EnablePointlightShadows >= GothicRendererSettings::PLS_STATIC_ONLY )
+                                    Engine::GraphicsEngine->CreateShadowedPointLight( &vi->LightShadowBuffers, vi, true ); // Also flag as dynamic
                             }
 
-                            // Add if not. This light must have been added during gameplay
-                            VobLightInfo* vi = new VobLightInfo;
-                            vi->Vob = vob;
-                            vi->IsPFXVobLight = PFXVobLight;
-                            vi->UpdateShadows = !PFXVobLight;
-                            vit = VobLightMap.emplace( vob, vi ).first;
+                            VobLightInfo* vi = vit->second;
+                            if ( !vi->VisibleInRenderPass && vob->IsEnabled() /*&& vob->GetShowVisual()*/ ) {
+                                vi->VisibleInRenderPass = true;
 
-                            // Create shadow-buffers for these lights since it was dynamically added to the world
-                            if ( !vi->IsPFXVobLight && RendererState.RendererSettings.EnablePointlightShadows >= GothicRendererSettings::PLS_STATIC_ONLY )
-                                Engine::GraphicsEngine->CreateShadowedPointLight( &vi->LightShadowBuffers, vi, true ); // Also flag as dynamic
-                        }
-
-                        VobLightInfo* vi = vit->second;
-                        if ( !vi->VisibleInRenderPass && vob->IsEnabled() ) {
-                            vi->VisibleInRenderPass = true;
-
-                            // Update the lights shadows if: Light is dynamic or full shadow-updates are set
-                            if ( !vi->IsPFXVobLight ) {
-                                if ( RendererState.RendererSettings.EnablePointlightShadows >= GothicRendererSettings::PLS_FULL
-                                    || (RendererState.RendererSettings.EnablePointlightShadows >= GothicRendererSettings::PLS_UPDATE_DYNAMIC && !vob->IsStatic()) ) {
-                                    // Now check for distances, etc
-                                    float lightPlayerDist;
-                                    XMStoreFloat( &lightPlayerDist, XMVector3Length( playerPosition - vob->GetPositionWorldXM() ) );
-                                    if ( vob->GetLightRange() > minDynamicUpdateLightRange && lightPlayerDist < vob->GetLightRange() * 1.5f )
-                                        vi->UpdateShadows = true;
+                                // Update the lights shadows if: Light is dynamic or full shadow-updates are set
+                                if ( !vi->IsPFXVobLight ) {
+                                    if ( RendererState.RendererSettings.EnablePointlightShadows >= GothicRendererSettings::PLS_FULL
+                                        || (RendererState.RendererSettings.EnablePointlightShadows >= GothicRendererSettings::PLS_UPDATE_DYNAMIC && !vob->IsStatic()) ) {
+                                        // Now check for distances, etc
+                                        float lightPlayerDist;
+                                        XMStoreFloat( &lightPlayerDist, XMVector3Length( playerPosition - vob->GetPositionWorldXM() ) );
+                                        if ( vob->GetLightRange() > minDynamicUpdateLightRange && lightPlayerDist < vob->GetLightRange() * 1.5f )
+                                            vi->UpdateShadows = true;
+                                    }
                                 }
-                            }
 
-                            // Render it
-                            lights.push_back( vi );
+                                // Render it
+                                lights.push_back( vi );
+                            }
                         }
                     }
                 }
@@ -3801,9 +4139,6 @@ void GothicAPI::CollectVisibleVobsHelper( BspInfo* base, zTBBox3D boxCell, int c
 /** Helper function for going through the bsp-tree */
 void GothicAPI::BuildBspVobMapCacheHelper( zCBspBase* base ) {
     if ( !base )
-        return;
-
-    if ( !LoadedWorldInfo->BspTree )
         return;
 
     // Put it into the cache
@@ -3905,8 +4240,6 @@ void GothicAPI::BuildBspVobMapCacheHelper( zCBspBase* base ) {
 
 /** Builds our BspTreeVobMap */
 void GothicAPI::BuildBspVobMapCache() {
-    if ( !LoadedWorldInfo->BspTree )
-        return;
     BuildBspVobMapCacheHelper( LoadedWorldInfo->BspTree->GetRootNode() );
 }
 
@@ -4346,20 +4679,22 @@ XRESULT GothicAPI::SaveMenuSettings( const std::string& file ) {
     // Returns Gothic directory.
     int len = GetCurrentDirectory( MAX_PATH, NPath );
     // Get path to Gothic.Ini
-    std::string ini = std::string( NPath, len ).append( "\\" + file );
+    auto ini = std::string( NPath, len ).append( "\\" + file );
 
     LogInfo() << "Saving menu settings to " << ini;
     GothicRendererSettings& s = RendererState.RendererSettings;
 
-    WritePrivateProfileStringA( "General", "WindowMode", std::to_string( s.WindowMode ).c_str(), ini.c_str() );
+    WritePrivateProfileStringA( "General", "ChangeToMode", std::to_string( s.ChangeWindowPreset ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "General", "AtmosphericScattering", std::to_string( s.AtmosphericScattering ? TRUE : FALSE ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "General", "EnableFog", std::to_string( s.DrawFog ? TRUE : FALSE ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "General", "FogRange", std::to_string( s.FogRange ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "General", "EnableHDR", std::to_string( s.EnableHDR ? TRUE : FALSE ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "General", "HDRToneMap", std::to_string( s.HDRToneMap ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "General", "EnableDebugLog", std::to_string( s.EnableDebugLog ? TRUE : FALSE ).c_str(), ini.c_str() );
+    WritePrivateProfileStringA( "General", "EnableAutoupdates", std::to_string( s.EnableAutoupdates ? TRUE : FALSE ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "General", "EnableGodRays", std::to_string( s.EnableGodRays ? TRUE : FALSE ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "General", "AllowNormalmaps", std::to_string( s.AllowNormalmaps ? TRUE : FALSE ).c_str(), ini.c_str() );
+    WritePrivateProfileStringA( "General", "AllowNumpadKeys", std::to_string( s.AllowNumpadKeys ? TRUE : FALSE ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "General", "EnableInactiveFpsLock", std::to_string( s.EnableInactiveFpsLock ? TRUE : FALSE ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "General", "MultiThreadResourceManager", std::to_string( s.MTResoureceManager ? TRUE : FALSE ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "General", "CompressBackBuffer", std::to_string( s.CompressBackBuffer ? TRUE : FALSE ).c_str(), ini.c_str() );
@@ -4393,8 +4728,12 @@ XRESULT GothicAPI::SaveMenuSettings( const std::string& file ) {
     WritePrivateProfileStringA( "Display", "UIScale", std::to_string( s.GothicUIScale ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "Display", "Rain", std::to_string( s.EnableRain ? TRUE : FALSE ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "Display", "RainEffects", std::to_string( s.EnableRainEffects ? TRUE : FALSE ).c_str(), ini.c_str() );
-    WritePrivateProfileStringA( "Display", "LimitLightIntensity", std::to_string( s.LimitLightIntensity ? TRUE : FALSE ).c_str(), ini.c_str() );
+    WritePrivateProfileStringA( "Display", "LimitLightIntesity", std::to_string( s.LimitLightIntesity ? TRUE : FALSE ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "Display", "WindQuality", std::to_string( s.WindQuality ).c_str(), ini.c_str() );
+    WritePrivateProfileStringA( "Display", "WindStrength", std::to_string( s.GlobalWindStrength ).c_str(), ini.c_str() );
+    WritePrivateProfileStringA( "Display", "WaterWaveAnimation", std::to_string( s.EnableWaterAnimation ? TRUE : FALSE ).c_str(), ini.c_str() );
+    WritePrivateProfileStringA( "Display", "HeroAffectsObjects", std::to_string( s.HeroAffectsObjects ? TRUE : FALSE ).c_str(), ini.c_str() );
+    
 
     WritePrivateProfileStringA( "Shadows", "EnableShadows", std::to_string( s.EnableShadows ? TRUE : FALSE ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "Shadows", "EnableSoftShadows", std::to_string( s.EnableSoftShadows ? TRUE : FALSE ).c_str(), ini.c_str() );
@@ -4431,7 +4770,7 @@ XRESULT GothicAPI::LoadMenuSettings( const std::string& file ) {
     // Returns Gothic directory.
     int len = GetCurrentDirectory( MAX_PATH, NPath );
     // Get path to Gothic.Ini
-    std::string ini = std::string( NPath, len ).append( "\\" + file );
+    auto ini = std::string( NPath, len ).append( "\\" + file );
 
     GothicRendererSettings& s = RendererState.RendererSettings;
     if ( Toolbox::FileExists( ini ) ) {
@@ -4440,15 +4779,17 @@ XRESULT GothicAPI::LoadMenuSettings( const std::string& file ) {
         GothicRendererSettings defaultRendererSettings;
         defaultRendererSettings.SetDefault();
 
-        s.WindowMode = GetPrivateProfileIntA( "General", "WindowMode", defaultRendererSettings.WindowMode, ini.c_str() );
+        s.ChangeWindowPreset = GetPrivateProfileIntA( "General", "ChangeToMode", 0, ini.c_str() );
         s.DrawFog = GetPrivateProfileBoolA( "General", "EnableFog", true, ini );
         s.FogRange = GetPrivateProfileIntA( "General", "FogRange", 0, ini.c_str() );
         s.AtmosphericScattering = GetPrivateProfileBoolA( "General", "AtmosphericScattering", true, ini );
         s.EnableHDR = GetPrivateProfileBoolA( "General", "EnableHDR", false, ini );
         s.HDRToneMap = GothicRendererSettings::E_HDRToneMap( GetPrivateProfileIntA( "General", "HDRToneMap", 4, ini.c_str() ) );
         s.EnableDebugLog = GetPrivateProfileBoolA( "General", "EnableDebugLog", defaultRendererSettings.EnableDebugLog, ini );
+        s.EnableAutoupdates = GetPrivateProfileBoolA( "General", "EnableAutoupdates", defaultRendererSettings.EnableAutoupdates, ini );
         s.EnableGodRays = GetPrivateProfileBoolA( "General", "EnableGodRays", defaultRendererSettings.EnableGodRays, ini );
         s.AllowNormalmaps = GetPrivateProfileBoolA( "General", "AllowNormalmaps", defaultRendererSettings.AllowNormalmaps, ini );
+        s.AllowNumpadKeys = GetPrivateProfileBoolA( "General", "AllowNumpadKeys", defaultRendererSettings.AllowNumpadKeys, ini );
         s.EnableInactiveFpsLock = GetPrivateProfileBoolA( "General", "EnableInactiveFpsLock", defaultRendererSettings.EnableInactiveFpsLock, ini );
         s.MTResoureceManager = GetPrivateProfileBoolA( "General", "MultiThreadResourceManager", defaultRendererSettings.MTResoureceManager, ini );
         s.CompressBackBuffer = GetPrivateProfileBoolA( "General", "CompressBackBuffer", defaultRendererSettings.CompressBackBuffer, ini );
@@ -4463,6 +4804,14 @@ XRESULT GothicAPI::LoadMenuSettings( const std::string& file ) {
 
         s.EnableOcclusionCulling = GetPrivateProfileBoolA( "General", "EnableOcclusionCulling", defaultRendererSettings.EnableOcclusionCulling, ini );
         s.FpsLimit = GetPrivateProfileIntA( "General", "FpsLimit", 0, ini.c_str() );
+
+        // override INI settings with GMP minimum values.
+        if ( GMPModeActive ) {
+            s.OutdoorVobDrawRadius = std::max( 20000.f, s.OutdoorVobDrawRadius );
+            s.OutdoorSmallVobDrawRadius = std::max( 20000.f, s.OutdoorSmallVobDrawRadius );
+            s.SectionDrawRadius = std::max( 3, s.SectionDrawRadius );
+            s.EnableHDR = false;
+        }
 
         static XMFLOAT3 defaultLightDirection = XMFLOAT3( 1, 1, 1 );
 
@@ -4496,9 +4845,12 @@ XRESULT GothicAPI::LoadMenuSettings( const std::string& file ) {
         s.GothicUIScale = GetPrivateProfileFloatA( "Display", "UIScale", 1.0f, ini );
         s.EnableRain = GetPrivateProfileBoolA( "Display", "Rain", true, ini );
         s.EnableRainEffects = GetPrivateProfileBoolA( "Display", "RainEffects", true, ini );
-        s.LimitLightIntensity = GetPrivateProfileBoolA( "Display", "LimitLightIntensity", false, ini );
+        s.LimitLightIntesity = GetPrivateProfileBoolA( "Display", "LimitLightIntesity", false, ini );
         s.WindQuality = GetPrivateProfileIntA( "Display", "WindQuality", 0, ini.c_str() );
-
+        s.GlobalWindStrength = GetPrivateProfileFloatA( "Display", "WindStrength", 1.0f, ini );
+        s.EnableWaterAnimation = GetPrivateProfileBoolA( "Display", "WaterWaveAnimation", true, ini );
+        s.HeroAffectsObjects = GetPrivateProfileBoolA( "Display", "HeroAffectsObjects", true, ini );
+        
         s.EnableSMAA = GetPrivateProfileBoolA( "SMAA", "Enabled", false, ini );
         s.SharpenFactor = GetPrivateProfileFloatA( "SMAA", "SharpenFactor", 0.30f, ini );
 
@@ -4544,7 +4896,7 @@ XRESULT GothicAPI::LoadMenuSettings( const std::string& file ) {
         if ( gameIni != "GOTHICGAME.INI" && nLastDot != std::string::npos ) {
             Engine::GAPI->SetGameName( gameIni.substr( 0, nLastDot ) );
             LogInfo() << "-> Game: " << Engine::GAPI->GetGameName();
-#if BUILD_SPACER_NET
+#ifdef BUILD_SPACER_NET
             if ( Engine::GAPI->GetGameName() == "SPACER_NET" ) {
                 LogInfo() << "-> Running in Spacer.NET";
                 s.RunInSpacerNet = true;
@@ -4559,45 +4911,49 @@ XRESULT GothicAPI::LoadMenuSettings( const std::string& file ) {
         LogInfo() << "-> Game: Original";
     }
 
-    switch ( s.WindowMode ) {
-        case WINDOW_MODE_FULLSCREEN_EXCLUSIVE: {
-            s.DisplayFlip = false;
-            s.StretchWindow = true;
-            zSTRING section( "VIDEO" ); zSTRING defValue( "0" );
-            zCOption::GetOptions()->WriteString( section, "zStartupWindowed", defValue );
-            WritePrivateProfileStringA( "Display", "DisplayFlip", "0", ini.c_str() );
-            WritePrivateProfileStringA( "Display", "LowLatency", "0", ini.c_str() );
-            WritePrivateProfileStringA( "Display", "StretchWindow", "1", ini.c_str() );
-            break;
+    if ( s.ChangeWindowPreset ) {
+        WritePrivateProfileStringA( "General", "ChangeToMode", "0", ini.c_str() );
+        switch ( s.ChangeWindowPreset ) {
+            case WINDOW_MODE_FULLSCREEN_EXCLUSIVE: {
+                s.DisplayFlip = false;
+                s.StretchWindow = true;
+                zSTRING section( "VIDEO" ); zSTRING defValue( "0" );
+                zCOption::GetOptions()->WriteString( section, "zStartupWindowed", defValue );
+                WritePrivateProfileStringA( "Display", "DisplayFlip", "0", ini.c_str() );
+                WritePrivateProfileStringA( "Display", "LowLatency", "0", ini.c_str() );
+                WritePrivateProfileStringA( "Display", "StretchWindow", "1", ini.c_str() );
+                break;
+            }
+            case WINDOW_MODE_FULLSCREEN_BORDERLESS: {
+                s.DisplayFlip = true;
+                s.LowLatency = false;
+                s.StretchWindow = true;
+                WritePrivateProfileStringA( "Display", "DisplayFlip", "1", ini.c_str() );
+                WritePrivateProfileStringA( "Display", "LowLatency", "0", ini.c_str() );
+                WritePrivateProfileStringA( "Display", "StretchWindow", "1", ini.c_str() );
+                break;
+            }
+            case WINDOW_MODE_FULLSCREEN_LOWLATENCY: {
+                s.DisplayFlip = true;
+                s.LowLatency = true;
+                s.StretchWindow = true;
+                WritePrivateProfileStringA( "Display", "DisplayFlip", "1", ini.c_str() );
+                WritePrivateProfileStringA( "Display", "LowLatency", "1", ini.c_str() );
+                WritePrivateProfileStringA( "Display", "StretchWindow", "1", ini.c_str() );
+                break;
+            }
+            case WINDOW_MODE_WINDOWED: {
+                s.DisplayFlip = false;
+                s.StretchWindow = false;
+                zSTRING section( "VIDEO" ); zSTRING defValue( "1" );
+                zCOption::GetOptions()->WriteString( section, "zStartupWindowed", defValue );
+                WritePrivateProfileStringA( "Display", "DisplayFlip", "0", ini.c_str() );
+                WritePrivateProfileStringA( "Display", "LowLatency", "0", ini.c_str() );
+                WritePrivateProfileStringA( "Display", "StretchWindow", "0", ini.c_str() );
+                break;
+            }
         }
-        case WINDOW_MODE_FULLSCREEN_BORDERLESS: {
-            s.DisplayFlip = true;
-            s.LowLatency = false;
-            s.StretchWindow = true;
-            WritePrivateProfileStringA( "Display", "DisplayFlip", "1", ini.c_str() );
-            WritePrivateProfileStringA( "Display", "LowLatency", "0", ini.c_str() );
-            WritePrivateProfileStringA( "Display", "StretchWindow", "1", ini.c_str() );
-            break;
-        }
-        case WINDOW_MODE_FULLSCREEN_LOWLATENCY: {
-            s.DisplayFlip = true;
-            s.LowLatency = true;
-            s.StretchWindow = true;
-            WritePrivateProfileStringA( "Display", "DisplayFlip", "1", ini.c_str() );
-            WritePrivateProfileStringA( "Display", "LowLatency", "1", ini.c_str() );
-            WritePrivateProfileStringA( "Display", "StretchWindow", "1", ini.c_str() );
-            break;
-        }
-        case WINDOW_MODE_WINDOWED: {
-            s.DisplayFlip = false;
-            s.StretchWindow = false;
-            zSTRING section( "VIDEO" ); zSTRING defValue( "1" );
-            zCOption::GetOptions()->WriteString( section, "zStartupWindowed", defValue );
-            WritePrivateProfileStringA( "Display", "DisplayFlip", "0", ini.c_str() );
-            WritePrivateProfileStringA( "Display", "LowLatency", "0", ini.c_str() );
-            WritePrivateProfileStringA( "Display", "StretchWindow", "0", ini.c_str() );
-            break;
-        }
+        s.ChangeWindowPreset = 0;
     }
 
     return XR_SUCCESS;
@@ -4661,10 +5017,6 @@ void GothicAPI::SetFrameProcessedTexturesReady() {
 
 /** Draws a morphmesh */
 void GothicAPI::DrawMorphMesh( zCMorphMesh* msh, std::map<zCMaterial*, std::vector<MeshInfo*>>& meshes ) {
-    XMFLOAT3 bbmin, bbmax;
-    bbmin = XMFLOAT3( FLT_MAX, FLT_MAX, FLT_MAX );
-    bbmax = XMFLOAT3( -FLT_MAX, -FLT_MAX, -FLT_MAX );
-
     zCProgMeshProto* morphMesh = msh->GetMorphMesh();
     if ( !morphMesh )
         return;
@@ -4683,7 +5035,6 @@ void GothicAPI::DrawMorphMesh( zCMorphMesh* msh, std::map<zCMaterial*, std::vect
             vx.Normal = wedge.normal;
             vx.TexCoord = wedge.texUV;
             vx.Color = 0xFFFFFFFF;
-            //vx.Color = s->Material->GetColor().dword;
         }
 
         if ( zCTexture* texture = s->Material->GetAniTexture() ) {
@@ -4697,6 +5048,46 @@ void GothicAPI::DrawMorphMesh( zCMorphMesh* msh, std::map<zCMaterial*, std::vect
                 if ( mi->MeshIndex == i ) {
                     mi->MeshVertexBuffer->UpdateBuffer( &vertices[0], vertices.size() * sizeof( ExVertexStruct ) );
                     Engine::GraphicsEngine->DrawVertexBufferIndexed( mi->MeshVertexBuffer, mi->MeshIndexBuffer, mi->Indices.size() );
+                    goto Out_Of_Nested_Loop;
+                }
+            }
+        }
+        Out_Of_Nested_Loop:;
+    }
+}
+
+void GothicAPI::DrawMorphMesh_Layered( zCMorphMesh* msh, std::map<zCMaterial*, std::vector<MeshInfo*>>& meshes ) {
+    zCProgMeshProto* morphMesh = msh->GetMorphMesh();
+    if ( !morphMesh )
+        return;
+
+    D3D11GraphicsEngine* g = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
+    XMFLOAT3* posList = morphMesh->GetPositionList()->Array->toXMFLOAT3();
+    for ( int i = 0; i < morphMesh->GetNumSubmeshes(); i++ ) {
+        std::vector<ExVertexStruct> vertices;
+
+        zCSubMesh* s = morphMesh->GetSubmesh( i );
+        vertices.reserve( s->WedgeList.NumInArray );
+        for ( int v = 0; v < s->WedgeList.NumInArray; v++ ) {
+            zTPMWedge& wedge = s->WedgeList.Array[v];
+            vertices.emplace_back();
+            ExVertexStruct& vx = vertices.back();
+            vx.Position = posList[wedge.position];
+            vx.Normal = wedge.normal;
+            vx.TexCoord = wedge.texUV;
+            vx.Color = 0xFFFFFFFF;
+        }
+
+        if ( zCTexture* texture = s->Material->GetAniTexture() ) {
+            if ( !g->BindTextureNRFX( texture, (g->GetRenderingStage() == DES_MAIN) ) )
+                continue;
+        }
+
+        for ( auto const& it : meshes ) {
+            for ( MeshInfo* mi : it.second ) {
+                if ( mi->MeshIndex == i ) {
+                    mi->MeshVertexBuffer->UpdateBuffer( &vertices[0], vertices.size() * sizeof( ExVertexStruct ) );
+                    g->DrawVertexBufferInstancedIndexed( mi->MeshVertexBuffer, mi->MeshIndexBuffer, mi->Indices.size(), 6 );
                     goto Out_Of_Nested_Loop;
                 }
             }
@@ -4747,11 +5138,24 @@ QuadMarkInfo* GothicAPI::GetQuadMarkInfo( zCQuadMark* mark ) {
     return &QuadMarks[mark];
 }
 
-
-
 /** Returns all quad marks */
 const std::unordered_map<zCQuadMark*, QuadMarkInfo>& GothicAPI::GetQuadMarks() {
     return QuadMarks;
+}
+
+/** Add new zCFlash object */
+void GothicAPI::AddFlash( zCFlash* flash, zCVob* vob ) {
+    FlashVisuals[flash] = vob;
+}
+
+/** Remove zCFlash object */
+void GothicAPI::RemoveFlash( zCFlash* flash ) {
+    FlashVisuals.erase( flash );
+}
+
+/** Add this frame thunder poly strip */
+void GothicAPI::AddThunderPolyStrip( zCPolyStrip* polyStrip ) {
+    FrameThunderPolyStrips.emplace_back(polyStrip);
 }
 
 /** Returns wether the camera is underwater or not */
@@ -4858,8 +5262,6 @@ float GothicAPI::GetBrightnessValue() {
 
 /** Puts the custom-polygons into the bsp-tree */
 void GothicAPI::PutCustomPolygonsIntoBspTree() {
-    if ( !LoadedWorldInfo->BspTree )
-        return;
     PutCustomPolygonsIntoBspTreeRec( &BspLeafVobLists[LoadedWorldInfo->BspTree->GetRootNode()] );
 }
 
@@ -4934,16 +5336,11 @@ void GothicAPI::CreatezCPolygonsForSections() {
 
 /** Collects polygons in the given AABB */
 void GothicAPI::CollectPolygonsInAABB( const zTBBox3D& bbox, zCPolygon**& polyList, int& numFound ) {
-    
-    auto& bsptree = Engine::GAPI->GetLoadedWorldInfo()->BspTree;
-    if ( !bsptree )
-        return;
-
     static std::vector<zCPolygon*> list; // This function is defined to only temporary hold the found polygons in the game. 
                                          // This is ugly, but that's how they do it.
     list.clear();
 
-    CollectPolygonsInAABBRec( &BspLeafVobLists[bsptree->GetRootNode()], bbox, list );
+    CollectPolygonsInAABBRec( &BspLeafVobLists[LoadedWorldInfo->BspTree->GetRootNode()], bbox, list );
 
     // Give out data to calling function
     polyList = &list[0];
@@ -4993,11 +5390,6 @@ void GothicAPI::CollectPolygonsInAABBRec( BspInfo* base, const zTBBox3D& bbox, s
             break;
         }
     }
-}
-
-/** Returns the current ocean-object */
-GOcean* GothicAPI::GetOcean() {
-    return Ocean.get();
 }
 
 /** Returns our bsp-root-node */

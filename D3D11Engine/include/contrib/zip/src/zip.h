@@ -12,23 +12,8 @@
 #ifndef ZIP_H
 #define ZIP_H
 
-#include <stdint.h>
 #include <string.h>
 #include <sys/types.h>
-
-#ifndef ZIP_SHARED
-#define ZIP_EXPORT
-#else
-#ifdef _WIN32
-#ifdef ZIP_BUILD_SHARED
-#define ZIP_EXPORT __declspec(dllexport)
-#else
-#define ZIP_EXPORT __declspec(dllimport)
-#endif
-#else
-#define ZIP_EXPORT __attribute__((visibility("default")))
-#endif
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,10 +29,14 @@ typedef long ssize_t; /* byte count or error */
 #endif
 #endif
 
+#ifndef MAX_PATH
+#define MAX_PATH 32767 /* # chars in a path name including NULL */
+#endif
+
 /**
  * @mainpage
  *
- * Documentation for @ref zip.
+ * Documenation for @ref zip.
  */
 
 /**
@@ -92,17 +81,14 @@ typedef long ssize_t; /* byte count or error */
 #define ZIP_EFSEEK -27      // fseek error
 #define ZIP_EFREAD -28      // fread error
 #define ZIP_EFWRITE -29     // fwrite error
-#define ZIP_ERINIT -30      // cannot initialize reader
-#define ZIP_EWINIT -31      // cannot initialize writer
-#define ZIP_EWRINIT -32     // cannot initialize writer from reader
 
 /**
- * Looks up the error message string corresponding to an error number.
+ * Looks up the error message string coresponding to an error number.
  * @param errnum error number
- * @return error message string corresponding to errnum or NULL if error is not
+ * @return error message string coresponding to errnum or NULL if error is not
  * found.
  */
-extern ZIP_EXPORT const char *zip_strerror(int errnum);
+extern const char *zip_strerror(int errnum);
 
 /**
  * @struct zip_t
@@ -124,32 +110,14 @@ struct zip_t;
  *
  * @return the zip archive handler or NULL on error
  */
-extern ZIP_EXPORT struct zip_t *zip_open(const char *zipname, int level,
-                                         char mode);
-
-/**
- * Opens zip archive with compression level using the given mode.
- * The function additionally returns @param errnum -
- *
- * @param zipname zip archive file name.
- * @param level compression level (0-9 are the standard zlib-style levels).
- * @param mode file access mode.
- *        - 'r': opens a file for reading/extracting (the file must exists).
- *        - 'w': creates an empty file for writing.
- *        - 'a': appends to an existing archive.
- * @param errnum 0 on success, negative number (< 0) on error.
- *
- * @return the zip archive handler or NULL on error
- */
-extern ZIP_EXPORT struct zip_t *
-zip_openwitherror(const char *zipname, int level, char mode, int *errnum);
+extern struct zip_t *zip_open(const char *zipname, int level, char mode);
 
 /**
  * Closes the zip archive, releases resources - always finalize.
  *
  * @param zip zip archive handler.
  */
-extern ZIP_EXPORT void zip_close(struct zip_t *zip);
+extern void zip_close(struct zip_t *zip);
 
 /**
  * Determines if the archive has a zip64 end of central directory headers.
@@ -159,7 +127,7 @@ extern ZIP_EXPORT void zip_close(struct zip_t *zip);
  * @return the return code - 1 (true), 0 (false), negative number (< 0) on
  *         error.
  */
-extern ZIP_EXPORT int zip_is64(struct zip_t *zip);
+extern int zip_is64(struct zip_t *zip);
 
 /**
  * Opens an entry by name in the zip archive.
@@ -173,22 +141,7 @@ extern ZIP_EXPORT int zip_is64(struct zip_t *zip);
  *
  * @return the return code - 0 on success, negative number (< 0) on error.
  */
-extern ZIP_EXPORT int zip_entry_open(struct zip_t *zip, const char *entryname);
-
-/**
- * Opens an entry by name in the zip archive.
- *
- * For zip archive opened in 'w' or 'a' mode the function will append
- * a new entry. In readonly mode the function tries to locate the entry
- * in global dictionary (case sensitive).
- *
- * @param zip zip archive handler.
- * @param entryname an entry name in local dictionary (case sensitive).
- *
- * @return the return code - 0 on success, negative number (< 0) on error.
- */
-extern ZIP_EXPORT int zip_entry_opencasesensitive(struct zip_t *zip,
-                                                  const char *entryname);
+extern int zip_entry_open(struct zip_t *zip, const char *entryname);
 
 /**
  * Opens a new entry by index in the zip archive.
@@ -200,7 +153,7 @@ extern ZIP_EXPORT int zip_entry_opencasesensitive(struct zip_t *zip,
  *
  * @return the return code - 0 on success, negative number (< 0) on error.
  */
-extern ZIP_EXPORT int zip_entry_openbyindex(struct zip_t *zip, size_t index);
+extern int zip_entry_openbyindex(struct zip_t *zip, int index);
 
 /**
  * Closes a zip entry, flushes buffer and releases resources.
@@ -209,7 +162,7 @@ extern ZIP_EXPORT int zip_entry_openbyindex(struct zip_t *zip, size_t index);
  *
  * @return the return code - 0 on success, negative number (< 0) on error.
  */
-extern ZIP_EXPORT int zip_entry_close(struct zip_t *zip);
+extern int zip_entry_close(struct zip_t *zip);
 
 /**
  * Returns a local name of the current zip entry.
@@ -225,7 +178,7 @@ extern ZIP_EXPORT int zip_entry_close(struct zip_t *zip);
  *
  * @return the pointer to the current zip entry name, or NULL on error.
  */
-extern ZIP_EXPORT const char *zip_entry_name(struct zip_t *zip);
+extern const char *zip_entry_name(struct zip_t *zip);
 
 /**
  * Returns an index of the current zip entry.
@@ -234,7 +187,7 @@ extern ZIP_EXPORT const char *zip_entry_name(struct zip_t *zip);
  *
  * @return the index on success, negative number (< 0) on error.
  */
-extern ZIP_EXPORT ssize_t zip_entry_index(struct zip_t *zip);
+extern int zip_entry_index(struct zip_t *zip);
 
 /**
  * Determines if the current zip entry is a directory entry.
@@ -244,35 +197,16 @@ extern ZIP_EXPORT ssize_t zip_entry_index(struct zip_t *zip);
  * @return the return code - 1 (true), 0 (false), negative number (< 0) on
  *         error.
  */
-extern ZIP_EXPORT int zip_entry_isdir(struct zip_t *zip);
+extern int zip_entry_isdir(struct zip_t *zip);
 
 /**
- * Returns the uncompressed size of the current zip entry.
- * Alias for zip_entry_uncomp_size (for backward compatibility).
+ * Returns an uncompressed size of the current zip entry.
  *
  * @param zip zip archive handler.
  *
  * @return the uncompressed size in bytes.
  */
-extern ZIP_EXPORT unsigned long long zip_entry_size(struct zip_t *zip);
-
-/**
- * Returns the uncompressed size of the current zip entry.
- *
- * @param zip zip archive handler.
- *
- * @return the uncompressed size in bytes.
- */
-extern ZIP_EXPORT unsigned long long zip_entry_uncomp_size(struct zip_t *zip);
-
-/**
- * Returns the compressed size of the current zip entry.
- *
- * @param zip zip archive handler.
- *
- * @return the compressed size in bytes.
- */
-extern ZIP_EXPORT unsigned long long zip_entry_comp_size(struct zip_t *zip);
+extern unsigned long long zip_entry_size(struct zip_t *zip);
 
 /**
  * Returns CRC-32 checksum of the current zip entry.
@@ -281,26 +215,7 @@ extern ZIP_EXPORT unsigned long long zip_entry_comp_size(struct zip_t *zip);
  *
  * @return the CRC-32 checksum.
  */
-extern ZIP_EXPORT unsigned int zip_entry_crc32(struct zip_t *zip);
-
-/**
- * Returns byte offset of the current zip entry
- * in the archive's central directory.
- *
- * @param zip zip archive handler.
- *
- * @return the offset in bytes.
- */
-extern ZIP_EXPORT unsigned long long zip_entry_dir_offset(struct zip_t *zip);
-
-/**
- * Returns the current zip entry's local header file offset in bytes.
- *
- * @param zip zip archive handler.
- *
- * @return the entry's local header file offset in bytes.
- */
-extern ZIP_EXPORT unsigned long long zip_entry_header_offset(struct zip_t *zip);
+extern unsigned int zip_entry_crc32(struct zip_t *zip);
 
 /**
  * Compresses an input buffer for the current zip entry.
@@ -311,8 +226,7 @@ extern ZIP_EXPORT unsigned long long zip_entry_header_offset(struct zip_t *zip);
  *
  * @return the return code - 0 on success, negative number (< 0) on error.
  */
-extern ZIP_EXPORT int zip_entry_write(struct zip_t *zip, const void *buf,
-                                      size_t bufsize);
+extern int zip_entry_write(struct zip_t *zip, const void *buf, size_t bufsize);
 
 /**
  * Compresses a file for the current zip entry.
@@ -322,7 +236,7 @@ extern ZIP_EXPORT int zip_entry_write(struct zip_t *zip, const void *buf,
  *
  * @return the return code - 0 on success, negative number (< 0) on error.
  */
-extern ZIP_EXPORT int zip_entry_fwrite(struct zip_t *zip, const char *filename);
+extern int zip_entry_fwrite(struct zip_t *zip, const char *filename);
 
 /**
  * Extracts the current zip entry into output buffer.
@@ -337,10 +251,9 @@ extern ZIP_EXPORT int zip_entry_fwrite(struct zip_t *zip, const char *filename);
  *       for large entries, please take a look at zip_entry_extract function.
  *
  * @return the return code - the number of bytes actually read on success.
- *         Otherwise a negative number (< 0) on error.
+ *         Otherwise a -1 on error.
  */
-extern ZIP_EXPORT ssize_t zip_entry_read(struct zip_t *zip, void **buf,
-                                         size_t *bufsize);
+extern ssize_t zip_entry_read(struct zip_t *zip, void **buf, size_t *bufsize);
 
 /**
  * Extracts the current zip entry into a memory buffer using no memory
@@ -356,11 +269,10 @@ extern ZIP_EXPORT ssize_t zip_entry_read(struct zip_t *zip, void **buf,
  *       For large entries, please take a look at zip_entry_extract function.
  *
  * @return the return code - the number of bytes actually read on success.
- *         Otherwise a negative number (< 0) on error (e.g. bufsize is not large
- * enough).
+ *         Otherwise a -1 on error (e.g. bufsize is not large enough).
  */
-extern ZIP_EXPORT ssize_t zip_entry_noallocread(struct zip_t *zip, void *buf,
-                                                size_t bufsize);
+extern ssize_t zip_entry_noallocread(struct zip_t *zip, void *buf,
+                                     size_t bufsize);
 
 /**
  * Extracts the current zip entry into output file.
@@ -370,7 +282,7 @@ extern ZIP_EXPORT ssize_t zip_entry_noallocread(struct zip_t *zip, void *buf,
  *
  * @return the return code - 0 on success, negative number (< 0) on error.
  */
-extern ZIP_EXPORT int zip_entry_fread(struct zip_t *zip, const char *filename);
+extern int zip_entry_fread(struct zip_t *zip, const char *filename);
 
 /**
  * Extracts the current zip entry using a callback function (on_extract).
@@ -382,9 +294,9 @@ extern ZIP_EXPORT int zip_entry_fread(struct zip_t *zip, const char *filename);
  *
  * @return the return code - 0 on success, negative number (< 0) on error.
  */
-extern ZIP_EXPORT int
+extern int
 zip_entry_extract(struct zip_t *zip,
-                  size_t (*on_extract)(void *arg, uint64_t offset,
+                  size_t (*on_extract)(void *arg, unsigned long long offset,
                                        const void *data, size_t size),
                   void *arg);
 
@@ -396,7 +308,7 @@ zip_entry_extract(struct zip_t *zip,
  * @return the return code - the number of entries on success, negative number
  *         (< 0) on error.
  */
-extern ZIP_EXPORT ssize_t zip_entries_total(struct zip_t *zip);
+extern int zip_entries_total(struct zip_t *zip);
 
 /**
  * Deletes zip archive entries.
@@ -406,20 +318,8 @@ extern ZIP_EXPORT ssize_t zip_entries_total(struct zip_t *zip);
  * @param len the number of entries to be deleted.
  * @return the number of deleted entries, or negative number (< 0) on error.
  */
-extern ZIP_EXPORT ssize_t zip_entries_delete(struct zip_t *zip,
-                                             char *const entries[], size_t len);
-
-/**
- * Deletes zip archive entries.
- *
- * @param zip zip archive handler.
- * @param entries array of zip archive entries indices to be deleted.
- * @param len the number of entries to be deleted.
- * @return the number of deleted entries, or negative number (< 0) on error.
- */
-extern ZIP_EXPORT ssize_t zip_entries_deletebyindex(struct zip_t *zip,
-                                                    size_t entries[],
-                                                    size_t len);
+extern int zip_entries_delete(struct zip_t *zip, char *const entries[],
+                              size_t len);
 
 /**
  * Extracts a zip archive stream into directory.
@@ -438,46 +338,21 @@ extern ZIP_EXPORT ssize_t zip_entries_deletebyindex(struct zip_t *zip,
  *
  * @return the return code - 0 on success, negative number (< 0) on error.
  */
-extern ZIP_EXPORT int
-zip_stream_extract(const char *stream, size_t size, const char *dir,
-                   int (*on_extract)(const char *filename, void *arg),
-                   void *arg);
+extern int zip_stream_extract(const char *stream, size_t size, const char *dir,
+                              int (*on_extract)(const char *filename,
+                                                void *arg),
+                              void *arg);
 
 /**
  * Opens zip archive stream into memory.
  *
  * @param stream zip archive stream.
  * @param size stream size.
- * @param level compression level (0-9 are the standard zlib-style levels).
- * @param mode file access mode.
- *        - 'r': opens a file for reading/extracting (the file must exists).
- *        - 'w': creates an empty file for writing.
- *        - 'a': appends to an existing archive.
  *
  * @return the zip archive handler or NULL on error
  */
-extern ZIP_EXPORT struct zip_t *zip_stream_open(const char *stream, size_t size,
-                                                int level, char mode);
-
-/**
- * Opens zip archive stream into memory.
- * The function additionally returns @param errnum -
- *
- * @param stream zip archive stream.
- * @param size stream size.*
- * @param level compression level (0-9 are the standard zlib-style levels).
- * @param mode file access mode.
- *        - 'r': opens a file for reading/extracting (the file must exists).
- *        - 'w': creates an empty file for writing.
- *        - 'a': appends to an existing archive.
- * @param errnum 0 on success, negative number (< 0) on error.
- *
- * @return the zip archive handler or NULL on error
- */
-extern ZIP_EXPORT struct zip_t *zip_stream_openwitherror(const char *stream,
-                                                         size_t size, int level,
-                                                         char mode,
-                                                         int *errnum);
+extern struct zip_t *zip_stream_open(const char *stream, size_t size, int level,
+                                     char mode);
 
 /**
  * Copy zip archive stream output buffer.
@@ -488,8 +363,7 @@ extern ZIP_EXPORT struct zip_t *zip_stream_openwitherror(const char *stream,
  *
  * @return copy size
  */
-extern ZIP_EXPORT ssize_t zip_stream_copy(struct zip_t *zip, void **buf,
-                                          size_t *bufsize);
+extern ssize_t zip_stream_copy(struct zip_t *zip, void **buf, ssize_t *bufsize);
 
 /**
  * Close zip archive releases resources.
@@ -498,7 +372,7 @@ extern ZIP_EXPORT ssize_t zip_stream_copy(struct zip_t *zip, void **buf,
  *
  * @return
  */
-extern ZIP_EXPORT void zip_stream_close(struct zip_t *zip);
+extern void zip_stream_close(struct zip_t *zip);
 
 /**
  * Creates a new archive and puts files into a single zip archive.
@@ -509,8 +383,7 @@ extern ZIP_EXPORT void zip_stream_close(struct zip_t *zip);
  *
  * @return the return code - 0 on success, negative number (< 0) on error.
  */
-extern ZIP_EXPORT int zip_create(const char *zipname, const char *filenames[],
-                                 size_t len);
+extern int zip_create(const char *zipname, const char *filenames[], size_t len);
 
 /**
  * Extracts a zip archive file into directory.
@@ -528,10 +401,10 @@ extern ZIP_EXPORT int zip_create(const char *zipname, const char *filenames[],
  *
  * @return the return code - 0 on success, negative number (< 0) on error.
  */
-extern ZIP_EXPORT int zip_extract(const char *zipname, const char *dir,
-                                  int (*on_extract_entry)(const char *filename,
-                                                          void *arg),
-                                  void *arg);
+extern int zip_extract(const char *zipname, const char *dir,
+                       int (*on_extract_entry)(const char *filename, void *arg),
+                       void *arg);
+
 /** @} */
 #ifdef __cplusplus
 }

@@ -19,42 +19,6 @@ class D3D11VertexBuffer;
 class D3D11LineRenderer;
 class D3D11ConstantBuffer;
 
-class D3DGraphicsEventRecord: 
-    public GraphicsEventRecord {
-public:
-    D3DGraphicsEventRecord() = default;
-
-    D3DGraphicsEventRecord( ID3DUserDefinedAnnotation* userAnnotation, LPCWSTR region )
-        : m_Annotation( userAnnotation ),
-        m_region( region )
-    {
-        if ( m_Annotation ) {
-            m_Annotation->BeginEvent( region );
-        }
-    }
-    ~D3DGraphicsEventRecord() override {
-        if ( m_Annotation ) {
-            m_Annotation->EndEvent();
-        }
-        m_Annotation = nullptr;
-    }
-
-    D3DGraphicsEventRecord( const D3DGraphicsEventRecord& other ) = delete;
-    D3DGraphicsEventRecord& operator=( const D3DGraphicsEventRecord& ) = delete;
-
-    D3DGraphicsEventRecord( D3DGraphicsEventRecord&& other )
-        : m_region(std::move( other.m_region )),
-        m_Annotation( std::move( other.m_Annotation ) )
-    {
-        other.m_Annotation = nullptr;
-        other.m_region = nullptr;
-    }
-
-private:
-    LPCWSTR m_region;
-    ID3DUserDefinedAnnotation* m_Annotation;
-};
-
 class D3D11GraphicsEngineBase : public BaseGraphicsEngine {
 public:
     D3D11GraphicsEngineBase();
@@ -64,7 +28,7 @@ public:
     virtual XRESULT Init() PURE;
 
     /** Called when the game created its window */
-    virtual XRESULT SetWindow( HWND newhWnd );
+    virtual XRESULT SetWindow( HWND hWnd );
 
     /** Called on window resize/resolution change */
     virtual XRESULT OnResize( INT2 newSize ) PURE;
@@ -94,7 +58,7 @@ public:
     virtual XRESULT CreateShadowedPointLight( BaseShadowedPointLight** outPL, VobLightInfo* lightInfo, bool dynamic = false );
 
     /** Returns a list of available display modes */
-    virtual std::vector<DisplayModeInfo> GetDisplayModeList() = 0;
+    virtual XRESULT GetDisplayModeList( std::vector<DisplayModeInfo>* modeList, bool includeSuperSampling = false ) PURE;
 
     /** Presents the current frame to the screen */
     virtual XRESULT Present();
@@ -125,7 +89,7 @@ public:
     virtual XRESULT DrawVertexBufferFF( D3D11VertexBuffer* vb, unsigned int numVertices, unsigned int startVertex, unsigned int stride = sizeof( ExVertexStruct ) );
 
     /** Binds viewport information to the given constantbuffer slot */
-    XRESULT BindViewportInformation( const std::string& shader, int slot );
+    XRESULT D3D11GraphicsEngineBase::BindViewportInformation( const std::string& shader, int slot );
 
     /** Returns the Device/Context */
     const Microsoft::WRL::ComPtr<ID3D11Device1>& GetDevice() { return Device; }
@@ -164,11 +128,8 @@ public:
     //virtual int MeasureString(std::string str, zFont* zFont);
 
     void ResetPresentPending() { PresentPending = false; }
-    void SetWindowMode( WindowModes mode ) override { }
 
-    std::unique_ptr<GraphicsEventRecord> RecordGraphicsEvent( LPCWSTR region) override {
-        return std::make_unique<D3DGraphicsEventRecord>( m_UserDefinedAnnotation.Get(), region);
-    }
+    HWND GetOutputWindow() { return OutputWindow; }
 
 protected:
     /** Updates the transformsCB with new values from the GAPI */
@@ -176,17 +137,14 @@ protected:
 
     /** Device-objects */
     Microsoft::WRL::ComPtr<IDXGIFactory2> DXGIFactory2;
-    Microsoft::WRL::ComPtr<IDXGIAdapter1> DXGIAdapter1;
+    Microsoft::WRL::ComPtr<IDXGIAdapter2> DXGIAdapter2;
     std::string DeviceDescription;
 
-    Microsoft::WRL::ComPtr<ID3D11Device> Device11;
-    Microsoft::WRL::ComPtr<ID3D11DeviceContext> Context11;
     Microsoft::WRL::ComPtr<ID3D11Device1> Device;
     Microsoft::WRL::ComPtr<ID3D11DeviceContext1> Context;
-    Microsoft::WRL::ComPtr<ID3DUserDefinedAnnotation> m_UserDefinedAnnotation;
-    
+
     /** Swapchain and resources */
-    Microsoft::WRL::ComPtr<IDXGISwapChain> SwapChain;
+    Microsoft::WRL::ComPtr<IDXGISwapChain1> SwapChain;
     std::unique_ptr<RenderToTextureBuffer> Backbuffer;
     std::unique_ptr<RenderToDepthStencilBuffer> DepthStencilBuffer;
     std::unique_ptr<RenderToTextureBuffer> HDRBackBuffer;
@@ -217,13 +175,10 @@ protected:
     std::shared_ptr<D3D11PShader> PS_DiffuseNormalmappedAlphatestFxMap;
     std::shared_ptr<D3D11PShader> PS_DiffuseAlphatest;
     std::shared_ptr<D3D11PShader> PS_Simple;
-    std::shared_ptr<D3D11PShader> PS_SimpleAlphaTest;
     std::shared_ptr<D3D11PShader> PS_LinDepth;
     std::shared_ptr<D3D11VShader> VS_Ex;
     std::shared_ptr<D3D11VShader> VS_ExInstancedObj;
-    std::shared_ptr<D3D11VShader> VS_ExRemapInstancedObj;
     std::shared_ptr<D3D11VShader> VS_ExSkeletal;
-    std::shared_ptr<D3D11GShader> GS_Billboard;
     
     std::shared_ptr<D3D11PShader> PS_PortalDiffuse;
     std::shared_ptr<D3D11PShader> PS_WaterfallFoam;
@@ -246,5 +201,4 @@ protected:
 
     /** If true, we are still waiting for a present to happen. Don't draw everything twice! */
     bool PresentPending;
-    WindowModes m_currentWindowMode;
 };

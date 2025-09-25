@@ -5,9 +5,12 @@
 
 struct RenderToDepthStencilBuffer;
 
+class D3D11IndirectBuffer;
 class D3D11ConstantBuffer;
 class D3D11VertexBuffer;
 class D3D11ShaderManager;
+
+class D3D11NVAPI;
 
 enum D3D11ENGINE_RENDER_STAGE {
     DES_Z_PRE_PASS,
@@ -35,9 +38,9 @@ class D3D11PfxRenderer;
 class D3D11LineRenderer;
 class zCVobLight;
 class zCVob;
+class D2DView;
 struct VobLightInfo;
 class GMesh;
-class GOcean;
 class D3D11HDShader;
 class D3D11OcclusionQuerry;
 struct MeshInfo;
@@ -94,7 +97,7 @@ public:
     XRESULT FetchDisplayModeListWindows();
 
     /** Returns a list of available display modes */
-    virtual std::vector<DisplayModeInfo> GetDisplayModeList();
+    virtual XRESULT GetDisplayModeList( std::vector<DisplayModeInfo>* modeList, bool includeSuperSampling = false );
 
     /** Presents the current frame to the screen */
     virtual XRESULT Present() override;
@@ -108,11 +111,13 @@ public:
 
     /** Draws a vertexbuffer, non-indexed */
     virtual XRESULT DrawVertexBuffer( D3D11VertexBuffer* vb, unsigned int numVertices, unsigned int stride = sizeof( ExVertexStruct ) ) override;
+    virtual XRESULT DrawVertexBufferIndexed( D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, unsigned int indexOffset = 0 ) override;
+    virtual XRESULT DrawVertexBufferIndexedUINT( D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, unsigned int indexOffset ) override;
 
-    /** Draws a vertexbuffer, non-indexed */
-    virtual XRESULT DrawVertexBufferIndexed( D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices = 0, unsigned int indexOffset = 0 ) override;
-    virtual XRESULT DrawVertexBufferIndexedUINT( D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices = 0, unsigned int indexOffset = 0 ) override;
-    virtual XRESULT DrawVertexBufferIndexedUINTFromMeshInfo( MeshInfo* meshInfo, unsigned int numIndices = 0, unsigned int indexOffset = 0 ) override;
+    /** Draws a vertexbuffer, instanced */
+    XRESULT DrawVertexBufferInstanced( D3D11VertexBuffer* vb, unsigned int numVertices, unsigned int numInstances, unsigned int stride = sizeof( ExVertexStruct ) );
+    XRESULT DrawVertexBufferInstancedIndexed( D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, unsigned int numInstances, unsigned int indexOffset = 0 );
+    XRESULT DrawVertexBufferInstancedIndexedUINT( D3D11VertexBuffer* vb, D3D11VertexBuffer* ib, unsigned int numIndices, unsigned int numInstances, unsigned int indexOffset );
 
     /** Draws a vertexbuffer, non-indexed, binding the FF-Pipe values */
     virtual XRESULT DrawVertexBufferFF( D3D11VertexBuffer* vb, unsigned int numVertices, unsigned int startVertex, unsigned int stride = sizeof( ExVertexStruct ) ) override;
@@ -137,6 +142,7 @@ public:
     /** Draws a skeletal mesh */
     XRESULT DrawSkeletalVertexNormals( SkeletalVobInfo* vi, const std::vector<XMFLOAT4X4>& transforms, float4 color, float fatness = 1.0f );
     virtual XRESULT DrawSkeletalMesh( SkeletalVobInfo* vi, const std::vector<XMFLOAT4X4>& transforms, float4 color, float fatness = 1.0f ) override;
+    XRESULT DrawSkeletalMesh_Layered( SkeletalVobInfo* vi, const std::vector<XMFLOAT4X4>& transforms, float4 color, float fatness = 1.0f );
 
     /** Draws a screen fade effects */
     virtual XRESULT DrawScreenFade( void* camera ) override;
@@ -171,9 +177,6 @@ public:
     void DrawQuadMarks();
     void DrawMQuadMarks();
 
-    /** Draws the ocean */
-    XRESULT DrawOcean( GOcean* ocean );
-
     /** Gets the depthbuffer */
     RenderToDepthStencilBuffer* GetDepthBuffer() { return DepthStencilBuffer.get(); }
 
@@ -207,6 +210,7 @@ public:
     /** ---------------- Gothic rendering functions -------------------- */
 
     /** Draws the world mesh */
+    virtual XRESULT DrawWorldMesh_Indirect( bool noTextures = false );
     virtual XRESULT DrawWorldMesh( bool noTextures = false );
 
     /** Draws a list of mesh infos */
@@ -229,12 +233,21 @@ public:
         bool indoor = false,
         bool noNPCs = false,
         std::list<VobInfo*>* renderedVobs = nullptr, std::list<SkeletalVobInfo*>* renderedMobs = nullptr, std::map<MeshKey, WorldMeshInfo*, cmpMeshKey>* worldMeshCache = nullptr );
+    void XM_CALLCONV DrawWorldAround_Layered( FXMVECTOR position,
+        float range,
+        bool cullFront = true,
+        bool indoor = false,
+        bool noNPCs = false,
+        std::list<VobInfo*>* renderedVobs = nullptr, std::list<SkeletalVobInfo*>* renderedMobs = nullptr, std::map<MeshKey, WorldMeshInfo*, cmpMeshKey>* worldMeshCache = nullptr );
 
     /** Update morph mesh visual */
     void UpdateMorphMeshVisual();
 
     /** Draws the static vobs instanced */
     XRESULT DrawVOBsInstanced();
+
+    /** Set wind props in const buffer */
+    void ApplyWindProps( VS_ExConstantBuffer_Wind& buf );
 
     /** Applys the lighting to the scene */
     XRESULT DrawLighting( std::vector<VobLightInfo*>& lights );
@@ -289,6 +302,9 @@ public:
     /** Draws the given mesh infos as water */
     void DrawWaterSurfaces();
 
+    /** Handles an UI-Event */
+    void OnUIEvent( EUIEvent uiEvent );
+
     /** Draws the given list of decals */
     void DrawDecalList( const std::vector<zCVob*>& decals, bool lighting );
 
@@ -307,19 +323,25 @@ public:
     /** Draws particle effects */
     void DrawFrameParticles( std::map<zCTexture*, std::vector<ParticleInstanceInfo>>& particles, std::map<zCTexture*, ParticleRenderInfo>& info );
 
+    /** Returns the UI-View */
+    D2DView* GetUIView() { return UIView.get(); }
+
+    /** Returns the settings window availability */
+    bool HasSettingsWindow();
+
+    /** Creates the main UI-View */
+    void CreateMainUIView();
+
     /** Returns a dummy cube-rendertarget used for pointlight shadowmaps */
     RenderToTextureBuffer* GetDummyCubeRT() { return DummyShadowCubemapTexture.get(); }
 
     void EnsureTempVertexBufferSize( std::unique_ptr<D3D11VertexBuffer>& buffer, UINT size );
 
     float UpdateCustomFontMultiplierFontRendering( float multiplier );
-    void SetWindowMode( WindowModes mode ) override;
 
 protected:
     std::unique_ptr<FpsLimiter> m_FrameLimiter;
     int m_LastFrameLimit;
-    /** Test draw world */
-    void TestDrawWorldMesh();
 
     D3D11PointLight* DebugPointlight;
 
@@ -368,6 +390,9 @@ protected:
     /** The current rendering stage */
     D3D11ENGINE_RENDER_STAGE RenderingStage;
 
+    /** The editorcontrols */
+    std::unique_ptr<D2DView> UIView;
+
     /** List of water surfaces for this frame */
     std::unordered_map<zCTexture*, std::vector<WorldMeshInfo*>> FrameWaterSurfaces;
 
@@ -383,6 +408,9 @@ protected:
     /** Reflection */
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> ReflectionCube;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> ReflectionCube2;
+
+    /** World-Mesh indirect buffer */
+    std::unique_ptr<D3D11IndirectBuffer> WorldMeshIndirectBuffer;
 
     /** Constantbuffers for view-distances */
     std::unique_ptr<D3D11ConstantBuffer> InfiniteRangeConstantBuffer;
@@ -404,7 +432,7 @@ protected:
     std::unique_ptr<D3D11VertexBuffer> TempHUDVertexBuffer;
 
     /** Cached display modes */
-    std::vector<DisplayModeInfo> Resolutions;
+    std::vector<DisplayModeInfo> CachedDisplayModes;
     DXGI_RATIONAL CachedRefreshRate;
 
     /** Low latency object handle */
@@ -420,5 +448,4 @@ protected:
     int m_previousFpsLimit;
     bool m_isWindowActive;
     float unionCurrentCustomFontMultiplier;
-    bool m_recreateSwapChain;
 };

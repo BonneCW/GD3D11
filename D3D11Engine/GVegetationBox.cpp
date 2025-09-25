@@ -120,10 +120,6 @@ XRESULT GVegetationBox::InitVegetationBox( const XMFLOAT3& min,
         return XR_FAILED;
     }
 
-    auto& bsptree = Engine::GAPI->GetLoadedWorldInfo()->BspTree;
-    if ( !bsptree )
-        return XR_FAILED;
-
     Engine::GraphicsEngine->CreateTexture( &VegetationTexture );
     VegetationTexture->Init( "system\\GD3D11\\Meshes\\grass02.dds" );
 
@@ -137,11 +133,11 @@ XRESULT GVegetationBox::InitVegetationBox( const XMFLOAT3& min,
     Shape = shape;
 
     // Get polygons laying in this box
-    zCPolygon** p = bsptree->GetPolygons();
+    zCPolygon** p = Engine::GAPI->GetLoadedWorldInfo()->BspTree->GetPolygons();
     std::vector<XMFLOAT3> polysInside;
 
     // Get polys inside the box //TODO: Get crossing polys too!
-    for ( int i = 0; i < bsptree->GetNumPolys(); i++ ) {
+    for ( int i = 0; i < Engine::GAPI->GetLoadedWorldInfo()->BspTree->GetNumPolys(); i++ ) {
         for ( int v = 0; v < 4; v++ ) {
             if ( v == 4 ) {
                 // Check center too

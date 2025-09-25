@@ -105,33 +105,33 @@ public:
         return DefaultColor;
     }
 
-    int rnd2( float x ) const {
+    int _zCView::rnd2( float x ) const {
         if ( x > 0 ) return static_cast<int>(x + 0.5);
         else return static_cast<int>(x - 0.5);
     }
 
-    int nax( int x ) const {
+    int _zCView::nax( int x ) const {
         return rnd2( static_cast<float>(x * psizex) / 8192.f );
     }
-    int nay( int y ) const {
+    int _zCView::nay( int y ) const {
         return rnd2( static_cast<float>(y * psizey) / 8192.f );
     }
 
-    int anx( int x ) const {
+    int _zCView::anx( int x ) const {
         return rnd2( static_cast<float>(x * 8192) / psizex );
     }
-    int any( int x ) const {
+    int _zCView::any( int x ) const {
         return rnd2( static_cast<float>(x * 8192) / psizey );
     }
 
-    void CheckAutoScroll() {
+    void _zCView::CheckAutoScroll() {
 #if defined(BUILD_GOTHIC_1_08k) && !defined(BUILD_1_12F)
         reinterpret_cast<void( __fastcall* )( _zCView* )>( 0x006FC480 )( this );
 #elif defined(BUILD_GOTHIC_2_6_fix)
         reinterpret_cast<void( __fastcall* )( _zCView* )>( 0x007A5F60 )( this );
 #endif
     }
-    void CheckTimedText() {
+    void _zCView::CheckTimedText() {
 #if defined(BUILD_GOTHIC_1_08k) && !defined(BUILD_1_12F)
         reinterpret_cast<void( __fastcall* )( _zCView* )>( 0x006FE0E0 )( this );
 #elif defined(BUILD_GOTHIC_2_6_fix)
@@ -139,11 +139,11 @@ public:
 #endif
     }
 
-    void PrintChars( int x, int y, const zSTRING& str ) {
+    void _zCView::PrintChars( int x, int y, const zSTRING& str ) {
         reinterpret_cast<void( __fastcall* )( _zCView*, int, int, int, const zSTRING& )>
             ( GothicMemoryLocations::zCView::PrintChars )( this, 0, x, y, str );
     }
-    zCViewText* CreateText( int x, int y, const zSTRING& str ) {
+    zCViewText* _zCView::CreateText( int x, int y, const zSTRING& str ) {
         return reinterpret_cast<zCViewText*( __fastcall* )( _zCView*, int, int, int, const zSTRING& )>
             ( GothicMemoryLocations::zCView::CreateText )( this, 0, x, y, str );
     }
@@ -209,12 +209,12 @@ public:
     int registeredCPP;
     int firstTimeInserted;
 
-    bool GetIsDisabled() {
+    bool zCMenuItem::GetIsDisabled() {
         if ( !m_bVisible ) return true;
         return (m_parItemFlags & 32);
     }
 private:
-    int GetIsDisabledInternal() {
+    int zCMenuItem::GetIsDisabledInternal() {
         // TODO: G1 Addresses
         return reinterpret_cast<int( __fastcall* )( zCMenuItem* )>( 0x004E1DE0 )( this );
     }

@@ -32,6 +32,24 @@ struct GothicMemoryLocations {
         static const unsigned int RenderDrawPolyReturn = 0x005BE190;
     };
 
+    struct zCFlash {
+        static const unsigned int Destructor = 0x004CA3C0;
+        static const unsigned int SetVisualUsedBy = 0x004CA690;
+        static const unsigned int Update = 0x004CB6E0;
+
+        static const unsigned int Offset_LifeTime = 0x34;
+        static const unsigned int Offset_StartPosX = 0x50;
+        static const unsigned int Offset_StartPosY = 0x54;
+        static const unsigned int Offset_StartPosZ = 0x58;
+        static const unsigned int Offset_EndPosX = 0x5C;
+        static const unsigned int Offset_EndPosY = 0x60;
+        static const unsigned int Offset_EndPosZ = 0x64;
+        static const unsigned int Offset_BoltB = 0x4C;
+        static const unsigned int Offset_BoltA = 0x48;
+        static const unsigned int Offset_ChildrenTable = 0xB4;
+        static const unsigned int Offset_ChildrenSize = 0xBC;
+    };
+
     struct zCThread {
         static const unsigned int SuspendThread = 0x005F9370;
         static const unsigned int Offset_SuspendCount = 0x0C;
@@ -225,6 +243,7 @@ struct GothicMemoryLocations {
         static const unsigned int Offset_VisAlphaBlendFunc = 0x340;
         static const unsigned int Offset_AlphaDist = 0x35C;
         static const unsigned int Offset_VisAlphaStart = 0x1F0;
+        static const unsigned int Offset_VisTexAniFPS = 0x194;
         static const unsigned int Offset_VisTexAniIsLooping = 0x198;
         static const unsigned int Offset_VisIsQuadPoly = 0x190;
 
@@ -449,6 +468,7 @@ struct GothicMemoryLocations {
         static const unsigned int Offset_VobAlpha = 0xCC;
         static const unsigned int MASK_ShowVisual = 0x1;
         static const unsigned int MASK_VisualAlpha = 0x4;
+        static const unsigned int MASK_DynColl = 0x80; // (1 << 7) collDetectionDynamic
         static const unsigned int Offset_CameraAlignment = 0x110;
         static const unsigned int SHIFTLR_CameraAlignment = 0x1E;
 
@@ -471,10 +491,7 @@ struct GothicMemoryLocations {
         static const unsigned int Destructor = 0x00606800;
     };
 
-	struct oCVisualFX {
-		static const unsigned int Offset_emAdjustShpToOrigin = 0x2D0;
-		static const unsigned int AdjustShapeToOrigin = 0x00498EE0;
-	};
+
 
     struct zCDecal {
         static const unsigned int Offset_DecalSettings = 0x34;
@@ -527,6 +544,7 @@ struct GothicMemoryLocations {
 
     struct zSTRING {
         static const unsigned int ToChar = 0x08;
+        static const unsigned int ConstructorEmptyPtr = 0x00402AF0;
         static const unsigned int ConstructorCharPtr = 0x004010C0;
         static const unsigned int DestructorCharPtr = 0x00401160;
     };
@@ -541,6 +559,10 @@ struct GothicMemoryLocations {
         static const unsigned int Offset_Flags = 0x70;
         static const unsigned int Offset_TexAniMapDelta = 0x94;
         static const unsigned int Mask_FlagTexAniMap = 0x4;
+
+        static const unsigned int Offset_WaveMode = 0x7C;
+        static const unsigned int Offset_WaveSpeed = 0x80;
+        static const unsigned int Offset_WaveMaxAmplitude = 0x84;
 
         static const unsigned int InitValues = 0x00564260;
         static const unsigned int Constructor = 0x00563E00;
@@ -597,6 +619,10 @@ struct GothicMemoryLocations {
         static const unsigned int Call_Render_zCBspTreeRender = 0x00621830;
         static const unsigned int Offset_GlobalVobTree = 0x24;
         static const unsigned int LoadWorld = 0x006270D0;
+#ifdef BUILD_SPACER_NET
+        static const unsigned int CompileWorld = 0x00622EC0;
+        static const unsigned int GenerateStaticWorldLighting = 0x0062FB70;
+#endif
         static const unsigned int VobRemovedFromWorld = 0x00624970;
         static const unsigned int Offset_SkyControllerOutdoor = 0x0E4;
         static const unsigned int GetActiveSkyController = 0x006203A0;

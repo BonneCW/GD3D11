@@ -5,7 +5,8 @@
 #include "BaseLineRenderer.h"
 #include "GothicAPI.h"
 
-#include "D3D11GraphicsEngine.h"
+#include "D3D11GraphicsEngine.h" // TODO: Needed for the UI-View. This should not be here!
+#include "D2DView.h"
 
 #include "zSTRING.h"
 #include "zCParser.h"
@@ -64,6 +65,40 @@ extern "C"
     /** Sets strength of the original vertex lighting on the worldmesh for pixels which are NOT in shadow */
     __declspec(dllexport) void __cdecl GDX_SetWorldAOStrength( float strength ) {
         Engine::GAPI->GetRendererState().RendererSettings.WorldAOStrength = strength;
+    }
+
+    /** Callback for the messageboxes */
+    static void MB_Callback( ED2D_MB_ACTION action, void* userdata ) {
+        int* id = reinterpret_cast<int*>(userdata);
+
+#ifndef BUILD_SPACER
+        // Call script-callback
+        zCPARSER_CALL_FUNC( *id, action );
+#endif
+
+        delete id;
+    }
+
+    /** Opens a messagebox using the UI-Framework
+        - Message: Text to display in the body of the message-box
+        - Caption: Header of the message-box
+        - Type: 0 = OK, 1 = YES/NO
+        - Callback: Script-Function ID to use as a callback. */
+    __declspec(dllexport) void __cdecl GDX_OpenMessageBox( zSTRING* message, zSTRING* caption, int type, int callbackID ) {
+        D3D11GraphicsEngine* g = reinterpret_cast<D3D11GraphicsEngine*>(Engine::GraphicsEngine);
+
+        // Initialize the UI-Framework. Will do nothing if already done
+        g->CreateMainUIView();
+
+        // Check again, in case it failed
+        if ( g->GetUIView() ) {
+            // Store the callback ID in memory
+            int* d = new int;
+            *d = callbackID;
+
+            // Register the messagebox
+            g->GetUIView()->AddMessageBox( caption->ToChar(), message->ToChar(), MB_Callback, d, (ED2D_MB_TYPE)type );
+        }
     }
 
     /** Sets bink video running variable to disable fps limiter */

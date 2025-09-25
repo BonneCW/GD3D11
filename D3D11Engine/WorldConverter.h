@@ -93,6 +93,5 @@ public:
 
     /** Converts ExVertexStruct into a zCPolygon*-Attay */
     static void ConvertExVerticesTozCPolygons( const std::vector<ExVertexStruct>& vertices, const std::vector<VERTEX_INDEX>& indices, zCMaterial* material, std::vector<zCPolygon*>& polyArray );
-
 };
 

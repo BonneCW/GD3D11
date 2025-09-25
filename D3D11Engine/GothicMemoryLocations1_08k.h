@@ -33,6 +33,24 @@ struct GothicMemoryLocations {
         static const unsigned int RenderDrawPolyReturn = 0x0059C370;
     };
 
+    struct zCFlash {
+        static const unsigned int Destructor = 0x004C1080;
+        static const unsigned int SetVisualUsedBy = 0x004C1350;
+        static const unsigned int Update = 0x004C2390;
+
+        static const unsigned int Offset_LifeTime = 0x34;
+        static const unsigned int Offset_StartPosX = 0x50;
+        static const unsigned int Offset_StartPosY = 0x54;
+        static const unsigned int Offset_StartPosZ = 0x58;
+        static const unsigned int Offset_EndPosX = 0x5C;
+        static const unsigned int Offset_EndPosY = 0x60;
+        static const unsigned int Offset_EndPosZ = 0x64;
+        static const unsigned int Offset_BoltB = 0x4C;
+        static const unsigned int Offset_BoltA = 0x48;
+        static const unsigned int Offset_ChildrenTable = 0xA8;
+        static const unsigned int Offset_ChildrenSize = 0xB0;
+    };
+
     struct zCQuadMark {
         static const unsigned int Constructor = 0x005AB810;
         static const unsigned int Destructor = 0x005ABA60;
@@ -150,6 +168,7 @@ struct GothicMemoryLocations {
         static const unsigned int Offset_VisTexture = 0x2DC;
         static const unsigned int Offset_VisAlignment = 0x2E4;
         static const unsigned int Offset_VisAlphaBlendFunc = 0x308;
+        static const unsigned int Offset_VisTexAniIsLooping = 0x198;
 
         static const unsigned int Offset_VisShpRender = 0xBC;
         static const unsigned int Offset_VisShpType = 0x258;
@@ -203,11 +222,15 @@ struct GothicMemoryLocations {
         static const unsigned int Offset_HomeWorld = 0x0A8;
         static const unsigned int Offset_Type = 0x0A0;
 
+        static const unsigned int Offset_WindAniMode = 0xCC; // Hack into lightdirection variable unused in GD3D11 rendering pipeline
+        static const unsigned int Offset_WindAniModeStrength = 0xD0; // Hack into lightdirection variable unused in GD3D11 rendering pipeline
+
         static const unsigned int Offset_Flags = 0xE4;
         static const unsigned int Offset_VobTree = 0x24;
         static const unsigned int Offset_VobAlpha = 0xBC;
         static const unsigned int MASK_ShowVisual = 0x1;
         static const unsigned int MASK_VisualAlpha = 0x4;
+        static const unsigned int MASK_DynColl = 0x80; // (1 << 7) collDetectionDynamic
         static const unsigned int Offset_CameraAlignment = 0xF0;
         static const unsigned int SHIFTLR_CameraAlignment = 0x1E;
 
@@ -241,11 +264,6 @@ struct GothicMemoryLocations {
     struct zCVisual {
         static const unsigned int VTBL_GetFileExtension = 17;
         static const unsigned int Destructor = 0x005D9F10;
-    };
-
-    struct oCVisualFX {
-        static const unsigned int Offset_emAdjustShpToOrigin = 0x29C;
-        static const unsigned int AdjustShapeToOrigin = 0x0048F390;
     };
 
     struct zCBspTree {
@@ -299,6 +317,7 @@ struct GothicMemoryLocations {
 
     struct zSTRING {
         static const unsigned int ToChar = 0x08;
+        static const unsigned int ConstructorEmptyPtr = 0x00402B30;
         static const unsigned int ConstructorCharPtr = 0x004013A0;
         static const unsigned int DestructorCharPtr = 0x00401260;
     };
@@ -429,11 +448,14 @@ struct GothicMemoryLocations {
         static const unsigned int LoadWorld = 0x005F8A00;
         static const unsigned int VobRemovedFromWorld = 0x005F64C0;
         static const unsigned int VobAddedToWorld = 0x005F6360;
+#ifdef BUILD_SPACER_NET
+        static const unsigned int CompileWorld = 0x005F4F90;
+        static const unsigned int GenerateStaticWorldLighting = 0x00600B60;
+#endif
         static const unsigned int Offset_GlobalVobTree = 0x24;
         static const unsigned int Call_Render_zCBspTreeRender = 0x005F3F95;
         //static const unsigned int GetActiveSkyController = 0x006060A0;
         static const unsigned int Offset_SkyControllerOutdoor = 0x0D0;
-        static const unsigned int DisposeWorld = 0x005F5800;
         static const unsigned int DisposeVobs = 0x005F55F0;
         static const unsigned int Offset_BspTree = 0x198;
         static const unsigned int RemoveVob = 0x005F66C0;

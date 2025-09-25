@@ -525,6 +525,7 @@ int __fastcall BinkPlayerCloseVideo(DWORD BinkPlayer)
 		delete video->textureV;
 		video->textureV = nullptr;
 	}
+
 	reinterpret_cast<void(__stdcall*)(void*)>(BinkClose)(video->vid);
     Engine::GAPI->GetRendererState().RendererSettings.BinkVideoRunning = false;
 

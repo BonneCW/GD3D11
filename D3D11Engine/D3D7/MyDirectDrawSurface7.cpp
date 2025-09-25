@@ -5,6 +5,7 @@
 #include "../D3D11Texture.h"
 #include "../zCTexture.h"
 #include "Conversions.h"
+#include "../D3D11_Helpers.h"
 
 #define DebugWriteTex(x)  DebugWrite(x)
 
@@ -91,6 +92,12 @@ void MyDirectDrawSurface7::LoadAdditionalResources( zCTexture* ownedTexture ) {
         }
 
         Engine::GAPI->AddSurface( TextureName, this );
+
+        // Set texture name
+        if ( EngineTexture ) {
+            SetDebugName( EngineTexture->GetTextureObject().Get(), "D3D11Texture(\"" + TextureName + "\")->Texture" );
+            SetDebugName( EngineTexture->GetShaderResourceView().Get(), "D3D11Texture(\"" + TextureName + "\")->ShaderResourceView" );
+        }
     }
 
     if ( Normalmap ) {

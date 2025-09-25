@@ -1,6 +1,6 @@
 /*
- * Poly2Tri Copyright (c) 2009-2018, Poly2Tri Contributors
- * https://github.com/jhasse/poly2tri
+ * Poly2Tri Copyright (c) 2009-2010, Poly2Tri Contributors
+ * http://code.google.com/p/poly2tri/
  *
  * All rights reserved.
  *
@@ -33,10 +33,11 @@
  * Zalik, B.(2008)'Sweep-line algorithm for constrained Delaunay triangulation',
  * International Journal of Geographical Information Science
  *
- * "FlipScan" Constrained Edge Algorithm invented by Thomas Åhlén, thahlen@gmail.com
+ * "FlipScan" Constrained Edge Algorithm invented by Thomas ?hl?n, thahlen@gmail.com
  */
 
-#pragma once
+#ifndef SWEEP_H
+#define SWEEP_H
 
 #include <vector>
 
@@ -171,7 +172,6 @@ private:
   // Decision-making about when to Fill hole.
   // Contributed by ToolmakerSteve2
   bool LargeHole_DontFill(const Node* node) const;
-  bool AngleIsNegative(const Point* origin, const Point* pa, const Point* pb) const;
   bool AngleExceeds90Degrees(const Point* origin, const Point* pa, const Point* pb) const;
   bool AngleExceedsPlus90DegreesOrIsNegative(const Point* origin, const Point* pa, const Point* pb) const;
   double Angle(const Point* origin, const Point* pa, const Point* pb) const;
@@ -281,3 +281,5 @@ private:
 };
 
 }
+
+#endif

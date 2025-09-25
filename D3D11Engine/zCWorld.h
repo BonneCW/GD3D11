@@ -9,7 +9,6 @@
 #include "zCVob.h"
 #include "zCCamera.h"
 #include "zCSkyController_Outdoor.h"
-#include "D3D11GraphicsEngineBase.h"
 
 class zCCamera;
 class zCSkyController_Outdoor;
@@ -24,13 +23,18 @@ public:
 
         DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCWorldLoadWorld), hooked_LoadWorld );
         DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCWorldVobRemovedFromWorld), hooked_zCWorldVobRemovedFromWorld );
-        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCWorldDisposeWorld), hooked_zCWorldDisposeWorld );
+        //DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCWorldDisposeWorld), hooked_zCWorldDisposeWorld );
         DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCWorldDisposeVobs), hooked_zCWorldDisposeVobs );
 
         DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_oCWorldRemoveFromLists), hooked_oCWorldRemoveFromLists );
         DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_oCWorldEnableVob), hooked_oCWorldEnableVob );
         DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_oCWorldDisableVob), hooked_oCWorldDisableVob );
         DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_oCWorldRemoveVob), hooked_oCWorldRemoveVob );
+
+#ifdef BUILD_SPACER_NET
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCWorldCompileWorld), hooked_zCWorldCompileWorld );
+        DetourAttach( &reinterpret_cast<PVOID&>(HookedFunctions::OriginalFunctions.original_zCWorldGenerateStaticWorldLighting), hooked_zCWorldGenerateStaticWorldLighting );
+#endif
     }
 
     static void __fastcall hooked_oCWorldEnableVob( zCWorld* thisptr, void* unknwn, zCVob* vob, zCVob* parent ) {
@@ -72,30 +76,16 @@ public:
         HookedFunctions::OriginalFunctions.original_oCWorldRemoveFromLists( thisptr, vob );
     }
 
-    
-    static void __fastcall hooked_zCWorldDisposeWorld( void* thisptr, void* vtbl ) {
-        //hook_infunc
-        if ( thisptr == Engine::GAPI->GetLoadedWorldInfo()->MainWorld )
-        { 
-            // Have to reset everything on dispose due to race conditions on loading
-            D3D11GraphicsEngineBase* e = reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine);
-            e->SetDefaultStates();
-            Engine::GAPI->ResetWorld();
-            Engine::GAPI->ResetMaterialInfo();
-            Engine::GAPI->ResetRenderStates();
-            Engine::RefreshWorkerThreadpool(); // Make sure worker thread don't work on any point light
-
-            LogInfo() << "World was disposed, reseting pointlight ThreadPool";
-        }
-
+    /*
+    static void __fastcall hooked_zCWorldDisposeWorld( void* thisptr, void* unknwn ) {
+        //Engine::GAPI->ResetWorld();
         HookedFunctions::OriginalFunctions.original_zCWorldDisposeWorld( thisptr );
-        //hook_outfunc
     }
-   
+    */
 
     static void __fastcall hooked_zCWorldDisposeVobs( zCWorld* thisptr, void* unknwn, zCTree<zCVob>* tree ) {
         // Reset only if this is the main world, inventory worlds are handled differently
-        if ( thisptr && thisptr == Engine::GAPI->GetLoadedWorldInfo()->MainWorld )
+        if ( thisptr == Engine::GAPI->GetLoadedWorldInfo()->MainWorld )
             Engine::GAPI->ResetVobs();
 
         HookedFunctions::OriginalFunctions.original_zCWorldDisposeVobs( thisptr, tree );
@@ -133,17 +123,38 @@ public:
         hook_outfunc
     }
 
+#ifdef BUILD_SPACER_NET
+    static void __fastcall hooked_zCWorldCompileWorld( zCWorld* thisptr, void* unknwn, int& a2, float a3, int a4, int a5, void* a6 ) {
+        HookedFunctions::OriginalFunctions.original_zCWorldCompileWorld( thisptr, a2, a3, a4, a5, a6 );
+
+        // Make sure worker thread don't work on any point light
+        Engine::RefreshWorkerThreadpool();
+
+        LogInfo() << "Loading world!";
+        Engine::GAPI->GetLoadedWorldInfo()->MainWorld = thisptr;
+        Engine::GAPI->OnGeometryLoaded( thisptr->GetBspTree() );
+    }
+
+    static void __fastcall hooked_zCWorldGenerateStaticWorldLighting( zCWorld* thisptr, void* unknwn, int& a2, void* a3 ) {
+        HookedFunctions::OriginalFunctions.original_zCWorldGenerateStaticWorldLighting( thisptr, a2, a3 );
+
+        // Make sure worker thread don't work on any point light
+        Engine::RefreshWorkerThreadpool();
+
+        LogInfo() << "Loading world!";
+        Engine::GAPI->GetLoadedWorldInfo()->MainWorld = thisptr;
+        Engine::GAPI->OnGeometryLoaded( thisptr->GetBspTree() );
+    }
+#endif
+
     // Get around C2712
     static void Do_hooked_Render( zCWorld* thisptr, zCCamera& camera ) {
         Engine::GAPI->SetTextureTestBindMode( false, "" );
-        if ( !thisptr )
-            return;
 
-        auto MainWorld = Engine::GAPI->GetLoadedWorldInfo()->MainWorld;
-
-        if (MainWorld && thisptr == MainWorld ) { // Main world
+        //HookedFunctions::OriginalFunctions.original_zCWorldRender(thisptr, camera);
+        if ( thisptr == Engine::GAPI->GetLoadedWorldInfo()->MainWorld ) {
             Engine::GAPI->OnWorldUpdate();
-        } else { // Inventory virtual world
+        } else {
             // Inventory
             Engine::GAPI->DrawInventory( thisptr, camera );
         }

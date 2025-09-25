@@ -27,6 +27,8 @@ struct INT2 {
         this->y = static_cast<int>(v.y + 0.5f);
     }
 
+    INT2() { x = 0; y = 0; }
+
     INT2( const std::string& resolution ) {
         std::istringstream iss( resolution );
         char separator;
@@ -36,10 +38,9 @@ struct INT2 {
             y = 600;
         }
     }
-    INT2() { x = 0; y = 0; }
 
     std::string toString() const {
-        return std::to_string( x ) + "x" + std::to_string( y );
+        return "(" + std::to_string( x ) + ", " + std::to_string( y ) + ")";
     }
 
     bool operator==( const INT2& rhs ) { return x == rhs.x && y == rhs.y; }

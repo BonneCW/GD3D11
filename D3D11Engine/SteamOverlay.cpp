@@ -8,7 +8,7 @@
 namespace SteamOverlay
 {
     static bool IsSteamOverlayEnabled = false;
-
+    
     typedef bool( WINAPI* PFN_IsOverlayEnabled )();
     typedef bool( WINAPI* PFN_SteamOverlayIsUsingMouse )();
     typedef bool( WINAPI* PFN_SteamOverlayIsUsingKeyboard )();

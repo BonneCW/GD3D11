@@ -41,4 +41,3 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	//color *= float4(screenLuma, screenLuma, screenLuma, GA_Alpha);
 	return float4(color.rgb, color.a * GA_Alpha);
 }
-

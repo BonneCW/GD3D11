@@ -223,24 +223,16 @@ public:
     }
 
     /** Called on level load. */
-    static int __fastcall hooked_LoadBIN( void* thisptr, void* vtbl, zCFileBIN& file, int skip ) {
-        LogInfo() << "Loading world: " << Engine::GAPI->GetLoadedWorldInfo()->WorldName;
+    static int __fastcall hooked_LoadBIN( void* thisptr, void* unknwn, zCFileBIN& file, int skip ) {
+        LogInfo() << "Loading world!";
+
+        // Make sure worker thread don't work on any point light
+        Engine::RefreshWorkerThreadpool();
+
         int r = HookedFunctions::OriginalFunctions.original_zCBspTreeLoadBIN( thisptr, file, skip );
-                // Save pointer to this
-        Engine::GAPI->GetLoadedWorldInfo()->BspTree = reinterpret_cast<zCBspTree*>(thisptr);
-        LoadLevelGeometry( Engine::GAPI->GetLoadedWorldInfo()->BspTree );
+        Engine::GAPI->OnGeometryLoaded( reinterpret_cast<zCBspTree*>(thisptr) );
+
         return r;
-    }
-
-    /** Loads the world geometry of this BSP-Tree */
-    static void LoadLevelGeometry( zCBspTree* tree ) {
-        LogInfo() << "World loaded, getting Levelmesh now!";
-        LogInfo() << " - Found " << tree->GetNumPolys() << " polygons";
-
-        std::vector<zCPolygon*> polys;
-        tree->GetLOD0Polygons( polys );
-
-        Engine::GAPI->OnGeometryLoaded( &polys[0], polys.size() );
     }
 
     /** Returns only the polygons used in LOD0 of the world */

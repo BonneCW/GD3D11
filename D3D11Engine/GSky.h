@@ -52,8 +52,8 @@ public:
 
     void SetCustomCloudAndNightTexture( int idx, bool isNightTexture, bool isOldWorld );
     void SetCustomSkyTexture_ZenGin( bool isNightTexture, zCTexture* texture, bool isOldWorld );
-    void SetCustomSkyWavelengths( float X, float Y, float Z );
-
+    void SetCustomSkyWavelengths(float X, float Y, float Z);
+    
     /** Returns the skyplane */
     MeshInfo* GetSkyPlane();
 

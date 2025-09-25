@@ -1,5 +1,6 @@
 #include "D3D11GraphicsEngineBase.h"
 
+#include "BaseAntTweakBar.h"
 #include "D3D11LineRenderer.h"
 #include "D3D11PipelineStates.h"
 #include "D3D11PointLight.h"
@@ -12,6 +13,10 @@
 const unsigned int DRAWVERTEXARRAY_BUFFER_SIZE = 4096 * sizeof( ExVertexStruct );
 const int NUM_MAX_BONES = 96;
 const unsigned int INSTANCING_BUFFER_SIZE = sizeof( VobInstanceInfo ) * 2048;
+
+#if defined(BUILD_GOTHIC_1_08k) && !defined(BUILD_1_12F)
+extern bool haveWindAnimations;
+#endif
 
 // If defined, creates a debug-version of the d3d11-device
 //#define DEBUG_D3D11
@@ -31,9 +36,10 @@ D3D11GraphicsEngineBase::~D3D11GraphicsEngineBase() {
 }
 
 /** Called when the game created its window */
-XRESULT D3D11GraphicsEngineBase::SetWindow( HWND newhWnd ) {
-    LogInfo() << "D3D11GraphicsEngineBase - Creating swapchain";
-    OutputWindow = newhWnd;
+XRESULT D3D11GraphicsEngineBase::SetWindow( HWND hWnd ) {
+    LogInfo() << "Creating swapchain";
+    OutputWindow = hWnd;
+
     OnResize( Resolution );
 
     return XR_SUCCESS;
@@ -96,6 +102,9 @@ XRESULT D3D11GraphicsEngineBase::Present() {
 
     // Draw debug-lines
     LineRenderer->Flush();
+
+    // Draw ant tweak bar
+    Engine::AntTweakBar->Draw();
 
     bool vsync = Engine::GAPI->GetRendererState().RendererSettings.EnableVSync;
     if ( SwapChain->Present( vsync ? 1 : 0, 0 ) == DXGI_ERROR_DEVICE_REMOVED ) {
@@ -307,6 +316,30 @@ void D3D11GraphicsEngineBase::ConstructShaderMakroList( std::vector<D3D_SHADER_M
     m.Name = "SHD_WIND";
 #ifdef BUILD_GOTHIC_2_6_fix
     m.Definition = s.WindQuality == GothicRendererSettings::EWindQuality::WIND_QUALITY_ADVANCED ? "1" : "0";
+#else
+#ifdef BUILD_1_12F
+    m.Definition = "0";
+#else
+    m.Definition = (haveWindAnimations && s.WindQuality == GothicRendererSettings::EWindQuality::WIND_QUALITY_ADVANCED) ? "1" : "0";
+#endif
+#endif
+    list.push_back( m );
+
+    m.Name = "SHD_INFLUENCE";
+#ifdef BUILD_GOTHIC_2_6_fix
+    m.Definition = Engine::GAPI->GetRendererState().RendererSettings.HeroAffectsObjects ? "1" : "0";
+#else
+#ifdef BUILD_1_12F
+    m.Definition = "0";
+#else
+    m.Definition = (haveWindAnimations && Engine::GAPI->GetRendererState().RendererSettings.HeroAffectsObjects) ? "1" : "0";
+#endif
+#endif
+    list.push_back( m );
+
+    m.Name = "SHD_WATERANI";
+#ifdef BUILD_GOTHIC_2_6_fix
+    m.Definition = s.EnableWaterAnimation ? "1" : "0";
 #else
     m.Definition = "0";
 #endif

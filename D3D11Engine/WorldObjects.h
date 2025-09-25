@@ -438,9 +438,6 @@ struct WorldMeshSectionInfo {
     std::map<MeshKey, MeshInfo*, cmpMeshKey> SuppressedMeshes;
     std::list<VobInfo*> Vobs;
 
-    /** Loaded ocean-polys of this section */
-    std::vector<XMFLOAT3> OceanPoints;
-
     // This is filled in case we have loaded a custom worldmesh
     std::vector<zCPolygon*> SectionPolygons;
 

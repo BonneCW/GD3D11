@@ -57,19 +57,6 @@ namespace VersionCheck {
 			}
 		}
 
-		// Check for game data
-		// Do this by checking one file in the folder which should always be there
-		// Not the best solution, but we'll just roll with it at this point as
-		// this is only a hint for the user that he forgot to copy over the GD3D11-Folder
-        if ( !Toolbox::FileExists( "GD3D11\\shaders\\VS_Ex.hlsl" ) && !Toolbox::FileExists( "system\\GD3D11\\shaders\\VS_Ex.hlsl" ) ) {
-            LogErrorBox() << "Failed to find GD3D11 systemfiles!\n"
-                "This means: The GD3D11-folder is missing or corrupt. This can be the result of only copying the ddraw.dll into Gothics system-folder, which isn't enough!\n\n"
-                "Please check your installation.\n";
-            exit( 0 );
-        }
-
-		if (FileExists(dir_upper + "\\SpineAPI.dll")) return; // skip hash check for Spine
-
 		// Get checksum from header
 		MapFileAndCheckSum( exe.c_str(), &headersum, &checksum );
 

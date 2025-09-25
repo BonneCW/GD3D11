@@ -7,8 +7,7 @@ struct VobInstanceInfo {
     XMFLOAT4X4 world;
     DWORD color;
     float windStrenth;
-    float windSpeed;
-
+    float canBeAffectedByPlayer;
     // General purpose slot
     DWORD GP_Slot;
 };
@@ -39,49 +38,6 @@ struct GammaCorrectConstantBuffer {
 
     float G_SharpenStrength;
     float3 G_pad1;
-};
-
-struct OceanSettingsConstantBuffer {
-    float3 OS_CameraPosition;
-    float OS_SpecularPower;
-
-    // Water-reflected sky color
-    float3			OS_SkyColor;
-    float			unused0;
-    // The color of bottomless water body
-    float3			OS_WaterbodyColor;
-
-    // The strength, direction and color of sun streak
-    float			OS_Shineness;
-    float3			OS_SunDir;
-    float			unused1;
-    float3			OS_SunColor;
-    float			unused2;
-
-    // The parameter is used for fixing an artifact
-    float3			OS_BendParam;
-
-    // Perlin noise for distant wave crest
-    float			OS_PerlinSize;
-    float3			OS_PerlinAmplitude;
-    float			unused3;
-    float3			OS_PerlinOctave;
-    float			unused4;
-    float3			OS_PerlinGradient;
-
-    // Constants for calculating texcoord from position
-    float			OS_TexelLength_x2;
-    float			OS_UVScale;
-    float			OS_UVOffset;
-    float2			unused5;
-};
-
-struct OceanPerPatchConstantBuffer {
-    float3 OPP_LocalEye;
-    float OPP_Pad1;
-
-    float3 OPP_PatchPosition;
-    float OPP_Pad2;
 };
 
 struct BlurConstantBuffer {
@@ -221,9 +177,13 @@ struct VS_ExConstantBuffer_PerFrame {
 struct VS_ExConstantBuffer_Wind {
     float3 windDir;
     float globalTime;
+
     float minHeight;
     float maxHeight;
-    float Pad[2];
+    float2 padding0;
+
+    float3 playerPos;
+    float padding1;
 };
 
 struct ParticlePointShadingConstantBuffer {

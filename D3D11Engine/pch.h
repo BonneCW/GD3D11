@@ -25,15 +25,13 @@
 using namespace DirectX;
 
 #ifndef VERSION_NUMBER
-#define VERSION_NUMBER "17.8-rev'SK3"
+#define VERSION_NUMBER "17.8-rev'SK7"
 #endif
 
 __declspec(selectany) const char* VERSION_NUMBER_STR = VERSION_NUMBER;
 
 extern bool FeatureLevel10Compatibility;
-
-static const char* (CDECL* Wine_GetVersion)(void);
-static void (CDECL* Wine_GetUnderlyingOSVersion)(const char** sysname, const char** release);
+extern bool GMPModeActive;
 
 /** D3D7-Call logging */
 #define DebugWriteValue(value, check) if (value == check) { LogInfo() << " - " << #check; }

@@ -25,6 +25,10 @@ class zCVisual;
 typedef int( __thiscall* zCBspTreeLoadBIN )(void*, zCFileBIN&, int);
 typedef void( __thiscall* zCWorldRender )(void*, zCCamera&);
 typedef void( __thiscall* zCWorldVobAddedToWorld )(void*, zCVob*);
+#ifdef BUILD_SPACER_NET
+typedef void( __thiscall* zCWorldCompileWorld )(void*, int&, float, int, int, void*);
+typedef void( __thiscall* zCWorldGenerateStaticWorldLighting )(void*, int&, void*);
+#endif
 typedef void( __thiscall* oCNPCEnable )(void*, XMFLOAT3&);
 typedef void( __thiscall* zCBspTreeAddVob )(void*, zCVob*);
 typedef void( __thiscall* zCWorldLoadWorld )(void*, const zSTRING& fileName, const int loadMode);
@@ -64,18 +68,20 @@ typedef int( __thiscall* zCTextureLoadResourceData )(void*);
 typedef int( __thiscall* zCThreadSuspendThread )(void*);
 typedef void( __thiscall* zCResourceManagerCacheOut )(void*, class zCResource*);
 typedef void( __thiscall* zCQuadMarkCreateQuadMark )(void*, zCPolygon*, const float3&, const float2&, struct zTEffectParams*);
+typedef void( __thiscall* zCFlashSetVisualUsedBy )(void*, zCVob*);
 typedef void( __thiscall* oCWorldEnableVob )(void*, zCVob*, zCVob*);
 typedef void( __thiscall* oCWorldRemoveVob )(void*, zCVob*);
 typedef void( __thiscall* oCWorldDisableVob )(void*, zCVob*);
 typedef void( __fastcall* oCWorldRemoveFromLists )(void*, zCVob*);
 typedef int( __thiscall* zCModelPrototypeLoadModelASC )(void*, class zSTRING const&);
 typedef int( __thiscall* zCModelPrototypeReadMeshAndTreeMSB )(void*, int&, class zCFileBIN&);
-typedef uint16_t( __thiscall* zCInput_Win32__GetKey )(void*, int repeat, int delayed);
 
 typedef int( __thiscall* zCModelGetLowestLODNumPolys )(void*);
 typedef float3*( __thiscall* zCModelGetLowestLODPoly )(void*, const int, float3*&);
 
 typedef DWORD( __cdecl* GetInformationManagerProc )();
+
+typedef uint16_t( __thiscall* zCInput_Win32__GetKey )(void*, int repeat, int delayed);
 
 #ifdef BUILD_GOTHIC_1_08k
 typedef void( __thiscall* zCVobEndMovement )(void*);
@@ -91,6 +97,10 @@ struct HookedFunctionInfo {
     zCBspTreeLoadBIN original_zCBspTreeLoadBIN = reinterpret_cast<zCBspTreeLoadBIN>(GothicMemoryLocations::zCBspTree::LoadBIN);
     zCWorldRender original_zCWorldRender = reinterpret_cast<zCWorldRender>(GothicMemoryLocations::zCWorld::Render);
     zCWorldVobAddedToWorld original_zCWorldVobAddedToWorld = reinterpret_cast<zCWorldVobAddedToWorld>(GothicMemoryLocations::zCWorld::VobAddedToWorld);
+#ifdef BUILD_SPACER_NET
+    zCWorldCompileWorld original_zCWorldCompileWorld = reinterpret_cast<zCWorldCompileWorld>(GothicMemoryLocations::zCWorld::CompileWorld);
+    zCWorldGenerateStaticWorldLighting original_zCWorldGenerateStaticWorldLighting = reinterpret_cast<zCWorldGenerateStaticWorldLighting>(GothicMemoryLocations::zCWorld::GenerateStaticWorldLighting);
+#endif
     zCBspTreeAddVob original_zCBspTreeAddVob = reinterpret_cast<zCBspTreeAddVob>(GothicMemoryLocations::zCBspTree::AddVob);
     zCWorldLoadWorld original_zCWorldLoadWorld = reinterpret_cast<zCWorldLoadWorld>(GothicMemoryLocations::zCWorld::LoadWorld);
     oCGameEnterWorld original_oCGameEnterWorld = reinterpret_cast<oCGameEnterWorld>(GothicMemoryLocations::oCGame::EnterWorld);
@@ -120,7 +130,7 @@ struct HookedFunctionInfo {
     zCViewPrint original_zCViewPrintChars = reinterpret_cast<zCViewPrint>(GothicMemoryLocations::zCView::PrintChars);
 #endif
     //CGameManagerExitGame original_CGameManagerExitGame = reinterpret_cast<CGameManagerExitGame>(GothicMemoryLocations::CGameManager::ExitGame);
-    GenericThiscall original_zCWorldDisposeWorld = reinterpret_cast<GenericThiscall>(GothicMemoryLocations::zCWorld::DisposeWorld);
+    //GenericThiscall original_zCWorldDisposeWorld = reinterpret_cast<GenericThiscall>(GothicMemoryLocations::zCWorld::DisposeWorld);
     zCWorldDisposeVobs original_zCWorldDisposeVobs = reinterpret_cast<zCWorldDisposeVobs>(GothicMemoryLocations::zCWorld::DisposeVobs);
     oCSpawnManagerSpawnNpc original_oCSpawnManagerSpawnNpc = reinterpret_cast<oCSpawnManagerSpawnNpc>(GothicMemoryLocations::oCSpawnManager::SpawnNpc);
     oCSpawnManagerCheckRemoveNpc original_oCSpawnManagerCheckRemoveNpc = reinterpret_cast<oCSpawnManagerCheckRemoveNpc>(GothicMemoryLocations::oCSpawnManager::CheckRemoveNpc);
@@ -134,6 +144,8 @@ struct HookedFunctionInfo {
     zCQuadMarkCreateQuadMark original_zCQuadMarkCreateQuadMark = reinterpret_cast<zCQuadMarkCreateQuadMark>(GothicMemoryLocations::zCQuadMark::CreateQuadMark);
     GenericDestructor original_zCQuadMarkDestructor = reinterpret_cast<GenericDestructor>(GothicMemoryLocations::zCQuadMark::Destructor);
     GenericThiscall original_zCQuadMarkConstructor = reinterpret_cast<GenericThiscall>(GothicMemoryLocations::zCQuadMark::Constructor);
+    zCFlashSetVisualUsedBy original_zCFlashSetVisualUsedBy = reinterpret_cast<zCFlashSetVisualUsedBy>(GothicMemoryLocations::zCFlash::SetVisualUsedBy);
+    GenericDestructor original_zCFlashDestructor = reinterpret_cast<GenericDestructor>(GothicMemoryLocations::zCFlash::Destructor);
     oCNPCEnable original_oCNPCEnable = reinterpret_cast<oCNPCEnable>(GothicMemoryLocations::oCNPC::Enable);
     GenericThiscall original_oCNPCDisable = reinterpret_cast<GenericThiscall>(GothicMemoryLocations::oCNPC::Disable);
     GenericThiscall original_oCNPCInitModel = reinterpret_cast<GenericThiscall>(GothicMemoryLocations::oCNPC::InitModel);

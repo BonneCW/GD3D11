@@ -12,6 +12,7 @@
 static const char* MENU_SETTINGS_FILE = "system\\GD3D11\\UserSettings.ini";
 const float INDOOR_LIGHT_DISTANCE_SCALE_FACTOR = 0.5f;
 
+class zCFlash;
 class zCBspBase;
 class zCModelPrototype;
 struct ScreenSpaceLine;
@@ -129,6 +130,7 @@ struct MaterialInfo {
     D3D11ConstantBuffer* Constantbuffer;
 
     std::string VertexShader;
+    std::string TesselationShaderPair;
     std::string PixelShader;
     EMaterialType MaterialType;
     Buffer buffer;
@@ -159,7 +161,6 @@ class GInventory;
 class zCVobLight;
 class MyDirectDrawSurface7;
 class GVegetationBox;
-class GOcean;
 class zCMorphMesh;
 class zCDecal;
 
@@ -207,7 +208,7 @@ public:
     void OnLoadWorld( const std::string& levelName, int loadMode );
 
     /** Called when the game loaded a new level */
-    void OnGeometryLoaded( zCPolygon** polys, unsigned int numPolygons );
+    void OnGeometryLoaded( zCBspTree* tree );
 
     /** Called when the game is done loading the world */
     void OnWorldLoaded();
@@ -271,6 +272,7 @@ public:
 
     /** Draws a skeletal mesh-vob */
     void DrawSkeletalMeshVob( SkeletalVobInfo* vi, float distance, bool updateState = true );
+    void DrawSkeletalMeshVob_Layered( SkeletalVobInfo* vi, float distance, bool updateState = true );
     void DrawTransparencyVobs();
     void DrawSkeletalVN();
 
@@ -279,6 +281,7 @@ public:
 
     /** Draws a morphmesh */
     void DrawMorphMesh( zCMorphMesh* msh, std::map<zCMaterial*, std::vector<MeshInfo*>>& meshes );
+    void DrawMorphMesh_Layered( zCMorphMesh* msh, std::map<zCMaterial*, std::vector<MeshInfo*>>& meshes );
 
     /** Locks the resource CriticalSection */
     void EnterResourceCriticalSection();
@@ -294,6 +297,7 @@ public:
 
     /** Draws a MeshInfo */
     void DrawMeshInfo( zCMaterial* mat, MeshInfo* msh );
+    void DrawMeshInfo_Layered( zCMaterial* mat, MeshInfo* msh );
 
     /** Draws a zCParticleFX */
     void DrawParticleFX( zCVob* source, zCParticleFX* fx, ParticleFrameData& data );
@@ -355,6 +359,15 @@ public:
 
     /** Returns all quad marks */
     const std::unordered_map<zCQuadMark*, QuadMarkInfo>& GetQuadMarks();
+
+    /** Add new zCFlash object */
+    void AddFlash( zCFlash* flash, zCVob* vob );
+
+    /** Remove zCFlash object */
+    void RemoveFlash( zCFlash* flash );
+
+    /** Add this frame thunder poly strip */
+    void AddThunderPolyStrip( zCPolyStrip* polyStrip );
 
     /** Returns the loaded sections */
     std::map<int, std::map<int, WorldMeshSectionInfo>>& GetWorldSections();
@@ -461,6 +474,7 @@ public:
 
     /** Prepares poly strips for feeding into renderer (weapon and effect trails) */
     void CalcPolyStripMeshes();
+    void CalcFlashMeshes();
 
     /** Moves the given vob from a BSP-Node to the dynamic vob list */
     void MoveVobFromBspToDynamic( VobInfo* vob );
@@ -663,9 +677,6 @@ public:
     /** Collects polygons in the given AABB */
     void CollectPolygonsInAABB( const zTBBox3D& bbox, zCPolygon**& polyList, int& numFound );
 
-    /** Returns the current ocean-object */
-    GOcean* GetOcean();
-
     /** Loads the data out of a zCModel and stores it in the cache */
     SkeletalMeshVisualInfo* LoadzCModelData( zCModel* model );
     SkeletalMeshVisualInfo* LoadzCModelData( oCNPC* npc );
@@ -752,6 +763,10 @@ private:
     /** Poly strip Visuals */
     std::set<zCPolyStrip*> PolyStripVisuals;
 
+    /** Flash Visuals */
+    std::unordered_map<zCFlash*, zCVob*> FlashVisuals;
+    std::vector<zCPolyStrip*> FrameThunderPolyStrips;
+
     /** Set of Materials */
     std::set<zCMaterial*> LoadedMaterials;
 
@@ -818,9 +833,6 @@ private:
 
     /** Gothics output window */
     HWND OutputWindow;
-
-    /** Ocean */
-    std::unique_ptr<GOcean> Ocean;
 
     /** Suppressed textures for the sections */
     std::map<WorldMeshSectionInfo*, std::vector<std::string>> SuppressedTexturesBySection;

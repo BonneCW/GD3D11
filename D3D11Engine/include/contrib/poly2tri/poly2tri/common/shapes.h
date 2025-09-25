@@ -1,6 +1,6 @@
 /*
- * Poly2Tri Copyright (c) 2009-2018, Poly2Tri Contributors
- * https://github.com/jhasse/poly2tri
+ * Poly2Tri Copyright (c) 2009-2010, Poly2Tri Contributors
+ * http://code.google.com/p/poly2tri/
  *
  * All rights reserved.
  *
@@ -29,24 +29,22 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
+// Include guard
+#ifndef SHAPES_H
+#define SHAPES_H
 
-#include "dll_symbol.h"
-
-#include <cmath>
+#include <vector>
 #include <cstddef>
 #include <stdexcept>
-#include <vector>
+#include <assert.h>
+#include <cmath>
+#include <string>
 
-
-#if defined(_WIN32)
-#  pragma warning( disable: 4251)
-#endif
 namespace p2t {
 
 struct Edge;
 
-struct P2T_DLL_SYMBOL Point {
+struct Point {
 
   double x, y;
 
@@ -61,7 +59,7 @@ struct P2T_DLL_SYMBOL Point {
   std::vector<Edge*> edge_list;
 
   /// Construct using coordinates.
-  Point(double x, double y);
+  Point(double x, double y) : x(x), y(y) {}
 
   /// Set this point to all zeros.
   void set_zero()
@@ -123,10 +121,8 @@ struct P2T_DLL_SYMBOL Point {
 
 };
 
-P2T_DLL_SYMBOL std::ostream& operator<<(std::ostream&, const Point&);
-
 // Represents a simple polygon's edge
-struct P2T_DLL_SYMBOL Edge {
+struct Edge {
 
   Point* p, *q;
 
@@ -142,7 +138,9 @@ struct P2T_DLL_SYMBOL Edge {
         p = &p2;
       } else if (p1.x == p2.x) {
         // Repeat points
-        throw std::runtime_error("Edge::Edge: p1 == p2");
+        // ASSIMP_CHANGE (aramis_acg)
+        throw std::runtime_error(std::string("repeat points"));
+        //assert(false);
       }
     }
 
@@ -153,7 +151,7 @@ struct P2T_DLL_SYMBOL Edge {
 // Triangle-based data structures are know to have better performance than quad-edge structures
 // See: J. Shewchuk, "Triangle: Engineering a 2D Quality Mesh Generator and Delaunay Triangulator"
 //      "Triangulations in CGAL"
-class P2T_DLL_SYMBOL Triangle {
+class Triangle {
 public:
 
 /// Constructor
@@ -180,7 +178,6 @@ void MarkConstrainedEdge(Point* p, Point* q);
 int Index(const Point* p);
 int EdgeIndex(const Point* p1, const Point* p2);
 
-Triangle* NeighborAcross(const Point& point);
 Triangle* NeighborCW(const Point& point);
 Triangle* NeighborCCW(const Point& point);
 bool GetConstrainedEdgeCCW(const Point& p);
@@ -208,13 +205,11 @@ void ClearDelunayEdges();
 inline bool IsInterior();
 inline void IsInterior(bool b);
 
+Triangle& NeighborAcross(const Point& opoint);
+
 void DebugPrint();
 
-bool CircumcicleContains(const Point&) const;
-
 private:
-
-bool IsCounterClockwise() const;
 
 /// Triangle points
 Point* points_[3];
@@ -263,7 +258,7 @@ inline bool operator ==(const Point& a, const Point& b)
 
 inline bool operator !=(const Point& a, const Point& b)
 {
-  return !(a.x == b.x) || !(a.y == b.y);
+  return !(a.x == b.x) && !(a.y == b.y);
 }
 
 /// Peform the dot product on two vectors.
@@ -327,7 +322,6 @@ inline void Triangle::IsInterior(bool b)
   interior_ = b;
 }
 
-/// Is this set a valid delaunay triangulation?
-P2T_DLL_SYMBOL bool IsDelaunay(const std::vector<p2t::Triangle*>&);
-
 }
+
+#endif

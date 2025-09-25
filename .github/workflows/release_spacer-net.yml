@@ -14,7 +14,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Set tag and directory name env
       run: |
@@ -26,7 +26,7 @@ jobs:
         echo "RELEASE_DIR=${dirName}" >> $Env:GITHUB_ENV
 
     - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v1
+      uses: microsoft/setup-msbuild@v2
 
     - name: Restore NuGet packages
       working-directory: ${{env.GITHUB_WORKSPACE}}
@@ -47,17 +47,15 @@ jobs:
     - name: Create distribution zip
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: |
-        mkdir "${{env.RELEASE_DIR}}\GD3D11\shaders\CSFFT" -Force
         mkdir "${{env.RELEASE_DIR}}\GD3D11\Bin" -Force
-        Xcopy "D3D11Engine\Shaders\*" "${{env.RELEASE_DIR}}\GD3D11\shaders" /s
-        copy "D3D11Engine\CSFFT\*.hlsl" "${{env.RELEASE_DIR}}\GD3D11\shaders\CSFFT"
-        Xcopy "blobs\Meshes" "${{env.RELEASE_DIR}}\GD3D11\Meshes\" /s
-        Xcopy "blobs\Textures" "${{env.RELEASE_DIR}}\GD3D11\Textures\" /s
-        Xcopy "blobs\Fonts" "${{env.RELEASE_DIR}}\GD3D11\Fonts\" /s
-        Xcopy "blobs\libs\*" "${{env.RELEASE_DIR}}\" /s
-        copy "SpacerNET_G2A_SSE2\ddraw.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\SpacerNET_g2a_sse2.dll"
-        copy "SpacerNET_G1_SSE2\ddraw.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\SpacerNET_g1_sse2.dll"
-        copy "Launcher\ddraw.dll" "${{env.RELEASE_DIR}}\"
+        Xcopy "D3D11Engine\Shaders\*" "${{env.RELEASE_DIR}}\GD3D11\shaders\" /S /Y
+        Xcopy "blobs\data" "${{env.RELEASE_DIR}}\GD3D11\data\" /S /Y
+        Xcopy "blobs\Meshes" "${{env.RELEASE_DIR}}\GD3D11\Meshes\" /S /Y
+        Xcopy "blobs\Textures" "${{env.RELEASE_DIR}}\GD3D11\Textures\" /S /Y
+        Xcopy "blobs\Fonts" "${{env.RELEASE_DIR}}\GD3D11\Fonts\" /S /Y
+        Xcopy "blobs\libs\*" "${{env.RELEASE_DIR}}\" /S /Y
+        copy "blobs\bin\wine-d2d1.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\d2d1.dll"
+        copy "Spacer_NET\ddraw.dll" "${{env.RELEASE_DIR}}"
         cd "${{env.RELEASE_DIR}}"
         7z a -tzip "..\${{env.RELEASE_DIR}}.zip" -r
 
@@ -69,7 +67,7 @@ jobs:
 
     - name: Create github release
       run: |
-        gh release create ${{env.RELEASE_VERSION}} -n "Generated release from GitHub Actions"
+        gh release create ${{env.RELEASE_VERSION}} --notes-from-tag
         echo "Ignore 'Validation Failed' results. Expected since only the first job that reaches this step can create the release."
         exit 0
       env:

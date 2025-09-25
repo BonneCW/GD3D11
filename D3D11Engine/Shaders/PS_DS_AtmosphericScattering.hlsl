@@ -299,7 +299,7 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	float2 uv = Input.vTexCoord; 
 	
 	// Look up the diffuse color
-	float4 diffuse = TX_Diffuse.Sample(SS_Linear, uv);
+    float4 diffuse = TX_Diffuse.Sample(SS_Linear, uv);
 	float vertLighting = diffuse.a;
 	
 	// Get the second GBuffer
@@ -310,7 +310,7 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 		return float4(diffuse.rgb, 1);
 	
 	// Decode the view-space normal back
-	float3 normal = normalize(gb2.xyz);
+    float3 normal = normalize(gb2.xyz);
 	
 	// Get specular parameters
 	float4 gb3 = TX_SI_SP.Sample(SS_Linear, uv);
@@ -372,7 +372,7 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	//return float4(diffuse.rgb, 1);
 	
 	float4 lightColor = SQ_LightColor;
-	lightColor.rgb = lerp(lightColor.rgb, lightColor.rgb * 0.8f, AC_SceneWettness);
+    lightColor.rgb = lerp(lightColor.rgb, lightColor.rgb * 0.8f, AC_SceneWettness);
 	
 	// Apply sunlight
 	float sunStrength = dot(lightColor.rgb, float3(0.333f,0.333f,0.333f));
@@ -387,12 +387,12 @@ float4 PSMain( PS_INPUT Input ) : SV_TARGET
 	float shadowAO = lerp(1.0f, vertLighting, SQ_ShadowAOStrength);
 	float worldAO = lerp(1.0f, vertLighting, SQ_WorldAOStrength);
 	
-	float3 litPixel = lerp( diffuse * SQ_ShadowStrength * sunStrength * shadowAO, 
-							diffuse * lightColor * lightColor.a * worldAO, sun) 
+	float3 litPixel = lerp( diffuse.rgb * SQ_ShadowStrength * sunStrength * shadowAO, 
+							diffuse.rgb * lightColor.rgb * lightColor.a * worldAO, sun) 
 				  + specColored;
 	
-	float fresnel = pow(1.0f - max(0.0f, dot(normal, V)), 10.0f);
-	litPixel += lerp(fresnel * litPixel * 0.5f, 0.0f, sun);
+    float fresnel = pow(1.0f - saturate(dot(normal, V)), 10.0f);
+    litPixel += lerp(fresnel * litPixel * 0.5f, 0.0f, sun);
 	
 	// Run scattering
 	litPixel = ApplyAtmosphericScatteringGround(wsPosition, litPixel.rgb);

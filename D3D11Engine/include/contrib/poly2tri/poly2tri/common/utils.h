@@ -1,6 +1,6 @@
 /*
- * Poly2Tri Copyright (c) 2009-2018, Poly2Tri Contributors
- * https://github.com/jhasse/poly2tri
+ * Poly2Tri Copyright (c) 2009-2010, Poly2Tri Contributors
+ * http://code.google.com/p/poly2tri/
  *
  * All rights reserved.
  *
@@ -29,15 +29,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
+#ifndef UTILS_H
+#define UTILS_H
 
 // Otherwise #defines like M_PI are undeclared under Visual Studio
 #define _USE_MATH_DEFINES
 
-#include "shapes.h"
-
-#include <cmath>
 #include <exception>
+#include <math.h>
 
 // C99 removes M_PI from math.h
 #ifndef M_PI
@@ -67,11 +66,7 @@ Orientation Orient2d(const Point& pa, const Point& pb, const Point& pc)
   double detleft = (pa.x - pc.x) * (pb.y - pc.y);
   double detright = (pa.y - pc.y) * (pb.x - pc.x);
   double val = detleft - detright;
-
-// Using a tolerance here fails on concave-by-subepsilon boundaries
-//   if (val > -EPSILON && val < EPSILON) {
-// Using == on double makes -Wfloat-equal warnings yell at us
-  if (std::fpclassify(val) == FP_ZERO) {
+  if (val > -EPSILON && val < EPSILON) {
     return COLLINEAR;
   } else if (val > 0) {
     return CCW;
@@ -128,3 +123,5 @@ bool InScanArea(const Point& pa, const Point& pb, const Point& pc, const Point& 
 }
 
 }
+
+#endif

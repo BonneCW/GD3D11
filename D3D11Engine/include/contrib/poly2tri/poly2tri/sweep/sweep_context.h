@@ -1,6 +1,6 @@
 /*
- * Poly2Tri Copyright (c) 2009-2022, Poly2Tri Contributors
- * https://github.com/jhasse/poly2tri
+ * Poly2Tri Copyright (c) 2009-2010, Poly2Tri Contributors
+ * http://code.google.com/p/poly2tri/
  *
  * All rights reserved.
  *
@@ -29,7 +29,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
+#ifndef SWEEP_CONTEXT_H
+#define SWEEP_CONTEXT_H
 
 #include <list>
 #include <vector>
@@ -51,7 +52,7 @@ class SweepContext {
 public:
 
 /// Constructor
-explicit SweepContext(std::vector<Point*> polyline);
+SweepContext(const std::vector<Point*>& polyline);
 /// Destructor
 ~SweepContext();
 
@@ -65,11 +66,11 @@ Point* tail() const;
 
 size_t point_count() const;
 
-Node* LocateNode(const Point& point);
+Node& LocateNode(const Point& point);
 
 void RemoveNode(Node* node);
 
-void CreateAdvancingFront();
+void CreateAdvancingFront(const std::vector<Node*>& nodes);
 
 /// Try to map a node to all sides of this triangle that don't have a neighbor
 void MapTriangleToNodes(Triangle& t);
@@ -102,16 +103,15 @@ struct Basin {
   double width;
   bool left_highest;
 
-  Basin()
-  : left_node(nullptr), bottom_node(nullptr), right_node(nullptr), width(0.0), left_highest(false)
+  Basin() : left_node(NULL), bottom_node(NULL), right_node(NULL), width(0.0), left_highest(false)
   {
   }
 
   void Clear()
   {
-    left_node = nullptr;
-    bottom_node = nullptr;
-    right_node = nullptr;
+    left_node = NULL;
+    bottom_node = NULL;
+    right_node = NULL;
     width = 0.0;
     left_highest = false;
   }
@@ -182,3 +182,5 @@ inline Point* SweepContext::tail() const
 }
 
 }
+
+#endif

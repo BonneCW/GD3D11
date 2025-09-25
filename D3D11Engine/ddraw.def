@@ -22,7 +22,8 @@ EXPORTS
 	GetSurfaceFromDC			= FakeGetSurfaceFromDC				@20
 	RegisterSpecialCase			= FakeRegisterSpecialCase			@21
 	ReleaseDDThreadLock			= HookedReleaseDDThreadLock			@22
-	UpdateCustomFontMultiplier	= UpdateCustomFontMultiplierFontRendering	@23
-	SetCustomSkyTexture			= SetCustomCloudAndNightTexture				@24
+	UpdateCustomFontMultiplier	= UpdateCustomFontMultiplierFontRendering
+	SetCustomSkyTexture			= SetCustomCloudAndNightTexture
 	SetCustomSkyTexture_ZenGin	= SetCustomSkyTexture_ZenGin
 	SetCustomSkyWavelengths		= SetCustomSkyWavelengths
+	EnableWindAnimations @2137 NONAME

@@ -24,7 +24,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        configuration: [Release_G1A_AVX2, Release_G1A_AVX, Release_G1A_SSE2, Release_G1_AVX, Release_G1_AVX2, Release_G1_SSE2, Release_G2A_AVX2, Release_G2A_AVX, Release_G2A_SSE2, Launcher]
+        configuration: [Release_AVX, Release_AVX2, Release_G1_AVX, Release_G1_AVX2, Release, Release_G1, Spacer_NET, Launcher]
 
     steps:
     - uses: actions/checkout@v4
@@ -44,7 +44,7 @@ jobs:
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: msbuild /p:Configuration=${{matrix.configuration}} .
-      
+
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -69,32 +69,28 @@ jobs:
         echo "RELEASE_DIR=${dirName}" >> $Env:GITHUB_ENV
 
     - uses: actions/download-artifact@v4
-    
+
     - name: Display structure of downloaded files
       run: tree
-    
+
     - name: Create distribution
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: |
-        mkdir "${{env.RELEASE_DIR}}\GD3D11\shaders\CSFFT" -Force
         mkdir "${{env.RELEASE_DIR}}\GD3D11\Bin" -Force
-        Xcopy "D3D11Engine\Shaders\*" "${{env.RELEASE_DIR}}\GD3D11\shaders" /s
-        copy "D3D11Engine\CSFFT\*.hlsl" "${{env.RELEASE_DIR}}\GD3D11\shaders\CSFFT"
-        Xcopy "blobs\Meshes" "${{env.RELEASE_DIR}}\GD3D11\Meshes\" /s
-        Xcopy "blobs\Textures" "${{env.RELEASE_DIR}}\GD3D11\Textures\" /s
-        Xcopy "blobs\Fonts" "${{env.RELEASE_DIR}}\GD3D11\Fonts\" /s
-        Xcopy "blobs\libs\*" "${{env.RELEASE_DIR}}\" /s
-        copy "Release_G2A_AVX2\ddraw.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\g2a_avx2.dll"
-        copy "Release_G2A_AVX\ddraw.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\g2a_avx.dll"
-        copy "Release_G2A_SSE2\ddraw.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\g2a.dll"
-        copy "Release_G1_AVX2\ddraw.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\g1_avx2.dll"
+        Xcopy "D3D11Engine\Shaders\*" "${{env.RELEASE_DIR}}\GD3D11\shaders\" /S /Y
+        Xcopy "blobs\Meshes" "${{env.RELEASE_DIR}}\GD3D11\Meshes\" /S /Y
+        Xcopy "blobs\Textures" "${{env.RELEASE_DIR}}\GD3D11\Textures\" /S /Y
+        Xcopy "blobs\Fonts" "${{env.RELEASE_DIR}}\GD3D11\Fonts\" /S /Y
+        Xcopy "blobs\libs\*" "${{env.RELEASE_DIR}}\" /S /Y
+        copy "blobs\bin\wine-d2d1.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\d2d1.dll"
+        copy "Release\ddraw.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\g2a.dll"
+        copy "Release_AVX\ddraw.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\g2a_avx.dll"
+        copy "Release_AVX2\ddraw.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\g2a_avx2.dll"
+        copy "Release_G1\ddraw.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\g1.dll"
         copy "Release_G1_AVX\ddraw.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\g1_avx.dll"
-        copy "Release_G1_SSE2\ddraw.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\g1.dll"
-        copy "Release_G1A_AVX2\ddraw.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\g1a_avx2.dll"
-        copy "Release_G1A_AVX\ddraw.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\g1a_avx.dll"
-        copy "Release_G1A_SSE2\ddraw.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\g1a.dll"
+        copy "Release_G1_AVX2\ddraw.dll" "${{env.RELEASE_DIR}}\GD3D11\Bin\g1_avx2.dll"
         copy "Launcher\ddraw.dll" "${{env.RELEASE_DIR}}\"
-    
+
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -119,17 +115,14 @@ jobs:
 
     - name: Delete old nightly
       if: github.ref_name == 'master'
-      # v1.0.1
-      uses: dev-drprasad/delete-tag-and-release@8cd619d00037e4aeb781909c9a6b03940507d0da
-      with:
-        delete_release: true
-        tag_name: nightly
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+      run: gh release delete nightly --yes --cleanup-tag
+      env:
+        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
     - name: Create new nightly
       if: github.ref_name == 'master'
-      # v1.13.0
-      uses: ncipollo/release-action@6c75be85e571768fa31b40abf38de58ba0397db5
+      # v1.16.0
+      uses: ncipollo/release-action@440c8c1cb0ed28b9f43e4d1d670870f059653174
       with:
         name: Nightly
         tag: nightly

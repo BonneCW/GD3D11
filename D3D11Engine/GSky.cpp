@@ -321,7 +321,7 @@ float4 GSky::GetSkylightColor() {
 }
 
 /** Returns the cloud texture */
-D3D11Texture * GSky::GetCloudTexture() {
+D3D11Texture* GSky::GetCloudTexture() {
     if ( CloudTexture_Zen ) {
         if ( CloudTexture_Zen->CacheIn( -1 ) == zRES_CACHED_IN ) {
             if ( MyDirectDrawSurface7* dds7 = CloudTexture_Zen->GetSurface() ) {

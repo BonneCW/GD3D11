@@ -3,6 +3,10 @@
 #include <VersionHelpers.h>
 #include <ShellScalingAPI.h>
 
+#if defined(BUILD_GOTHIC_1_08k) && !defined(BUILD_1_12F)
+extern bool haveWindAnimations;
+#endif
+
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam );
 
 int GetDpi( HWND hWnd )
@@ -48,7 +52,6 @@ void ImGuiShim::Init(
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
-    io.MouseDrawCursor = false; // don't draw two mice
     io.IniFilename = NULL;
     io.LogFilename = NULL;
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; //Not needed and it's annoying.
@@ -59,9 +62,10 @@ void ImGuiShim::Init(
     const auto actualDPI = GetDpi( Window );
     Initiated = true;
 
-    auto& Displaylist = reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine)->GetDisplayModeList();
+    std::vector<DisplayModeInfo> modes;
+    Engine::GraphicsEngine->GetDisplayModeList( &modes );
     Resolutions.clear();
-    for ( auto it = Displaylist.rbegin(); it != Displaylist.rend(); ++it ) {
+    for ( auto it = modes.rbegin(); it != modes.rend(); ++it ) {
         std::string s = std::to_string( (*it).Width ) + "x" + std::to_string( (*it).Height );
         Resolutions.emplace_back( s );
     }
@@ -106,6 +110,10 @@ void ImGuiShim::RenderLoop()
         CurrentResolution = NewResolution;
     }
 
+    if ( !IsActive ) {
+        return;
+    }
+
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
@@ -126,7 +134,7 @@ void ImGuiShim::RenderLoop()
 
 void ImGuiShim::OnWindowMessage( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam )
 {
-    if ( Initiated )
+    if ( Initiated && IsActive )
         ImGui_ImplWin32_WndProcHandler( hWnd, msg, wParam, lParam );
 }
 
@@ -134,6 +142,14 @@ void ImGuiShim::OnResize( INT2 newSize )
 {
     CurrentResolution = newSize;
     NewResolution = newSize;
+
+    std::vector<DisplayModeInfo> modes;
+    Engine::GraphicsEngine->GetDisplayModeList( &modes );
+    Resolutions.clear();
+    for ( auto it = modes.rbegin(); it != modes.rend(); ++it ) {
+        std::string s = std::to_string( (*it).Width ) + "x" + std::to_string( (*it).Height );
+        Resolutions.emplace_back( s );
+    }
 }
 
 template <typename T>
@@ -208,6 +224,23 @@ void ImText( const char * label, const ImVec2& size ) {
     ImGui::PopStyleColor( 2 );
 }
 
+int InterpretWindowMode( const GothicRendererSettings& s ) {
+    
+    if ( s.DisplayFlip  && s.LowLatency  && s.StretchWindow) {
+        return WINDOW_MODE_FULLSCREEN_LOWLATENCY;
+    }
+    if ( s.DisplayFlip && !s.LowLatency && s.StretchWindow ) {
+        return WINDOW_MODE_FULLSCREEN_BORDERLESS;
+    }
+    if ( !s.DisplayFlip && s.StretchWindow ) {
+        return WINDOW_MODE_FULLSCREEN_EXCLUSIVE;
+    }
+    if ( !s.DisplayFlip && !s.StretchWindow ) {
+        return WINDOW_MODE_WINDOWED;
+    }
+    return WINDOW_MODE_FULLSCREEN_BORDERLESS;
+}
+
 void ImGuiShim::RenderSettingsWindow()
 {
     // Autosized settings by child objects & centered
@@ -240,21 +273,36 @@ void ImGuiShim::RenderSettingsWindow()
             ImGui::Checkbox( "Compress Backbuffer", &settings.CompressBackBuffer );
             ImGui::Checkbox( "Animate Static Vobs", &settings.AnimateStaticVobs );
 
-#ifdef BUILD_GOTHIC_2_6_fix
-            ImGui::Text( "Wind effect" ); ImGui::SameLine();
-            static std::vector<std::pair<char*, int>> windEffectQuality = {
-                { "Disabled", GothicRendererSettings::EWindQuality::WIND_QUALITY_NONE },
-                { "Simple", GothicRendererSettings::EWindQuality::WIND_QUALITY_SIMPLE },
-                { "Advanced", GothicRendererSettings::EWindQuality::WIND_QUALITY_ADVANCED },
-            };
-            if ( ImComboBoxC( "##Wind effect", windEffectQuality, &settings.WindQuality, []() { Engine::GraphicsEngine->ReloadShaders(); } ) ) {
-                ImGui::EndCombo();
+#if defined(BUILD_GOTHIC_2_6_fix) || (defined(BUILD_GOTHIC_1_08k) && !defined(BUILD_1_12F))
+#if defined(BUILD_GOTHIC_1_08k) && !defined(BUILD_1_12F)
+            if ( haveWindAnimations )
+#endif
+            {
+                bool windEffect = settings.WindQuality != GothicRendererSettings::EWindQuality::WIND_QUALITY_NONE;
+                if ( ImGui::Checkbox( "Wind effect", &windEffect ) ) {
+                    settings.WindQuality = windEffect
+                        ? GothicRendererSettings::EWindQuality::WIND_QUALITY_ADVANCED
+                        : GothicRendererSettings::EWindQuality::WIND_QUALITY_NONE;
+                    Engine::GraphicsEngine->ReloadShaders();
+                }
+
+                ImGui::Text( "Wind strength" ); ImGui::SameLine();
+                ImGui::BeginDisabled( settings.WindQuality == GothicRendererSettings::EWindQuality::WIND_QUALITY_NONE );
+                ImGui::SliderFloat( "##Wind strength", &settings.GlobalWindStrength, 0.1f, 5.0f, "%.2f" );
+                ImGui::EndDisabled();
+            }
+
+            if ( ImGui::Checkbox( "Hero affects objects[*]", &settings.HeroAffectsObjects ) ) {
+                Engine::GraphicsEngine->ReloadShaders();
             }
 #endif //BUILD_GOTHIC_2_6_fix
 
             ImGui::Checkbox( "Enable Rain", &settings.EnableRain );
             ImGui::Checkbox( "Enable Rain Effects", &settings.EnableRainEffects );
-            ImGui::Checkbox( "Limit Light Intensity", &settings.LimitLightIntensity );
+            if ( ImGui::Checkbox( "Enable Water waves", &settings.EnableWaterAnimation ) ) {
+                Engine::GraphicsEngine->ReloadShaders();
+            }
+            ImGui::Checkbox( "Limit Light Intensity", &settings.LimitLightIntesity);
             ImGui::Checkbox( "Draw World Section Intersections", &settings.DrawSectionIntersections );
             if ( ImGui::IsItemHovered() )
                 ImGui::SetTooltip( "This option draws every world chunk that intersect with GD3D11 world draw distance." );
@@ -328,7 +376,7 @@ void ImGuiShim::RenderSettingsWindow()
             }
 
             ImText( "Display Mode [*]", buttonWidth ); ImGui::SameLine();
-            auto displayModeState = settings.WindowMode;
+            static auto displayModeState = InterpretWindowMode(settings);
             static std::vector<std::pair<char *, int>> DisplayEnums = {
                 { "Fullscreen Borderless", WindowModes::WINDOW_MODE_FULLSCREEN_BORDERLESS },
                 { "Fullscreen Exclusive", WindowModes::WINDOW_MODE_FULLSCREEN_EXCLUSIVE },
@@ -336,9 +384,9 @@ void ImGuiShim::RenderSettingsWindow()
                 { "Windowed", WindowModes::WINDOW_MODE_WINDOWED },
             };
 
-            if ( ImComboBoxC( "##DisplayMode", DisplayEnums, &settings.WindowMode, [&settings]() {
+            if ( ImComboBoxC( "##DisplayMode", DisplayEnums, &displayModeState, [&settings]() {
                 // selected
-                Engine::GraphicsEngine->SetWindowMode( (WindowModes)settings.WindowMode );
+                settings.ChangeWindowPreset = displayModeState;
                 }) ) {
                 ImGui::EndCombo();
             }
@@ -435,10 +483,8 @@ void ImGuiShim::RenderSettingsWindow()
             ImGui::EndGroup();
         }
 
-        if ( ImGui::Button( "OK", ImVec2( ImGui::GetContentRegionAvail().x, 30.f ) ) ) { //nikt nie bedzie z tego strzelac
-            SettingsVisible = false;
-            IsActive = false;
-            Engine::GAPI->SetEnableGothicInput( true );
+        if ( ImGui::Button( "OK", ImVec2( ImGui::GetContentRegionAvail().x, 30.f ) ) ) {
+            Engine::GraphicsEngine->OnUIEvent( BaseGraphicsEngine::UI_ClosedSettings );
             Engine::GAPI->SaveRendererWorldSettings( settings );
             Engine::GAPI->SaveMenuSettings( MENU_SETTINGS_FILE );
         }
@@ -635,8 +681,17 @@ void RenderAdvancedColumn2( GothicRendererSettings& settings, GothicAPI* gapi ) 
         ImGui::DragFloat( "HDRMiddleGray", &settings.HDRMiddleGray, 0.01f, 0.0f, 0.0f, "%.2f" );
         ImGui::DragFloat( "BloomThreshold", &settings.BloomThreshold, 0.01f, 0.0f, 0.0f, "%.2f" );
         ImGui::DragFloat( "BloomStrength", &settings.BloomStrength, 0.01f, 0.0f, 0.0f, "%.2f" );
-        ImGui::DragFloat( "WindStrength", &settings.GlobalWindStrength, 0.01f, 0.0f, 0.0f, "%.2f" );
-        ImGui::Checkbox( "LockViewFrustum", &settings.LockViewFrustum );
+
+#if defined(BUILD_GOTHIC_2_6_fix) || (defined(BUILD_GOTHIC_1_08k) && !defined(BUILD_1_12F))
+#if defined(BUILD_GOTHIC_1_08k) && !defined(BUILD_1_12F)
+        if ( haveWindAnimations )
+#endif
+        {
+            ImGui::DragFloat( "WindStrength", &settings.GlobalWindStrength, 0.01f, 0.0f, 0.0f, "%.2f" );
+        }
+#endif //BUILD_GOTHIC_2_6_fix
+
+        ImGui::Checkbox( "FixViewFrustum", &settings.FixViewFrustum );
         ImGui::DragFloat( "GothicUIScale", &settings.GothicUIScale, 0.01f, 0.01f, 20.0f, "%.2f" );
         ImGui::DragFloat( "FOVHoriz", &settings.FOVHoriz, 1.0f, 1.0f, 360.0f, "%.0f" );
         ImGui::DragFloat( "FOVVert", &settings.FOVVert, 1.0f, 1.0f, 360.0f, "%.0f" );

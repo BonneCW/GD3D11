@@ -1,6 +1,6 @@
 /*
- * Poly2Tri Copyright (c) 2009-2018, Poly2Tri Contributors
- * https://github.com/jhasse/poly2tri
+ * Poly2Tri Copyright (c) 2009-2010, Poly2Tri Contributors
+ * http://code.google.com/p/poly2tri/
  *
  * All rights reserved.
  *
@@ -29,7 +29,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
+#ifndef POLY2TRI_H
+#define POLY2TRI_H
 
 #include "common/shapes.h"
 #include "sweep/cdt.h"
+
+#endif

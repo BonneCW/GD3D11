@@ -5,7 +5,7 @@
 class zSTRING {
 public:
     zSTRING() {
-        reinterpret_cast<void( __fastcall* )( zSTRING*, int, const char* )>( GothicMemoryLocations::zSTRING::ConstructorCharPtr )( this, 0, "" );
+        reinterpret_cast<void( __fastcall* )( zSTRING* )>( GothicMemoryLocations::zSTRING::ConstructorEmptyPtr )( this );
     }
     zSTRING( const char* str ) {
         reinterpret_cast<void( __fastcall* )( zSTRING*, int, const char* )>( GothicMemoryLocations::zSTRING::ConstructorCharPtr )( this, 0, str );

@@ -1,6 +1,6 @@
 /*
- * Poly2Tri Copyright (c) 2009-2018, Poly2Tri Contributors
- * https://github.com/jhasse/poly2tri
+ * Poly2Tri Copyright (c) 2009-2010, Poly2Tri Contributors
+ * http://code.google.com/p/poly2tri/
  *
  * All rights reserved.
  *
@@ -30,8 +30,6 @@
  */
 #include "advancing_front.h"
 
-#include <cassert>
-
 namespace p2t {
 
 AdvancingFront::AdvancingFront(Node& head, Node& tail)
@@ -46,21 +44,21 @@ Node* AdvancingFront::LocateNode(double x)
   Node* node = search_node_;
 
   if (x < node->value) {
-    while ((node = node->prev) != nullptr) {
+    while ((node = node->prev) != NULL) {
       if (x >= node->value) {
         search_node_ = node;
         return node;
       }
     }
   } else {
-    while ((node = node->next) != nullptr) {
+    while ((node = node->next) != NULL) {
       if (x < node->value) {
         search_node_ = node->prev;
         return node->prev;
       }
     }
   }
-  return nullptr;
+  return NULL;
 }
 
 Node* AdvancingFront::FindSearchNode(double x)
@@ -88,13 +86,13 @@ Node* AdvancingFront::LocatePoint(const Point* point)
       }
     }
   } else if (px < nx) {
-    while ((node = node->prev) != nullptr) {
+    while ((node = node->prev) != NULL) {
       if (point == node->point) {
         break;
       }
     }
   } else {
-    while ((node = node->next) != nullptr) {
+    while ((node = node->next) != NULL) {
       if (point == node->point)
         break;
     }
@@ -107,4 +105,4 @@ AdvancingFront::~AdvancingFront()
 {
 }
 
-} // namespace p2t
+}

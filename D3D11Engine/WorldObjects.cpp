@@ -12,7 +12,7 @@ const int VISUALINFO_VERSION = 5;
 
 /** Updates the vobs constantbuffer */
 void VobInfo::UpdateVobConstantBuffer() {
-    VS_ExConstantBuffer_PerInstance cb = {};
+    VS_ExConstantBuffer_PerInstance cb;
     XMStoreFloat4x4( &cb.World, Vob->GetWorldMatrixXM() );
 
     VobConstantBuffer->UpdateBuffer( &cb );
@@ -34,7 +34,7 @@ void VobInfo::UpdateVobConstantBuffer() {
 
 /** Updates the vobs constantbuffer */
 void SkeletalVobInfo::UpdateVobConstantBuffer() {
-    VS_ExConstantBuffer_PerInstance cb = {};
+    VS_ExConstantBuffer_PerInstance cb;
     XMStoreFloat4x4( &cb.World, Vob->GetWorldMatrixXM() );
 
     WorldMatrix = cb.World;

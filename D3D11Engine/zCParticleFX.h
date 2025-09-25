@@ -5,6 +5,7 @@
 #include "Engine.h"
 #include "GothicAPI.h"
 #include "zCTimer.h"
+#include "zCMaterial.h"
 #include "zCPolyStrip.h"
 
 class zSTRING;
@@ -38,8 +39,63 @@ struct zTParticle {
 class zCParticleEmitter {
 public:
 
-    zCTexture* GetVisTexture() {
-        return *reinterpret_cast<zCTexture**>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisTexture ));
+    zCTexture* GetVisTexture( zTParticle* pfx ) {
+        // Gothic 2 shares the same material object between different pfx'es
+        // which can be problematic when there are different animated textures on screen
+#ifdef BUILD_GOTHIC_2_6_fix
+        zCTexture* texture = *reinterpret_cast<zCTexture**>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisTexture ));
+        if ( !texture ) {
+            return texture;
+        }
+
+        // Use original dx7 material
+        DWORD s_partMeshQuad = *reinterpret_cast<DWORD*>( 0x8D9230 );
+        DWORD poly = *reinterpret_cast<DWORD*>(*reinterpret_cast<DWORD*>( s_partMeshQuad + GothicMemoryLocations::zCMesh::Offset_Polygons ));
+        zCMaterial* mat = *reinterpret_cast<zCMaterial**>( poly + GothicMemoryLocations::zCPolygon::Offset_Material );
+        if ( mat ) {
+            *reinterpret_cast<zCTexture**>( mat + GothicMemoryLocations::zCMaterial::Offset_Texture ) = texture;
+            *reinterpret_cast<float*>( mat + 0x54 ) = *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisTexAniFPS )) * 0.001f;
+            *reinterpret_cast<int*>( mat + 0x5C ) = (GetVisTexAniIsLooping() == 0);
+            *reinterpret_cast<int*>( mat + 0x4C ) = 0;
+            return mat->GetAniTexture();
+        }
+        return texture;
+#else
+        zCTexture* texture = *reinterpret_cast<zCTexture**>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisTexture ));
+        if ( texture ) {
+            unsigned char flags = *reinterpret_cast<unsigned char*>( reinterpret_cast<DWORD>( texture ) + GothicMemoryLocations::zCTexture::Offset_Flags );
+            if ( flags & GothicMemoryLocations::zCTexture::Mask_FlagIsAnimated ) {
+                int animationFrames = reinterpret_cast<int*>( reinterpret_cast<DWORD>( texture ) + GothicMemoryLocations::zCTexture::Offset_AniFrames )[0];
+                if ( animationFrames <= 0 )
+                    return texture;
+
+                float texAni = pfx->TexAniFrame;
+                if ( texAni >= animationFrames ) {
+                    if ( GetVisTexAniIsLooping() ) {
+                        do {
+                            texAni -= animationFrames;
+                        } while ( texAni >= animationFrames );
+                    } else {
+                        texAni = (animationFrames - 1.f);
+                    }
+                    pfx->TexAniFrame = texAni;
+                }
+                reinterpret_cast<int*>( reinterpret_cast<DWORD>( texture ) + GothicMemoryLocations::zCTexture::Offset_ActAniFrame )[0] = static_cast<int>(floorf( texAni ));
+
+                zCTexture* tex = texture;
+                int activeAnimationFrame = reinterpret_cast<int*>( reinterpret_cast<DWORD>( texture ) + GothicMemoryLocations::zCTexture::Offset_ActAniFrame )[0];
+                for ( int i = 0; i < activeAnimationFrame; ++i ) {
+                    zCTexture* activeAnimationFrame = reinterpret_cast<zCTexture**>( reinterpret_cast<DWORD>( tex ) + GothicMemoryLocations::zCTexture::Offset_NextFrame )[0];
+                    if ( !activeAnimationFrame )
+                        return tex;
+
+                    tex = activeAnimationFrame;
+                }
+                return tex;
+            }
+        }
+        return texture;
+#endif
     }
 
     zTRnd_AlphaBlendFunc GetVisAlphaFunc() {
@@ -62,11 +118,11 @@ public:
         return *reinterpret_cast<int*>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisShpType ));
     }
 
-#ifndef BUILD_GOTHIC_1_08k
     int GetVisTexAniIsLooping() {
         return *reinterpret_cast<int*>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisTexAniIsLooping ));
     }
 
+#ifndef BUILD_GOTHIC_1_08k
     float GetVisAlphaStart() {
         return *reinterpret_cast<float*>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisAlphaStart ));
     }
@@ -87,10 +143,6 @@ public:
         return *reinterpret_cast<zCModel**>(THISPTR_OFFSET( GothicMemoryLocations::zCParticleEmitter::Offset_VisShpModel ));
     }
 #else
-    int GetVisTexAniIsLooping() {
-        return 0;
-    }
-
     float GetAlphaDist() {
         return 0;
     }
