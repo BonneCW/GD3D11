@@ -325,13 +325,15 @@ HRESULT MyDirectDrawSurface7::Lock( LPRECT lpDestRect, LPDDSURFACEDESC2 lpDDSurf
     // This has to be a backbuffer-copy
     if ( (LockType & DDLOCK_READONLY) != 0 && LockType != DDLOCK_READONLY ) // Gothic uses DDLOCK_READONLY + some other flags for getting the framebuffer. DDLOCK_READONLY only is for movie playback. 
     {
+        extern bool CreatingThumbnail;
+
         // Assume 32-bit
         byte* data;
         INT2 buffersize;
         int pixelSize;
         reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine)->ResetPresentPending();
         Engine::GraphicsEngine->OnStartWorldRendering();
-        Engine::GraphicsEngine->GetBackbufferData( &data, buffersize, pixelSize );
+        Engine::GraphicsEngine->GetBackbufferData( CreatingThumbnail, &data, buffersize, pixelSize );
         reinterpret_cast<D3D11GraphicsEngineBase*>(Engine::GraphicsEngine)->ResetPresentPending();
 
         lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount = 32;
@@ -346,6 +348,7 @@ HRESULT MyDirectDrawSurface7::Lock( LPRECT lpDestRect, LPDDSURFACEDESC2 lpDDSurf
         lpDDSurfaceDesc->lpSurface = data;
 
         LockedData = data;
+        CreatingThumbnail = false;
 
         return S_OK;
     }

@@ -89,6 +89,8 @@ static std::unique_ptr<D3D11NVAPI> nvapiDevice;
 static std::unique_ptr<D3D11IGDEXT> igdextDevice;
 static std::unique_ptr<D3D11AGS> agsDevice;
 
+extern bool userHaveAMDGPU;
+
 D3D11GraphicsEngine::D3D11GraphicsEngine() {
     DebugPointlight = nullptr;
     OutputWindow = nullptr;
@@ -265,7 +267,8 @@ XRESULT D3D11GraphicsEngine::Init() {
 #ifdef DEBUG_D3D11
     factoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
 #endif
-    hr = (CreateDXGIFactory2Func ? CreateDXGIFactory2Func( factoryFlags, __uuidof(IDXGIFactory2), &DXGIFactory2 ) : CreateDXGIFactoryFunc( __uuidof(IDXGIFactory2), &DXGIFactory2 ));
+    hr = (CreateDXGIFactory2Func ? CreateDXGIFactory2Func( factoryFlags, __uuidof(IDXGIFactory2), reinterpret_cast<void**>( DXGIFactory2.ReleaseAndGetAddressOf() ) )
+        : CreateDXGIFactoryFunc( __uuidof(IDXGIFactory2), reinterpret_cast<void**>( DXGIFactory2.ReleaseAndGetAddressOf() ) ));
     if ( FAILED( hr ) ) {
         LogErrorBox() << "CreateDXGIFactory failed with code: " << hr << "!\n"
             "Minimum supported Operating System by GD3D11 is Windows 7 SP1 with Platform Update.";
@@ -302,7 +305,7 @@ XRESULT D3D11GraphicsEngine::Init() {
                 // Don't select the Basic Render Driver adapter.
                 continue;
             }
-            
+
             uint64_t deviceRating = static_cast<uint64_t>(desc.DedicatedVideoMemory);
             if ( desc.VendorId == 0x10DE ) { // Rate NVIDIA GPU's highest
                 deviceRating += 0x200000000;
@@ -344,7 +347,7 @@ XRESULT D3D11GraphicsEngine::Init() {
         dxvkAvailable = true;
         dxgiVKInterop->Release();
     }
-    
+
     if ( !dxvkAvailable ) {
         if ( adpDesc.VendorId == 0x10DE ) {
             nvapiDevice.reset( new D3D11NVAPI );
@@ -367,6 +370,7 @@ XRESULT D3D11GraphicsEngine::Init() {
             if ( !agsDevice->InitAGS() ) {
                 agsDevice.reset();
             }
+            userHaveAMDGPU = true;
         }
     }
 
@@ -800,7 +804,7 @@ XRESULT D3D11GraphicsEngine::OnResize( INT2 newSize ) {
 
     Resolution = newSize;
     INT2 bbres = GetBackbufferResolution();
-    
+
     zCView::SetWindowMode(
         Resolution.x,
         Resolution.y,
@@ -2499,7 +2503,7 @@ XRESULT D3D11GraphicsEngine::OnStartWorldRendering() {
     Engine::GAPI->GetRendererState().RendererSettings.DrawMobs = bDrawVobsGlobal;
     Engine::GAPI->GetRendererState().RendererSettings.DrawParticleEffects = bDrawVobsGlobal;
     Engine::GAPI->GetRendererState().RendererSettings.DrawSkeletalMeshes = bDrawVobsGlobal;
-#endif 
+#endif
 
     ID3D11RenderTargetView* rtvs[] = {
         GBuffer0_Diffuse->GetRenderTargetView().Get(),
@@ -2565,7 +2569,7 @@ XRESULT D3D11GraphicsEngine::OnStartWorldRendering() {
         PfxRenderer->DrawHBAO( HDRBackBuffer->GetRenderTargetView() );
         GetContext()->PSSetSamplers( 0, 1, DefaultSamplerState.GetAddressOf() );
     }
-    
+
     // PfxRenderer->RenderDistanceBlur();
 
     // Draw water surfaces of current frame
@@ -2606,7 +2610,7 @@ XRESULT D3D11GraphicsEngine::OnStartWorldRendering() {
     GetContext()->OMSetRenderTargets( 1, HDRBackBuffer->GetRenderTargetView().GetAddressOf(),
         DepthStencilBuffer->GetDepthStencilView().Get() );
 
-    // Draw unlit decals 
+    // Draw unlit decals
     // TODO: Only get them once!
     if ( Engine::GAPI->GetRendererState().RendererSettings.DrawParticleEffects ) {
         std::vector<zCVob*> decals;
@@ -3206,7 +3210,7 @@ XRESULT D3D11GraphicsEngine::DrawWorldMesh( bool noTextures ) {
 
     ActiveVS->GetConstantBuffer()[1]->UpdateBuffer( &XMMatrixIdentity() );
     ActiveVS->GetConstantBuffer()[1]->BindToVertexShader( 1 );
-    
+
     InfiniteRangeConstantBuffer->BindToPixelShader( 3 );
 
     static std::vector<WorldMeshSectionInfo*> renderList; renderList.clear();
@@ -3619,7 +3623,7 @@ void XM_CALLCONV D3D11GraphicsEngine::DrawWorldAround(
             }
         }
     }
-    
+
     if ( Engine::GAPI->GetRendererState().RendererSettings.DrawVOBs ) {
         // Draw visible vobs here
         std::list<VobInfo*> rndVob;
@@ -3933,7 +3937,7 @@ void XM_CALLCONV D3D11GraphicsEngine::DrawWorldAround_Layered(
             }
         }
     }
-    
+
     if ( Engine::GAPI->GetRendererState().RendererSettings.DrawVOBs ) {
         // Draw visible vobs here
         std::list<VobInfo*> rndVob;
@@ -4407,13 +4411,13 @@ void D3D11GraphicsEngine::ApplyWindProps( VS_ExConstantBuffer_Wind& windBuff ) {
     }
 
     float lerpT = dt / BLEND_TIME_SEC;
-    
+
     // Smoothly turns wind's direction when it is changing
     currentDir = XMVector3Normalize( XMVectorLerp( currentDir, targetDir, lerpT ) );
 
     // Sets wind dir to const buffer
     XMStoreFloat3( reinterpret_cast<XMFLOAT3*>(&windBuff.windDir), currentDir );
-    
+
     //LogInfo() << windBuff.windDir.x << " " << windBuff.windDir.y << " " << windBuff.windDir.z;
 
     static float WindGlobalTime = 0.0f;
@@ -5766,7 +5770,7 @@ void D3D11GraphicsEngine::DrawVobSingle( VobInfo* vob, zCCamera& camera ) {
 
     ActiveVS->GetConstantBuffer()[1]->UpdateBuffer( vob->Vob->GetWorldMatrixPtr() );
     ActiveVS->GetConstantBuffer()[1]->BindToVertexShader( 1 );
-        
+
     for ( auto const& itm : vob->VisualInfo->Meshes ) {
         // Cache & bind texture
         zCTexture* texture;
@@ -5917,9 +5921,13 @@ void D3D11GraphicsEngine::OnUIEvent( EUIEvent uiEvent ) {
 }
 
 /** Returns the data of the backbuffer */
-void D3D11GraphicsEngine::GetBackbufferData( byte** data, INT2& buffersize, int& pixelsize ) {
-    buffersize = Resolution;
-    byte* d = new byte[Resolution.x * Resolution.y * 4];
+void D3D11GraphicsEngine::GetBackbufferData( bool thumbnail, byte** data, INT2& buffersize, int& pixelsize ) {
+    if ( thumbnail ) {
+        buffersize = INT2( 256, 256 );
+    } else {
+        buffersize = Resolution;
+    }
+    byte* d = new byte[buffersize.x * buffersize.y * 4];
 
     // Copy HDR scene to backbuffer
     SetDefaultStates();
@@ -5930,7 +5938,7 @@ void D3D11GraphicsEngine::GetBackbufferData( byte** data, INT2& buffersize, int&
     GammaCorrectConstantBuffer gcb;
     gcb.G_Gamma = Engine::GAPI->GetGammaValue();
     gcb.G_Brightness = Engine::GAPI->GetBrightnessValue();
-    gcb.G_TextureSize = GetResolution();
+    gcb.G_TextureSize = buffersize;
     gcb.G_SharpenStrength = Engine::GAPI->GetRendererState().RendererSettings.SharpenFactor;
 
     ActivePS->GetConstantBuffer()[0]->UpdateBuffer( &gcb );
@@ -5939,8 +5947,7 @@ void D3D11GraphicsEngine::GetBackbufferData( byte** data, INT2& buffersize, int&
     HRESULT hr;
     auto rt = std::make_unique<RenderToTextureBuffer>(
         GetDevice().Get(), buffersize.x, buffersize.y, DXGI_FORMAT_B8G8R8A8_UNORM );
-    PfxRenderer->CopyTextureToRTV( HDRBackBuffer->GetShaderResView(), rt->GetRenderTargetView(), INT2( buffersize.x, buffersize.y ),
-        true );
+    PfxRenderer->CopyTextureToRTV( HDRBackBuffer->GetShaderResView(), rt->GetRenderTargetView(), buffersize, true );
     GetContext()->Flush();
 
     D3D11_TEXTURE2D_DESC texDesc;
@@ -5959,7 +5966,11 @@ void D3D11GraphicsEngine::GetBackbufferData( byte** data, INT2& buffersize, int&
     wrl::ComPtr<ID3D11Texture2D> texture;
     LE( GetDevice()->CreateTexture2D( &texDesc, 0, texture.GetAddressOf() ) );
     if ( !texture.Get() ) {
-        LogInfo() << "Thumbnail failed. Texture could not be created";
+        if ( thumbnail ) {
+            LogInfo() << "Thumbnail failed. Texture could not be created";
+        } else {
+            LogInfo() << "GetBackbufferData failed. Texture could not be created";
+        }
         return;
     }
     GetContext()->CopyResource( texture.Get(), rt->GetTexture().Get() );
@@ -5986,14 +5997,18 @@ void D3D11GraphicsEngine::GetBackbufferData( byte** data, INT2& buffersize, int&
         }
         GetContext()->Unmap( texture.Get(), 0 );
     } else {
-        LogInfo() << "Thumbnail failed";
+        if ( thumbnail ) {
+            LogInfo() << "Thumbnail failed";
+        } else {
+            LogInfo() << "GetBackbufferData failed";
+        }
     }
-    
+
     pixelsize = 4;
     *data = d;
 }
 
-/* Binds the right shader for the given texture */ 
+/* Binds the right shader for the given texture */
 void D3D11GraphicsEngine::BindShaderForTexture( zCTexture* texture,
     bool forceAlphaTest,
     int zMatAlphaFunc,
@@ -6652,7 +6667,7 @@ void D3D11GraphicsEngine::UpdateOcclusion() {
 
     // Do occlusiontests for the BSP-Tree
     Occlusion->DoOcclusionForBSP( Engine::GAPI->GetNewRootNode() );
-    
+
     Occlusion->EndOcclusionPass();
 
     // Setup default renderstates
@@ -6813,7 +6828,7 @@ namespace UI::zFont {
 float  D3D11GraphicsEngine::UpdateCustomFontMultiplierFontRendering( float multiplier ) {
     float res = unionCurrentCustomFontMultiplier;
     unionCurrentCustomFontMultiplier = multiplier;
-    return res; 
+    return res;
 }
 
 void D3D11GraphicsEngine::DrawString( const std::string& str, float x, float y, const zFont* font, zColor& fontColor ) {
@@ -6823,7 +6838,7 @@ void D3D11GraphicsEngine::DrawString( const std::string& str, float x, float y, 
     //
     // Glyphen anordnen und in den vertices Vector packen
     // Ggf. Sonderzeichen am Ende entfernen.
-    // 
+    //
     size_t maxLen = str.size();
     while ( maxLen > 0 && str[maxLen - 1] == '/' ) {
         --maxLen;
@@ -6845,7 +6860,7 @@ void D3D11GraphicsEngine::DrawString( const std::string& str, float x, float y, 
     if ( tx->CacheIn( FONT_CACHE_PRIO ) != zRES_CACHED_IN ) {
         return;
     }
-    
+
     UIScale *= unionCurrentCustomFontMultiplier;
 
     //

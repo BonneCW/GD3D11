@@ -35,6 +35,7 @@
 #include "StackWalker.h"
 
 bool IsRunningUnderUnion = false;
+bool CreatingThumbnail = false;
 
 /** Init all hooks here */
 void HookedFunctionInfo::InitHooks() {
@@ -90,11 +91,16 @@ void HookedFunctionInfo::InitHooks() {
     PatchAddr( 0x007A4B08, "\xB8\x00\x00\x00\x00\x90\x90\x90\x90\x90\x90\x90\x90\x90" );
 
     LogInfo() << "Patching: Show correct savegame thumbnail";
-    PatchAddr( 0x0042B4A7, "\x8B\xF8\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90" );
+    PatchAddr( 0x0042B4A7, "\x8B\xF8\xC6\x05\x00\x00\x00\x00\x01\x90\x90\x90\x90\x90" );
     PatchAddr( 0x00438057, "\x89\x6C\x24\x10\xEB\x21" );
     PatchAddr( 0x004381D6, "\xEB\x07" );
     PatchAddr( 0x004381E1, "\x55" );
     PatchAddr( 0x00438218, "\xEB\x15" );
+
+    char* ThubmnailAddrChar[5];
+    DWORD ThubmnailAddr = reinterpret_cast<DWORD>(&CreatingThumbnail);
+    memcpy( ThubmnailAddrChar, &ThubmnailAddr, 4 );
+    PatchAddr( 0x0042B4AB, ThubmnailAddrChar );
 
     LogInfo() << "Patching: Fix screen hung due to DX7 api invalidating our swapchain";
     PatchAddr( 0x0075B5A7, "\xE9\x59\x02\x00\x00\x90" );
@@ -191,11 +197,16 @@ void HookedFunctionInfo::InitHooks() {
     }
 
     LogInfo() << "Patching: Show correct savegame thumbnail";
-    PatchAddr( 0x004289F4, "\x8B\xF8\x90\x90\x90\x90\x90\x90\x90\x90" );
+    PatchAddr( 0x004289F4, "\x8B\xF8\xC6\x05\x00\x00\x00\x00\x01\x90" );
     PatchAddr( 0x00434167, "\x8B\xEE\xEB\x21" );
     PatchAddr( 0x004342AA, "\xEB\x07" );
     PatchAddr( 0x004342B5, "\x55" );
     PatchAddr( 0x004342E0, "\xEB\x15" );
+
+    char* ThubmnailAddrChar[5];
+    DWORD ThubmnailAddr = reinterpret_cast<DWORD>(&CreatingThumbnail);
+    memcpy( ThubmnailAddrChar, &ThubmnailAddr, 4 );
+    PatchAddr( 0x004289F8, ThubmnailAddrChar );
 
     LogInfo() << "Patching: Fix screen hung due to DX7 api invalidating our swapchain";
     PatchAddr( 0x0071EE02, "\xE9\x38\x02\x00\x00\x90" );
@@ -326,11 +337,16 @@ void HookedFunctionInfo::InitHooks() {
     }
 
     LogInfo() << "Patching: Show correct savegame thumbnail";
-    PatchAddr( 0x0042A5A9, "\x8B\xF8\x90\x90\x90\x90\x90\x90\x90\x90" );
+    PatchAddr( 0x0042A5A9, "\x8B\xF8\xC6\x05\x00\x00\x00\x00\x01\x90" );
     PatchAddr( 0x00437157, "\x8B\xEE\xEB\x21" );
     PatchAddr( 0x00437283, "\xEB\x07" );
     PatchAddr( 0x0043728E, "\x55" );
     PatchAddr( 0x004372B9, "\xEB\x15" );
+
+    char* ThubmnailAddrChar[5];
+    DWORD ThubmnailAddr = reinterpret_cast<DWORD>(&CreatingThumbnail);
+    memcpy( ThubmnailAddrChar, &ThubmnailAddr, 4 );
+    PatchAddr( 0x0042A5AD, ThubmnailAddrChar );
 
     LogInfo() << "Patching: Fix screen hung due to DX7 api invalidating our swapchain";
     PatchAddr( 0x006576D2, "\xE9\x38\x02\x00\x00\x90" );

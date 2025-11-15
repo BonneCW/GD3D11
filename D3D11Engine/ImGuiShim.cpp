@@ -153,11 +153,11 @@ void ImGuiShim::OnResize( INT2 newSize )
 }
 
 template <typename T>
-bool ImComboBoxC( const char* id, std::vector<std::pair<char*, T>>& items, T* storage, const std::function<void()>& selected ) {
+bool ImComboBoxC( const char* id, std::vector<std::pair<const char*, T>>& items, T* storage, const std::function<void()>& selected ) {
     if ( storage == nullptr || items.size() == 0 ) {
         return ImGui::BeginCombo( id, "invalid storage" );
     }
-    std::pair<char*, T> selectedItem = items[0];
+    std::pair<const char*, T> selectedItem = items[0];
     for ( auto& it : items ) {
         if ( it.second == *storage ) {
             selectedItem = it;
@@ -183,11 +183,11 @@ bool ImComboBoxC( const char* id, std::vector<std::pair<char*, T>>& items, T* st
 }
 
 template <typename T>
-bool ImComboBox( const char* id, std::vector<std::pair<char*, T>>& items, T* storage ) {
+bool ImComboBox( const char* id, std::vector<std::pair<const char*, T>>& items, T* storage ) {
     if ( storage == nullptr || items.size() == 0 ) {
         return ImGui::BeginCombo( id, "invalid storage" );
     }
-    std::pair<char*, T> selectedItem = items[0];
+    std::pair<const char*, T> selectedItem = items[0];
     for ( auto& it : items ) {
         if ( it.second == *storage ) {
             selectedItem = it;
@@ -377,7 +377,7 @@ void ImGuiShim::RenderSettingsWindow()
 
             ImText( "Display Mode [*]", buttonWidth ); ImGui::SameLine();
             static auto displayModeState = InterpretWindowMode(settings);
-            static std::vector<std::pair<char *, int>> DisplayEnums = {
+            static std::vector<std::pair<const char *, int>> DisplayEnums = {
                 { "Fullscreen Borderless", WindowModes::WINDOW_MODE_FULLSCREEN_BORDERLESS },
                 { "Fullscreen Exclusive", WindowModes::WINDOW_MODE_FULLSCREEN_EXCLUSIVE },
                 { "Fullscreen Lowlatency", WindowModes::WINDOW_MODE_FULLSCREEN_LOWLATENCY },
@@ -393,7 +393,7 @@ void ImGuiShim::RenderSettingsWindow()
 
             ImText( "Shadow Quality", buttonWidth ); ImGui::SameLine();
             
-            static std::vector<std::pair<char*, int>> shadowMapSizesMax = {
+            static std::vector<std::pair<const char*, int>> shadowMapSizesMax = {
                 {"very low", 512},
                 {"low", 1024},
                 {"medium", 2048},
@@ -401,14 +401,14 @@ void ImGuiShim::RenderSettingsWindow()
                 {"very high", 8192},
                 {"ultra high", 16384},
             };
-            static std::vector<std::pair<char*, int>> shadowMapSizesDxFeature10 = {
+            static std::vector<std::pair<const char*, int>> shadowMapSizesDxFeature10 = {
                 {"very low", 512},
                 {"low", 1024},
                 {"medium", 2048},
                 {"high", 4096},
                 {"very high", 8192},
             };
-            std::vector<std::pair<char*, int>>& shadowMapSizes = shadowMapSizesMax;
+            std::vector<std::pair<const char*, int>>& shadowMapSizes = shadowMapSizesMax;
             if ( FeatureLevel10Compatibility ) {
                 shadowMapSizes = shadowMapSizesDxFeature10;
             }
@@ -584,15 +584,12 @@ void RenderAdvancedColumn2( GothicRendererSettings& settings, GothicAPI* gapi ) 
 
         // ImGui::Checkbox( "Draw Sky", &settings.DrawSky );
         ImGui::Checkbox( "Draw Fog", &settings.DrawFog );
-
-        static std::vector<std::pair<char*, int>> fogRanges = { {"3", 3}, {"4", 4}, {"5", 5}, {"6", 6}, {"7", 7}, {"8", 8}, {"9", 9}, {"10", 10} };
-        if ( ImComboBox( "Fog Range", fogRanges, &settings.FogRange ) ) {
-            ImGui::EndCombo();
-        }
+        // caution, FogRange is reduced by 0.5f (secScale - 0.5f) in D3D11PFX_HeightFog
+        ImGui::SliderFloat( "Fog Range", &settings.FogRange, 0.50f, 10.0f, "%.2f", ImGuiSliderFlags_::ImGuiSliderFlags_ClampOnInput );
 
         ImGui::Checkbox( "HDR", &settings.EnableHDR );
 
-        static std::vector<std::pair<char*, int>> hdrToneMapValues = {
+        static std::vector<std::pair<const char*, int>> hdrToneMapValues = {
             {"ToneMap_jafEq4", 0},
             {"Uncharted2Tonemap", 1},
             {"ACESFilmTonemap", 2},
@@ -611,7 +608,7 @@ void RenderAdvancedColumn2( GothicRendererSettings& settings, GothicAPI* gapi ) 
         ImGui::DragFloat( "Sharpen", &settings.SharpenFactor, 0.01f );
         ImGui::Checkbox( "DynamicLighting", &settings.EnableDynamicLighting );
 
-        static std::vector<std::pair<char*, int>> pointlightShadows = {
+        static std::vector<std::pair<const char*, int>> pointlightShadows = {
            {"Disabled", 0},
            {"Static", 1},
            {"Update Dynamic", 2},
@@ -630,7 +627,7 @@ void RenderAdvancedColumn2( GothicRendererSettings& settings, GothicAPI* gapi ) 
         ImGui::Checkbox( "AtmosphericScattering", &settings.AtmosphericScattering );
         ImGui::Checkbox( "SkeletalVertexNormals", &settings.ShowSkeletalVertexNormals );
 
-        static std::vector<std::pair<char*, int>> shadowMapSizesMax = {
+        static std::vector<std::pair<const char*, int>> shadowMapSizesMax = {
           {"512", 512},
           {"1024", 1024},
           {"2048", 2048},
@@ -638,14 +635,14 @@ void RenderAdvancedColumn2( GothicRendererSettings& settings, GothicAPI* gapi ) 
           {"8192", 8192},
           {"16384", 16384},
         };
-        static std::vector<std::pair<char*, int>> shadowMapSizesDxFeature10 = {
+        static std::vector<std::pair<const char*, int>> shadowMapSizesDxFeature10 = {
          {"512", 512},
          {"1024", 1024},
          {"2048", 2048},
          {"4096", 4096},
          {"8192", 8192},
         };
-        std::vector<std::pair<char*, int>>& shadowMapSizes = shadowMapSizesMax;
+        std::vector<std::pair<const char*, int>>& shadowMapSizes = shadowMapSizesMax;
         if ( FeatureLevel10Compatibility ) {
             shadowMapSizes = shadowMapSizesDxFeature10;
         }
@@ -756,17 +753,17 @@ void RenderAdvancedColumn4( GothicRendererSettings& settings, GothicAPI* gapi ) 
             settings.HbaoSettings.Bias = std::clamp( settings.HbaoSettings.Bias, 0.0f, 0.5f );
         }
         ImGui::Checkbox( "Enable Blur", &settings.HbaoSettings.EnableBlur );
-        static std::vector<std::pair<char*, int>> ssaoRadi = { {"2", 0}, {"4", 1} };
+        static std::vector<std::pair<const char*, int>> ssaoRadi = { {"2", 0}, {"4", 1} };
         if ( ImComboBox( "SSAO radius", ssaoRadi, &settings.HbaoSettings.SsaoBlurRadius ) ) {
             ImGui::EndCombo();
         }
         ImGui::DragFloat( "BlurSharpness", &settings.HbaoSettings.BlurSharpness, 0.01f );
-        static std::vector<std::pair<char*, int>> blendMode = { {"Replace", 0}, {"Multiply", 1} };
+        static std::vector<std::pair<const char*, int>> blendMode = { {"Replace", 0}, {"Multiply", 1} };
         if ( ImComboBox( "BlendMode", blendMode, &settings.HbaoSettings.BlendMode ) ) {
             ImGui::EndCombo();
         }
 
-        static std::vector<std::pair<char*, int>> stepCount = { {"4", 0}, {"8", 1} };
+        static std::vector<std::pair<const char*, int>> stepCount = { {"4", 0}, {"8", 1} };
         if ( ImComboBox( "SSAO steps", stepCount, &settings.HbaoSettings.SsaoStepCount ) ) {
             ImGui::EndCombo();
         }

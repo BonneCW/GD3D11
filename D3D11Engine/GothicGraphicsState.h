@@ -719,7 +719,7 @@ struct GothicRendererSettings {
     bool DrawParticleEffects;
     bool DrawSky;
     bool DrawFog;
-    int FogRange;
+    float FogRange;
     int WindQuality;
     bool HeroAffectsObjects;
     bool DrawG1ForestPortals;

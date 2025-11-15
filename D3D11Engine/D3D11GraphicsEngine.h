@@ -202,7 +202,7 @@ public:
     INT2 GetBackbufferResolution();
 
     /** Returns the data of the backbuffer */
-    void GetBackbufferData( byte** data, INT2& buffersize, int& pixelsize );
+    void GetBackbufferData( bool thumbnail, byte** data, INT2& buffersize, int& pixelsize );
 
     /** Returns the line renderer object */
     BaseLineRenderer* GetLineRenderer();

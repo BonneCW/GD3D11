@@ -339,7 +339,13 @@ namespace
         const std::string& lpFileName ) {
         return GetPrivateProfileIntA( lpAppName, lpKeyName, nDefault, lpFileName.c_str() ) ? true : false;
     }
-
+    
+    static std::string float_to_string(const float val, int precision = 6)
+    {
+        std::stringstream ss;
+        ss << std::fixed << std::setprecision(precision) << val;
+        return ss.str();
+    }
 }
 
 /** Called when the game starts */
@@ -4687,7 +4693,7 @@ XRESULT GothicAPI::SaveMenuSettings( const std::string& file ) {
     WritePrivateProfileStringA( "General", "ChangeToMode", std::to_string( s.ChangeWindowPreset ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "General", "AtmosphericScattering", std::to_string( s.AtmosphericScattering ? TRUE : FALSE ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "General", "EnableFog", std::to_string( s.DrawFog ? TRUE : FALSE ).c_str(), ini.c_str() );
-    WritePrivateProfileStringA( "General", "FogRange", std::to_string( s.FogRange ).c_str(), ini.c_str() );
+    WritePrivateProfileStringA( "General", "FogRange", float_to_string( s.FogRange , 2).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "General", "EnableHDR", std::to_string( s.EnableHDR ? TRUE : FALSE ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "General", "HDRToneMap", std::to_string( s.HDRToneMap ).c_str(), ini.c_str() );
     WritePrivateProfileStringA( "General", "EnableDebugLog", std::to_string( s.EnableDebugLog ? TRUE : FALSE ).c_str(), ini.c_str() );
@@ -4781,7 +4787,7 @@ XRESULT GothicAPI::LoadMenuSettings( const std::string& file ) {
 
         s.ChangeWindowPreset = GetPrivateProfileIntA( "General", "ChangeToMode", 0, ini.c_str() );
         s.DrawFog = GetPrivateProfileBoolA( "General", "EnableFog", true, ini );
-        s.FogRange = GetPrivateProfileIntA( "General", "FogRange", 0, ini.c_str() );
+        s.FogRange = GetPrivateProfileFloatA( "General", "FogRange", 0, ini.c_str() );
         s.AtmosphericScattering = GetPrivateProfileBoolA( "General", "AtmosphericScattering", true, ini );
         s.EnableHDR = GetPrivateProfileBoolA( "General", "EnableHDR", false, ini );
         s.HDRToneMap = GothicRendererSettings::E_HDRToneMap( GetPrivateProfileIntA( "General", "HDRToneMap", 4, ini.c_str() ) );

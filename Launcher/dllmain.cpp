@@ -180,15 +180,17 @@ BOOL APIENTRY DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
         }
 
         DWORD baseAddr = reinterpret_cast<DWORD>(GetModuleHandleA( nullptr ));
-        if ( *reinterpret_cast<DWORD*>(baseAddr + 0x168) == 0x3D4318 && *reinterpret_cast<DWORD*>(baseAddr + 0x3D43A0) == 0x82E108
-            && *reinterpret_cast<DWORD*>(baseAddr + 0x3D43CB) == 0x82E10C ) {
-            foundExecutable = GOTHIC2A_EXECUTABLE;
-        } else if ( *reinterpret_cast<DWORD*>(baseAddr + 0x160) == 0x37A8D8 && *reinterpret_cast<DWORD*>(baseAddr + 0x37A960) == 0x7D01E4
-            && *reinterpret_cast<DWORD*>(baseAddr + 0x37A98B) == 0x7D01E8 ) {
-            foundExecutable = GOTHIC1_EXECUTABLE;
-        } else if ( *reinterpret_cast<DWORD*>(baseAddr + 0x140) == 0x3BE698 && *reinterpret_cast<DWORD*>(baseAddr + 0x3BE720) == 0x8131E4
-            && *reinterpret_cast<DWORD*>(baseAddr + 0x3BE74B) == 0x8131E8 ) {
-            foundExecutable = GOTHIC1A_EXECUTABLE;
+        if ( baseAddr == 0x400000 ) {
+            if ( *reinterpret_cast<DWORD*>(baseAddr + 0x168) == 0x3D4318 && *reinterpret_cast<DWORD*>(baseAddr + 0x3D43A0) == 0x82E108
+                && *reinterpret_cast<DWORD*>(baseAddr + 0x3D43CB) == 0x82E10C ) {
+                foundExecutable = GOTHIC2A_EXECUTABLE;
+            } else if ( *reinterpret_cast<DWORD*>(baseAddr + 0x160) == 0x37A8D8 && *reinterpret_cast<DWORD*>(baseAddr + 0x37A960) == 0x7D01E4
+                && *reinterpret_cast<DWORD*>(baseAddr + 0x37A98B) == 0x7D01E8 ) {
+                foundExecutable = GOTHIC1_EXECUTABLE;
+            } else if ( *reinterpret_cast<DWORD*>(baseAddr + 0x140) == 0x3BE698 && *reinterpret_cast<DWORD*>(baseAddr + 0x3BE720) == 0x8131E4
+                && *reinterpret_cast<DWORD*>(baseAddr + 0x3BE74B) == 0x8131E8 ) {
+                foundExecutable = GOTHIC1A_EXECUTABLE;
+            }
         }
 
         if ( foundExecutable != INVALID_EXECUTABLE ) {
@@ -232,7 +234,11 @@ BOOL APIENTRY DllMain( HINSTANCE hInst, DWORD reason, LPVOID ) {
                 ddraw.dll = LoadLibraryA( dllPath.c_str() );
             }
         } else {
-            MessageBoxA( nullptr, "GD3D11 Renderer doesn't work with your game version.\nIt requires report version of the game. Same as System Pack or Union.", "Gothic GD3D11", MB_ICONERROR );
+            if ( baseAddr != 0x400000 ) {
+                MessageBoxA( nullptr, "GD3D11 Renderer couldn't be loaded.\nDetected enabled ASLR. Disable both Mandatory and Bottom-up ASLR in Exploit Protection for Gothic executable before continuing.", "Gothic GD3D11", MB_ICONERROR );
+            } else {
+                MessageBoxA( nullptr, "GD3D11 Renderer doesn't work with your game version.\nIt requires report version of the game. Same as System Pack or Union.", "Gothic GD3D11", MB_ICONERROR );
+            }
             showLoadingInfo = false;
         }
 
