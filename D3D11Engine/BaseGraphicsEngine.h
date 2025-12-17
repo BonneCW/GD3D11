@@ -13,6 +13,12 @@ struct VobInfo;
 struct VobLightInfo;
 class zFont;
 
+class GraphicsEventRecord {
+public:
+    GraphicsEventRecord() {};
+    virtual ~GraphicsEventRecord() {};
+};
+
 struct DisplayModeInfo {
     DisplayModeInfo() {}
     DisplayModeInfo( int w, int h ) : Width(static_cast<DWORD>(w)), Height(static_cast<DWORD>(h)) {}
@@ -213,6 +219,8 @@ public:
     virtual void DrawFrameParticles( std::map<zCTexture*, std::vector<ParticleInstanceInfo>>& particles, std::map<zCTexture*, ParticleRenderInfo>& info ) {}
 
     virtual void DrawString( const std::string& str, float x, float y, const zFont* font, zColor& fontColor ) {};
-
+    
     virtual XRESULT UpdateRenderStates() { return XR_SUCCESS; };
+
+    virtual std::unique_ptr<GraphicsEventRecord> RecordGraphicsEvent( LPCWSTR region ) { return std::make_unique<GraphicsEventRecord>(); }
 };

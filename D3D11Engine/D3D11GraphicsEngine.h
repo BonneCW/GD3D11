@@ -2,6 +2,7 @@
 #include "D3D11GraphicsEngineBase.h"
 #include "fpslimiter.h"
 #include "GothicAPI.h"
+#include "D3D11ShadowMap.h"
 
 struct RenderToDepthStencilBuffer;
 
@@ -29,7 +30,6 @@ const unsigned int HUD_BUFFER_SIZE = 6 * sizeof( ExVertexStruct );
 const int NUM_MAX_BONES = 96;
 const int unsigned INSTANCING_BUFFER_SIZE = sizeof( VobInstanceInfo ) * 2048;
 
-const int POINTLIGHT_SHADOWMAP_SIZE = 64;
 
 class D3D11PointLight;
 class D3D11VShader;
@@ -179,12 +179,14 @@ public:
 
     /** Gets the depthbuffer */
     RenderToDepthStencilBuffer* GetDepthBuffer() { return DepthStencilBuffer.get(); }
+    RenderToTextureBuffer* GetDepthBufferCopy() { return DepthStencilBufferCopy.get(); }
 
     /** Returns the first GBuffer */
     RenderToTextureBuffer& GetGBuffer0() { return *GBuffer0_Diffuse; }
 
     /** Returns the second GBuffer */
     RenderToTextureBuffer& GetGBuffer1() { return *GBuffer1_Normals; }
+    RenderToTextureBuffer& GetGBuffer2() { return *GBuffer2_SpecIntens_SpecPower; }
 
     /** Returns the HDRBackbuffer */
     RenderToTextureBuffer& GetHDRBackBuffer() { return *HDRBackBuffer; }
@@ -333,28 +335,32 @@ public:
     void CreateMainUIView();
 
     /** Returns a dummy cube-rendertarget used for pointlight shadowmaps */
-    RenderToTextureBuffer* GetDummyCubeRT() { return DummyShadowCubemapTexture.get(); }
+    RenderToTextureBuffer* GetDummyCubeRT() { return ShadowMaps ? ShadowMaps->GetDummyCubeRT() : nullptr; }
 
     void EnsureTempVertexBufferSize( std::unique_ptr<D3D11VertexBuffer>& buffer, UINT size );
 
     float UpdateCustomFontMultiplierFontRendering( float multiplier );
 
-protected:
-    std::unique_ptr<FpsLimiter> m_FrameLimiter;
-    int m_LastFrameLimit;
-
+    // TODO: Remove from here, put into D3D11ShadowMaps
     D3D11PointLight* DebugPointlight;
 
     // Using a list here to determine which lights to update, since we don't want to update every light every frame.
     std::list<VobLightInfo*> FrameShadowUpdateLights;
+    
+    /** Effects wrapper */
+    std::unique_ptr<D3D11Effect> Effects;
+
+    D3D11PfxRenderer* GetPfxRenderer() const { return PfxRenderer.get(); }
+    D3D11Texture* GetDistortionTexture() const { return DistortionTexture.get(); }
+protected:
+    std::unique_ptr<FpsLimiter> m_FrameLimiter;
+    int m_LastFrameLimit;
+
 
     /** D3D11 Objects */
     Microsoft::WRL::ComPtr<ID3D11SamplerState> ClampSamplerState;
     Microsoft::WRL::ComPtr<ID3D11SamplerState> CubeSamplerState;
-    Microsoft::WRL::ComPtr<ID3D11SamplerState> ShadowmapSamplerState;
 
-    /** Effects wrapper */
-    std::unique_ptr<D3D11Effect> Effects;
 
     /** Swapchain buffers */
     Microsoft::WRL::ComPtr<ID3D11RenderTargetView> BackbufferRTV;
@@ -362,7 +368,8 @@ protected:
     std::unique_ptr<RenderToTextureBuffer> GBuffer1_Normals; // Normals
     std::unique_ptr<RenderToTextureBuffer> GBuffer2_SpecIntens_SpecPower; // SpecIntensity / SpecPower
     std::unique_ptr<RenderToTextureBuffer> DepthStencilBufferCopy;
-    std::unique_ptr<RenderToTextureBuffer> DummyShadowCubemapTexture; // PS-Stage needs to have a rendertarget bound to execute SV_Depth-Writes, as it seems.
+    // DummyShadowCubemapTexture moved into ShadowMaps
+    std::unique_ptr<D3D11ShadowMap> ShadowMaps;
 
     /** Temp-Arrays for storing data to be put in constant buffers */
     XMFLOAT4X4 Temp2D3DXMatrix[2];
@@ -377,11 +384,7 @@ protected:
     std::unique_ptr<D3D11Texture> NoiseTexture;
     std::unique_ptr<D3D11Texture> WhiteTexture;
 
-    /** Lighting */
-    GMesh* InverseUnitSphereMesh;
-
     /** Shadowing */
-    std::unique_ptr<RenderToDepthStencilBuffer> WorldShadowmap1;
     std::vector<VobInfo*> RenderedVobs;
 
     /** Modulate Quad Marks */
@@ -405,10 +408,14 @@ protected:
     /** List of waterfall worldmeshes we have to render using alphablending */
     std::vector<std::pair<MeshKey, MeshInfo*>> FrameTransparencyMeshesWaterfall;
 
+
+public:
+    /** Lighting */
+    GMesh* InverseUnitSphereMesh;
     /** Reflection */
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> ReflectionCube;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> ReflectionCube2;
-
+private:
     /** World-Mesh indirect buffer */
     std::unique_ptr<D3D11IndirectBuffer> WorldMeshIndirectBuffer;
 

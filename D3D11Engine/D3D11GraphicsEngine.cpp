@@ -1,4 +1,5 @@
 #include "D3D11GraphicsEngine.h"
+#include "D3D11ShadowMap.h"
 
 #include "AlignedAllocator.h"
 #include "BaseAntTweakBar.h"
@@ -481,6 +482,7 @@ XRESULT D3D11GraphicsEngine::Init() {
 
     Device11.As( &Device );
     Context11.As( &Context );
+    Context.As( &m_UserDefinedAnnotation );
 
     FeatureLevel10Compatibility = (maxFeatureLevel < D3D_FEATURE_LEVEL::D3D_FEATURE_LEVEL_11_0);
     FetchDisplayModeList();
@@ -600,10 +602,7 @@ XRESULT D3D11GraphicsEngine::Init() {
     //TODO: NVidia PCSS
     // samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
     samplerDesc.ComparisonFunc = D3D11_COMPARISON_LESS_EQUAL;
-    GetDevice()->CreateSamplerState( &samplerDesc, ShadowmapSamplerState.GetAddressOf() );
-    GetContext()->PSSetSamplers( 2, 1, ShadowmapSamplerState.GetAddressOf() );
-    GetContext()->VSSetSamplers( 2, 1, ShadowmapSamplerState.GetAddressOf() );
-    SetDebugName( ShadowmapSamplerState.Get(), "ShadowmapSamplerState" );
+    // Shadow sampler and shadowmap resources moved into D3D11ShadowMap
 
     samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
     samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
@@ -705,11 +704,10 @@ XRESULT D3D11GraphicsEngine::Init() {
         D3D11VertexBuffer::EBindFlags::B_INDEXBUFFER,
         D3D11VertexBuffer::EUsageFlags::U_IMMUTABLE );
 
-    // Create dummy rendertarget for shadowcubes
-    DummyShadowCubemapTexture = std::make_unique<RenderToTextureBuffer>(
-        GetDevice(), POINTLIGHT_SHADOWMAP_SIZE, POINTLIGHT_SHADOWMAP_SIZE,
-        DXGI_FORMAT_B8G8R8A8_UNORM, nullptr, DXGI_FORMAT_UNKNOWN,
-        DXGI_FORMAT_UNKNOWN, 1, 6 );
+    // Create shadow map manager
+    ShadowMaps = std::make_unique<D3D11ShadowMap>();
+    int initialShadowSize = Engine::GAPI->GetRendererState().RendererSettings.ShadowMapSize;
+    ShadowMaps->Init( Device, Context, initialShadowSize );
 
     SteamOverlay::Init();
 
@@ -1030,12 +1028,12 @@ XRESULT D3D11GraphicsEngine::OnResize( INT2 newSize ) {
         (Engine::GAPI->GetRendererState().RendererSettings.CompressBackBuffer ? DXGI_FORMAT_R11G11B10_FLOAT : DXGI_FORMAT_R16G16B16A16_FLOAT) );
 
     int s = std::min<int>( std::max<int>( Engine::GAPI->GetRendererState().RendererSettings.ShadowMapSize, 512 ), (FeatureLevel10Compatibility ? 8192 : 16384) );
-    WorldShadowmap1 = std::make_unique<RenderToDepthStencilBuffer>(
-        GetDevice().Get(), s, s, DXGI_FORMAT_R16_TYPELESS, nullptr, DXGI_FORMAT_D16_UNORM,
-        DXGI_FORMAT_R16_UNORM );
-    SetDebugName( WorldShadowmap1->GetTexture().Get(), "WorldShadowmap1->Texture" );
-    SetDebugName( WorldShadowmap1->GetShaderResView().Get(), "WorldShadowmap1->ShaderResView" );
-    SetDebugName( WorldShadowmap1->GetDepthStencilView().Get(), "WorldShadowmap1->DepthStencilView" );
+    if ( !ShadowMaps ) {
+        ShadowMaps = std::make_unique<D3D11ShadowMap>();
+        ShadowMaps->Init( Device, Context, s );
+    } else {
+        ShadowMaps->Resize( s );
+    }
 
     Engine::AntTweakBar->OnResize( newSize );
     Engine::ImGuiHandle->OnResize( newSize );
@@ -1140,19 +1138,12 @@ XRESULT D3D11GraphicsEngine::OnBeginFrame() {
     // Check for shadowmap resize
     int s = Engine::GAPI->GetRendererState().RendererSettings.ShadowMapSize;
 
-    if ( WorldShadowmap1->GetSizeX() != s ) {
+    if ( ShadowMaps && ShadowMaps->GetSizeX() != s ) {
         s = std::min<int>(std::max<int>(s, 512), (FeatureLevel10Compatibility ? 8192 : 16384));
 
-        int old = WorldShadowmap1->GetSizeX();
+        int old = ShadowMaps->GetSizeX();
         LogInfo() << "Shadowmapresolution changed to: " << s << "x" << s;
-        WorldShadowmap1 = std::make_unique<RenderToDepthStencilBuffer>(
-            GetDevice().Get(), s, s, DXGI_FORMAT_R16_TYPELESS, nullptr, DXGI_FORMAT_D16_UNORM, DXGI_FORMAT_R16_UNORM );
-        SetDebugName( WorldShadowmap1->GetTexture().Get(), "WorldShadowmap1->Texture" );
-        SetDebugName( WorldShadowmap1->GetShaderResView().Get(), "WorldShadowmap1->ShaderResView" );
-        SetDebugName( WorldShadowmap1->GetDepthStencilView().Get(), "WorldShadowmap1->DepthStencilView" );
-
-        Engine::GAPI->GetRendererState().RendererSettings.WorldShadowRangeScale =
-            Toolbox::GetRecommendedWorldShadowRangeScaleForSize( s );
+        ShadowMaps->Resize( s );
 
         Engine::GAPI->GetRendererState().RendererSettings.ShadowMapSize = s;
     }
@@ -2589,11 +2580,14 @@ XRESULT D3D11GraphicsEngine::OnStartWorldRendering() {
     DrawMeshInfoListAlphablended( FrameTransparencyMeshesWaterfall );
 
     // Draw ghosts
-    D3D11ENGINE_RENDER_STAGE oldStage = RenderingStage;
-    SetRenderingStage( DES_GHOST );
-    Engine::GAPI->DrawTransparencyVobs();
-    SetRenderingStage( oldStage );
-    Engine::GAPI->DrawSkeletalVN();
+    {
+        auto _ = RecordGraphicsEvent( L"Draw ghosts" );
+        D3D11ENGINE_RENDER_STAGE oldStage = RenderingStage;
+        SetRenderingStage( DES_GHOST );
+        Engine::GAPI->DrawTransparencyVobs();
+        SetRenderingStage( oldStage );
+        Engine::GAPI->DrawSkeletalVN();
+    }
 
     if ( Engine::GAPI->GetRendererState().RendererSettings.DrawFog &&
         Engine::GAPI->GetLoadedWorldInfo()->BspTree->GetBspTreeMode() ==
@@ -2615,6 +2609,7 @@ XRESULT D3D11GraphicsEngine::OnStartWorldRendering() {
     // Draw unlit decals 
     // TODO: Only get them once!
     if ( Engine::GAPI->GetRendererState().RendererSettings.DrawParticleEffects ) {
+        auto _ = RecordGraphicsEvent( L"DrawParticleEffects" );
         std::vector<zCVob*> decals;
         zCCamera::GetCamera()->Activate();
         Engine::GAPI->GetVisibleDecalList( decals );
@@ -2651,10 +2646,13 @@ XRESULT D3D11GraphicsEngine::OnStartWorldRendering() {
     LineRenderer->Flush();
     LineRenderer->FlushScreenSpace();
 
-    if ( Engine::GAPI->GetRendererState().RendererSettings.EnableHDR )
+    if ( Engine::GAPI->GetRendererState().RendererSettings.EnableHDR ) {
+        auto _ = RecordGraphicsEvent( L"RenderHDR" );
         PfxRenderer->RenderHDR();
+    }
 
     if ( Engine::GAPI->GetRendererState().RendererSettings.EnableSMAA ) {
+        auto _ = RecordGraphicsEvent( L"RenderSMAA" );
         PfxRenderer->RenderSMAA();
         GetContext()->PSSetSamplers( 0, 1, DefaultSamplerState.GetAddressOf() );
     }
@@ -2672,7 +2670,10 @@ XRESULT D3D11GraphicsEngine::OnStartWorldRendering() {
     GetContext()->RSSetViewports( 1, &vp );
 
     // If we currently are underwater, then draw underwater effects
-    if ( Engine::GAPI->IsUnderWater() ) DrawUnderwaterEffects();
+    if ( Engine::GAPI->IsUnderWater() ) {
+        auto _ = RecordGraphicsEvent( L"DrawUnderwaterEffects" );
+        DrawUnderwaterEffects();
+    }
 
     // Clear here to get a working depthbuffer but no interferences with world
     // geometry for gothic UI-Rendering
@@ -5125,447 +5126,7 @@ BaseLineRenderer* D3D11GraphicsEngine::GetLineRenderer() {
 
 /** Applys the lighting to the scene */
 XRESULT D3D11GraphicsEngine::DrawLighting( std::vector<VobLightInfo*>& lights ) {
-    static const XMVECTORF32 xmFltMax = { { { FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX } } };
-    SetDefaultStates();
-
-    // ********************************
-    // Draw world shadows
-    // ********************************
-    CameraReplacement cr;
-    XMFLOAT3 cameraPosition;
-    XMStoreFloat3( &cameraPosition, Engine::GAPI->GetCameraPositionXM() );
-    FXMVECTOR vPlayerPosition =
-        Engine::GAPI->GetPlayerVob() != nullptr
-        ? Engine::GAPI->GetPlayerVob()->GetPositionWorldXM()
-        : xmFltMax;
-
-    bool partialShadowUpdate = Engine::GAPI->GetRendererState().RendererSettings.PartialDynamicShadowUpdates;
-
-    // Draw pointlight shadows
-    if ( Engine::GAPI->GetRendererState().RendererSettings.EnablePointlightShadows > 0 ) {
-        std::list<VobLightInfo*> importantUpdates;
-
-        for ( auto const& light : lights ) {
-            // Create shadowmap in case we should have one but haven't got it yet
-            if ( !light->LightShadowBuffers && light->UpdateShadows ) {
-                CreateShadowedPointLight( &light->LightShadowBuffers, light );
-            }
-
-            if ( light->LightShadowBuffers ) {
-                // Check if this lights even needs an update
-                bool needsUpdate = static_cast<D3D11PointLight*>(light->LightShadowBuffers)->NeedsUpdate();
-                bool isInited = static_cast<D3D11PointLight*>(light->LightShadowBuffers)->IsInited();
-
-                // Add to the updatequeue if it does
-                if ( isInited && (needsUpdate || light->UpdateShadows) ) {
-                    // Always update the light if the light itself moved
-                    if ( partialShadowUpdate && !needsUpdate ) {
-                        // Only add once. This list should never be very big, so it should
-                        // be ok to search it like this This needs to be done to make sure a
-                        // light will get updated only once and won't block the queue
-                        if ( std::find( FrameShadowUpdateLights.begin(),
-                            FrameShadowUpdateLights.end(),
-                            light ) == FrameShadowUpdateLights.end() ) {
-                            // Always render the closest light to the playervob, so the player
-                            // doesn't flicker when moving
-                            float d;
-                            XMStoreFloat( &d, XMVector3LengthSq( light->Vob->GetPositionWorldXM() - vPlayerPosition ) );
-
-                            float range = light->Vob->GetLightRange();
-                            if ( d < range * range &&
-                                importantUpdates.size() < MAX_IMPORTANT_LIGHT_UPDATES ) {
-                                importantUpdates.emplace_back( light );
-                            } else {
-                                FrameShadowUpdateLights.emplace_back( light );
-                            }
-                        }
-                    } else {
-                        // Always render the closest light to the playervob, so the player
-                        // doesn't flicker when moving
-                        float d;
-                        XMStoreFloat( &d, XMVector3LengthSq( light->Vob->GetPositionWorldXM() - vPlayerPosition ) );
-
-                        float range = light->Vob->GetLightRange() * 1.5f;
-
-                        // If the engine said this light should be updated, then do so. If
-                        // the light said this
-                        if ( needsUpdate || d < range * range )
-                            importantUpdates.emplace_back( light );
-                    }
-                }
-            }
-        }
-
-        // Render the closest light
-        for ( auto const& importantUpdate : importantUpdates ) {
-            static_cast<D3D11PointLight*>(importantUpdate->LightShadowBuffers)->RenderCubemap( importantUpdate->UpdateShadows );
-            importantUpdate->UpdateShadows = false;
-        }
-
-        // Update only a fraction of lights, but at least some
-        int n = std::max(
-            (UINT)NUM_MIN_FRAME_SHADOW_UPDATES,
-            (UINT)(FrameShadowUpdateLights.size() / NUM_FRAME_SHADOW_UPDATES) );
-        while ( !FrameShadowUpdateLights.empty() ) {
-            D3D11PointLight* l = static_cast<D3D11PointLight*>(FrameShadowUpdateLights.front()->LightShadowBuffers);
-
-            // Check if we have to force this light to update itself (NPCs moving around, for example)
-            bool force = FrameShadowUpdateLights.front()->UpdateShadows;
-            FrameShadowUpdateLights.front()->UpdateShadows = false;
-
-            l->RenderCubemap( force );
-            DebugPointlight = l;
-
-            FrameShadowUpdateLights.pop_front();
-
-            // Only update n lights
-            n--;
-            if ( n <= 0 ) break;
-        }
-    }
-
-    // Get shadow direction, but don't update every frame, to get around flickering
-    XMVECTOR dir =
-        XMLoadFloat3( Engine::GAPI->GetSky()->GetAtmosphereCB().AC_LightPos.toXMFLOAT3() );
-
-    // Update dir
-    if ( Engine::GAPI->GetRendererState().RendererSettings.SmoothShadowCameraUpdate ) {
-        XMVECTOR scale = XMVectorReplicate( 500.f );
-        dir = XMVectorDivide( _mm_cvtepi32_ps( _mm_cvtps_epi32( XMVectorMultiply( dir, scale ) ) ), scale );
-    }
-
-    static XMVECTOR oldP = XMVectorZero();
-    XMVECTOR WorldShadowCP;
-    // Update position
-    // Try to update only if the camera went 200 units away from the last position
-    float len;
-    XMStoreFloat( &len, XMVector3Length( oldP - XMLoadFloat3( &cameraPosition ) ) );
-    if ( (len < 64 &&
-        // And is on even space
-        (cameraPosition.x - static_cast<int>(cameraPosition.x)) < 0.1f &&
-        // but don't let it go too far
-        (cameraPosition.y - static_cast<int>(cameraPosition.y)) < 0.1f) || len < 200.0f ) {
-        WorldShadowCP = oldP;
-    } else {
-        oldP = XMLoadFloat3( &cameraPosition );
-        WorldShadowCP = oldP;
-    }
-
-    // Set the camera height to the highest point in this section
-    FXMVECTOR p = WorldShadowCP + dir * 10000.0f;
-
-    FXMVECTOR lookAt = WorldShadowCP;
-
-    // Create shadowmap view-matrix
-    static const XMVECTORF32 c_XM_Up = { { { 0, 1, 0, 0 } } };
-    XMMATRIX crViewRepl = XMMatrixTranspose( XMMatrixLookAtLH( p, lookAt, c_XM_Up ) );
-
-    XMMATRIX crProjRepl =
-        XMMatrixTranspose( XMMatrixOrthographicLH(
-            WorldShadowmap1->GetSizeX() * Engine::GAPI->GetRendererState().RendererSettings.WorldShadowRangeScale,
-            WorldShadowmap1->GetSizeX() * Engine::GAPI->GetRendererState().RendererSettings.WorldShadowRangeScale,
-            1.f,
-            20000.f ) );
-
-    XMStoreFloat4x4( &cr.ViewReplacement, crViewRepl );
-    XMStoreFloat4x4( &cr.ProjectionReplacement, crProjRepl );
-    XMStoreFloat3( &cr.PositionReplacement, p );
-    XMStoreFloat3( &cr.LookAtReplacement, lookAt );
-
-    // Replace gothics camera
-    Engine::GAPI->SetCameraReplacementPtr( &cr );
-
-    // Indoor worlds don't need shadowmaps for the world
-    static zTBspMode lastBspMode = zBSP_MODE_OUTDOOR;
-    if ( Engine::GAPI->GetLoadedWorldInfo()->BspTree->GetBspTreeMode() == zBSP_MODE_OUTDOOR ) {
-        RenderShadowmaps( WorldShadowCP, nullptr, true );
-        lastBspMode = zBSP_MODE_OUTDOOR;
-    } else if ( Engine::GAPI->GetRendererState().RendererSettings.EnableShadows ) {
-        // We need to clear shadowmap to avoid some glitches in indoor locations
-        // only need to do it once :)
-        if ( lastBspMode == zBSP_MODE_OUTDOOR ) {
-            GetContext()->ClearDepthStencilView( WorldShadowmap1->GetDepthStencilView().Get(), D3D11_CLEAR_DEPTH, 0.0f, 0 );
-            lastBspMode = zBSP_MODE_INDOOR;
-        }
-    }
-
-    SetDefaultStates();
-
-    // Restore gothics camera
-    Engine::GAPI->SetCameraReplacementPtr( nullptr );
-
-    // Draw rainmap, if raining
-    if ( Engine::GAPI->GetSceneWetness() > 0.00001f ) {
-        Effects->DrawRainShadowmap();
-    }
-
-    XMMATRIX view = Engine::GAPI->GetViewMatrixXM();
-    Engine::GAPI->SetViewTransformXM( view );
-
-    // ********************************
-    // Draw direct lighting
-    // ********************************
-    SetActiveVertexShader( "VS_ExPointLight" );
-    SetActivePixelShader( "PS_DS_PointLight" );
-
-    auto psPointLight = ShaderManager->GetPShader( "PS_DS_PointLight" );
-    auto psPointLightDynShadow = ShaderManager->GetPShader( "PS_DS_PointLightDynShadow" );
-
-    Engine::GAPI->SetFarPlane(
-        Engine::GAPI->GetRendererState().RendererSettings.SectionDrawRadius *
-        WORLD_SECTION_SIZE );
-
-    Engine::GAPI->GetRendererState().BlendState.SetAdditiveBlending();
-    if ( Engine::GAPI->GetRendererState().RendererSettings.LimitLightIntesity ) {
-        Engine::GAPI->GetRendererState().BlendState.BlendOp = GothicBlendStateInfo::BO_BLEND_OP_MAX;
-    }
-    Engine::GAPI->GetRendererState().BlendState.SetDirty();
-
-    Engine::GAPI->GetRendererState().DepthState.DepthWriteEnabled = false;
-    Engine::GAPI->GetRendererState().DepthState.SetDirty();
-
-    Engine::GAPI->GetRendererState().RasterizerState.CullMode = GothicRasterizerStateInfo::CM_CULL_BACK;
-    Engine::GAPI->GetRendererState().RasterizerState.SetDirty();
-
-    SetupVS_ExMeshDrawCall();
-    SetupVS_ExConstantBuffer();
-
-    // Copy this, so we can access depth in the pixelshader and still use the buffer for culling
-    CopyDepthStencil();
-
-    // Set the main rendertarget
-    GetContext()->OMSetRenderTargets( 1, HDRBackBuffer->GetRenderTargetView().GetAddressOf(), DepthStencilBuffer->GetDepthStencilView().Get() );
-
-    view = XMMatrixTranspose( view );
-
-    DS_PointLightConstantBuffer plcb = {};
-
-    XMStoreFloat4x4( &plcb.PL_InvProj, XMMatrixInverse( nullptr, XMLoadFloat4x4( &Engine::GAPI->GetProjectionMatrix() ) ) );
-    XMStoreFloat4x4( &plcb.PL_InvView, XMMatrixInverse( nullptr, XMLoadFloat4x4( &Engine::GAPI->GetRendererState().TransformState.TransformView ) ) );
-
-    plcb.PL_ViewportSize = float2( static_cast<float>(Resolution.x), static_cast<float>(Resolution.y) );
-
-    GBuffer0_Diffuse->BindToPixelShader( GetContext().Get(), 0 );
-    GBuffer1_Normals->BindToPixelShader( GetContext().Get(), 1 );
-    GBuffer2_SpecIntens_SpecPower->BindToPixelShader( GetContext().Get(), 7 );
-    DepthStencilBufferCopy->BindToPixelShader( GetContext().Get(), 2 );
-
-    // Draw all lights
-    for ( auto const& light : lights ) {
-        zCVobLight* vob = light->Vob;
-
-        // Reset state from CollectVisibleVobs
-        light->VisibleInRenderPass = false;
-
-        if ( !vob->IsEnabled() ) continue;
-
-        // Set right shader
-        if ( Engine::GAPI->GetRendererState().RendererSettings.EnablePointlightShadows > 0 ) {
-            if ( light->LightShadowBuffers && static_cast<D3D11PointLight*>(light->LightShadowBuffers)->IsInited() ) {
-                if ( ActivePS != psPointLightDynShadow ) {
-                    // Need to update shader for shadowed pointlight
-                    ActivePS = psPointLightDynShadow;
-                    ActivePS->Apply();
-                }
-            } else if ( ActivePS != psPointLight ) {
-                // Need to update shader for usual pointlight
-                ActivePS = psPointLight;
-                ActivePS->Apply();
-            }
-        }
-
-        // Animate the light
-        vob->DoAnimation();
-
-        plcb.PL_Color = float4( vob->GetLightColor() );
-        plcb.PL_Range = vob->GetLightRange();
-        plcb.Pl_PositionWorld = vob->GetPositionWorld();
-        plcb.PL_Outdoor = light->IsIndoorVob ? 0.0f : 1.0f;
-
-        float dist;
-        XMStoreFloat( &dist, XMVector3Length( XMLoadFloat3( plcb.Pl_PositionWorld.toXMFLOAT3() ) - Engine::GAPI->GetCameraPositionXM() ) );
-
-        // Gradually fade in the lights
-        if ( dist + plcb.PL_Range <
-            Engine::GAPI->GetRendererState().RendererSettings.VisualFXDrawRadius ) {
-            // float fadeStart =
-            // Engine::GAPI->GetRendererState().RendererSettings.VisualFXDrawRadius -
-            // plcb.PL_Range;
-            float fadeEnd =
-                Engine::GAPI->GetRendererState().RendererSettings.VisualFXDrawRadius;
-
-            float fadeFactor = std::min(
-                1.0f,
-                std::max( 0.0f, ((fadeEnd - (dist + plcb.PL_Range)) / plcb.PL_Range) ) );
-            plcb.PL_Color.x *= fadeFactor;
-            plcb.PL_Color.y *= fadeFactor;
-            plcb.PL_Color.z *= fadeFactor;
-            // plcb.PL_Color.w *= fadeFactor;
-        }
-
-        // Make the lights a little bit brighter
-        float lightFactor = 1.2f;
-
-        plcb.PL_Color.x *= lightFactor;
-        plcb.PL_Color.y *= lightFactor;
-        plcb.PL_Color.z *= lightFactor;
-
-        // Need that in view space
-        FXMVECTOR Pl_PositionWorld = XMLoadFloat3( plcb.Pl_PositionWorld.toXMFLOAT3() );
-        XMStoreFloat3( plcb.Pl_PositionView.toXMFLOAT3(),
-            XMVector3TransformCoord( Pl_PositionWorld, view ) );
-
-        XMStoreFloat3( plcb.PL_LightScreenPos.toXMFLOAT3(),
-            XMVector3TransformCoord( Pl_PositionWorld, XMLoadFloat4x4( &Engine::GAPI->GetProjectionMatrix() ) ) );
-
-        if ( dist < plcb.PL_Range ) {
-            if ( Engine::GAPI->GetRendererState().DepthState.DepthBufferEnabled ) {
-                Engine::GAPI->GetRendererState().DepthState.DepthBufferEnabled = false;
-                Engine::GAPI->GetRendererState().RasterizerState.CullMode = GothicRasterizerStateInfo::CM_CULL_FRONT;
-                Engine::GAPI->GetRendererState().DepthState.SetDirty();
-                Engine::GAPI->GetRendererState().RasterizerState.SetDirty();
-                UpdateRenderStates();
-            }
-        } else {
-            if ( !Engine::GAPI->GetRendererState().DepthState.DepthBufferEnabled ) {
-                Engine::GAPI->GetRendererState().DepthState.DepthBufferEnabled = true;
-                Engine::GAPI->GetRendererState().RasterizerState.CullMode = GothicRasterizerStateInfo::CM_CULL_BACK;
-                Engine::GAPI->GetRendererState().DepthState.SetDirty();
-                Engine::GAPI->GetRendererState().RasterizerState.SetDirty();
-                UpdateRenderStates();
-            }
-        }
-
-        plcb.PL_LightScreenPos.x = plcb.PL_LightScreenPos.x / 2.0f + 0.5f;
-        plcb.PL_LightScreenPos.y = plcb.PL_LightScreenPos.y / -2.0f + 0.5f;
-
-        // Apply the constantbuffer to vs and PS
-        ActivePS->GetConstantBuffer()[0]->UpdateBuffer( &plcb );
-        ActivePS->GetConstantBuffer()[0]->BindToPixelShader( 0 );
-        ActivePS->GetConstantBuffer()[0]->BindToVertexShader(
-            1 );  // Bind this instead of the usual per-instance buffer
-
-        if ( Engine::GAPI->GetRendererState().RendererSettings.EnablePointlightShadows > 0 ) {
-            // Bind shadowmap, if possible
-            if ( light->LightShadowBuffers )
-                static_cast<D3D11PointLight*>(light->LightShadowBuffers)->OnRenderLight();
-        }
-
-        // Draw the mesh
-        InverseUnitSphereMesh->DrawMesh();
-
-        Engine::GAPI->GetRendererState().RendererInfo.FrameDrawnLights++;
-    }
-
-    Engine::GAPI->GetRendererState().BlendState.BlendOp = GothicBlendStateInfo::BO_BLEND_OP_ADD;
-    Engine::GAPI->GetRendererState().BlendState.SetDirty();
-
-    Engine::GAPI->GetRendererState().DepthState.DepthBufferCompareFunc = GothicDepthBufferStateInfo::CF_COMPARISON_ALWAYS;
-    Engine::GAPI->GetRendererState().DepthState.SetDirty();
-
-    Engine::GAPI->GetRendererState().RasterizerState.CullMode = GothicRasterizerStateInfo::CM_CULL_NONE;
-    Engine::GAPI->GetRendererState().RasterizerState.SetDirty();
-
-    // Modify light when raining
-    float rain = Engine::GAPI->GetRainFXWeight();
-    float wetness = Engine::GAPI->GetSceneWetness();
-
-    // Switch global light shader when raining
-    if ( wetness > 0.0f ) {
-        SetActivePixelShader( "PS_DS_AtmosphericScattering_Rain" );
-    } else {
-        SetActivePixelShader( "PS_DS_AtmosphericScattering" );
-    }
-
-    SetActiveVertexShader( "VS_PFX" );
-
-    SetupVS_ExMeshDrawCall();
-
-    GSky* sky = Engine::GAPI->GetSky();
-    ActivePS->GetConstantBuffer()[1]->UpdateBuffer( &sky->GetAtmosphereCB() );
-    ActivePS->GetConstantBuffer()[1]->BindToPixelShader( 1 );
-
-    DS_ScreenQuadConstantBuffer scb = {};
-    scb.SQ_InvProj = plcb.PL_InvProj;
-    scb.SQ_InvView = plcb.PL_InvView;
-    scb.SQ_View = Engine::GAPI->GetRendererState().TransformState.TransformView;
-
-    XMStoreFloat3( scb.SQ_LightDirectionVS.toXMFLOAT3(),
-        XMVector3TransformNormal( XMLoadFloat3( sky->GetAtmosphereCB().AC_LightPos.toXMFLOAT3() ), view ) );
-
-    float3 sunColor =
-        Engine::GAPI->GetRendererState().RendererSettings.SunLightColor;
-
-    float sunStrength = Toolbox::lerp(
-        Engine::GAPI->GetRendererState().RendererSettings.SunLightStrength,
-        Engine::GAPI->GetRendererState().RendererSettings.RainSunLightStrength,
-        std::min( 1.0f, rain * 2.0f ) );// Scale the darkening-factor faster here, so it
-                                        // matches more with the increasing fog-density
-
-    scb.SQ_LightColor = float4( sunColor.x, sunColor.y, sunColor.z, sunStrength );
-
-    scb.SQ_ShadowView = cr.ViewReplacement;
-    scb.SQ_ShadowProj = cr.ProjectionReplacement;
-    scb.SQ_ShadowmapSize = static_cast<float>(WorldShadowmap1->GetSizeX());
-
-    // Get rain matrix
-    scb.SQ_RainView = Effects->GetRainShadowmapCameraRepl().ViewReplacement;
-    scb.SQ_RainProj = Effects->GetRainShadowmapCameraRepl().ProjectionReplacement;
-
-    scb.SQ_ShadowStrength = Engine::GAPI->GetRendererState().RendererSettings.ShadowStrength;
-    scb.SQ_ShadowAOStrength = Engine::GAPI->GetRendererState().RendererSettings.ShadowAOStrength;
-    scb.SQ_WorldAOStrength = Engine::GAPI->GetRendererState().RendererSettings.WorldAOStrength;
-
-    // Modify lightsettings when indoor
-    if ( auto bspTree = Engine::GAPI->GetLoadedWorldInfo()->BspTree )
-        if ( bspTree->GetBspTreeMode() == zBSP_MODE_INDOOR ) {
-            // TODO: fix caves in Gothic 1 being way too dark. Remove this workaround.
-#if BUILD_GOTHIC_1_08k
-            // Kirides: Nah, just make it dark enough.
-            if ( Engine::GAPI->GetLoadedWorldInfo()->WorldName == "ORCTEMPEL" )
-                scb.SQ_ShadowStrength = 0.15f;
-            else
-                scb.SQ_ShadowStrength = 0.3f;
-#else
-            // Turn off shadows
-            scb.SQ_ShadowStrength = 0.0f;
-#endif
-
-        // Only use world AO
-        scb.SQ_WorldAOStrength = 1.0f;
-        // Darken the lights
-        scb.SQ_LightColor = float4( 1, 1, 1, DEFAULT_INDOOR_VOB_AMBIENT.x );
-    }
-
-    ActivePS->GetConstantBuffer()[0]->UpdateBuffer( &scb );
-    ActivePS->GetConstantBuffer()[0]->BindToPixelShader( 0 );
-
-    PFXVS_ConstantBuffer vscb;
-    vscb.PFXVS_InvProj = scb.SQ_InvProj;
-    ActiveVS->GetConstantBuffer()[0]->UpdateBuffer( &vscb );
-    ActiveVS->GetConstantBuffer()[0]->BindToVertexShader( 0 );
-
-    WorldShadowmap1->BindToPixelShader( GetContext().Get(), 3 );
-
-    if ( Effects->GetRainShadowmap() )
-        Effects->GetRainShadowmap()->BindToPixelShader( GetContext().Get(), 4 );
-
-    GetContext()->PSSetSamplers( 2, 1, ShadowmapSamplerState.GetAddressOf() );
-
-    GetContext()->PSSetShaderResources( 5, 1, ReflectionCube2.GetAddressOf() );
-
-    DistortionTexture->BindToPixelShader( 6 );
-
-    PfxRenderer->DrawFullScreenQuad();
-
-    // Reset state
-    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv;
-    GetContext()->PSSetShaderResources( 2, 1, srv.GetAddressOf() );
-    GetContext()->PSSetShaderResources( 7, 1, srv.GetAddressOf() );
-    GetContext()->OMSetRenderTargets( 1, HDRBackBuffer->GetRenderTargetView().GetAddressOf(),
-        DepthStencilBuffer->GetDepthStencilView().Get() );
-
-    return XR_SUCCESS;
+    return ShadowMaps->DrawLighting(lights);
 }
 
 /** Renders the shadowmaps for a pointlight */
@@ -5576,81 +5137,9 @@ void XM_CALLCONV D3D11GraphicsEngine::RenderShadowCube(
     std::list<VobInfo*>* renderedVobs,
     std::list<SkeletalVobInfo*>* renderedMobs,
     std::map<MeshKey, WorldMeshInfo*, cmpMeshKey>* worldMeshCache ) {
-    D3D11_VIEWPORT oldVP;
-    UINT n = 1;
-    Context->RSGetViewports( &n, &oldVP );
-
-    // Apply new viewport
-    D3D11_VIEWPORT vp;
-    vp.TopLeftX = 0;
-    vp.TopLeftY = 0;
-    vp.MinDepth = 0.0f;
-    vp.MaxDepth = 1.0f;
-    vp.Width = static_cast<float>(targetCube.GetSizeX());
-    vp.Height = static_cast<float>(targetCube.GetSizeX());
-    Context->RSSetViewports( 1, &vp );
-
-    bool useLayeredPath = false;
-    if ( !face.Get() ) {
-        if ( FeatureRTArrayIndexFromAnyShader ) {
-            useLayeredPath = true;
-            face = targetCube.GetDepthStencilView().Get();
-
-            // Set layered shader
-            SetActiveVertexShader( "VS_ExLayered" );
-        } else {
-            // Set cubemap shader
-            SetActiveGShader( "GS_Cubemap" );
-            ActiveGS->Apply();
-            face = targetCube.GetDepthStencilView().Get();
-
-            SetActiveVertexShader( "VS_ExCube" );
-        }
-    }
-
-    // Set the rendering stage
-    D3D11ENGINE_RENDER_STAGE oldStage = RenderingStage;
-    SetRenderingStage( DES_SHADOWMAP_CUBE );
-
-    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv;
-    Context->PSSetShaderResources( 3, 1, srv.GetAddressOf() );
-
-    if ( !debugRTV.Get() ) {
-        Context->OMSetRenderTargets( 0, nullptr, face.Get() );
-
-        Engine::GAPI->GetRendererState().BlendState.ColorWritesEnabled =
-            true;  // Should be false, but needs to be true for SV_Depth to work
-        Engine::GAPI->GetRendererState().BlendState.SetDirty();
-    } else {
-        Context->OMSetRenderTargets( 1, debugRTV.GetAddressOf(), face.Get() );
-
-        Engine::GAPI->GetRendererState().BlendState.ColorWritesEnabled = true;
-        Engine::GAPI->GetRendererState().BlendState.SetDirty();
-    }
-
-    // Always render shadowcube when dynamic shadows are enabled
-    Context->ClearDepthStencilView( face.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0 );
-
-    // Draw the world mesh without textures
-    if ( useLayeredPath ) {
-        DrawWorldAround_Layered( position, range, cullFront, indoor, noNPCs, renderedVobs,
-            renderedMobs, worldMeshCache );
-    } else {
-        DrawWorldAround( position, range, cullFront, indoor, noNPCs, renderedVobs,
-            renderedMobs, worldMeshCache );
-    }
-
-    // Restore state
-    SetRenderingStage( oldStage );
-    Context->RSSetViewports( 1, &oldVP );
-    Context->GSSetShader( nullptr, nullptr, 0 );
-    SetActiveVertexShader( "VS_Ex" );
-
-    Engine::GAPI->SetFarPlane(
-        Engine::GAPI->GetRendererState().RendererSettings.SectionDrawRadius *
-        WORLD_SECTION_SIZE );
-
-    SetRenderingStage( DES_MAIN );
+    
+    ShadowMaps->RenderShadowCube( position, range, targetCube, face, debugRTV,
+        cullFront, indoor, noNPCs, renderedVobs, renderedMobs, worldMeshCache );
 }
 
 /** Renders the shadowmaps for the sun */
@@ -5659,73 +5148,7 @@ void XM_CALLCONV D3D11GraphicsEngine::RenderShadowmaps( FXMVECTOR cameraPosition
     bool cullFront, bool dontCull,
     Microsoft::WRL::ComPtr<ID3D11DepthStencilView> dsvOverwrite,
     Microsoft::WRL::ComPtr<ID3D11RenderTargetView> debugRTV ) {
-    if ( !target ) {
-        target = WorldShadowmap1.get();
-    }
-
-    if ( !dsvOverwrite.Get() ) dsvOverwrite = target->GetDepthStencilView().Get();
-
-    D3D11_VIEWPORT oldVP;
-    UINT n = 1;
-    Context->RSGetViewports( &n, &oldVP );
-
-    // Apply new viewport
-    D3D11_VIEWPORT vp;
-    vp.TopLeftX = 0;
-    vp.TopLeftY = 0;
-    vp.MinDepth = 0.0f;
-    vp.MaxDepth = 1.0f;
-    vp.Width = static_cast<float>(target->GetSizeX());
-    vp.Height = vp.Width;
-    Context->RSSetViewports( 1, &vp );
-
-    // Set the rendering stage
-    D3D11ENGINE_RENDER_STAGE oldStage = RenderingStage;
-    SetRenderingStage( DES_SHADOWMAP );
-
-    // Clear and Bind the shadowmap
-
-    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv;
-    Context->PSSetShaderResources( 3, 1, srv.GetAddressOf() );
-
-    if ( !debugRTV.Get() ) {
-        Context->OMSetRenderTargets( 0, nullptr, dsvOverwrite.Get() );
-        Engine::GAPI->GetRendererState().BlendState.ColorWritesEnabled = false;
-    } else {
-        Context->OMSetRenderTargets( 1, debugRTV.GetAddressOf(), dsvOverwrite.Get() );
-        Engine::GAPI->GetRendererState().BlendState.ColorWritesEnabled = true;
-    }
-    Engine::GAPI->GetRendererState().BlendState.SetDirty();
-
-    // Dont render shadows from the sun when it isn't on the sky
-    if ( target != WorldShadowmap1.get() ||
-        (Engine::GAPI->GetSky()->GetAtmoshpereSettings().LightDirection.y >
-        0 &&  // Only stop rendering if the sun is down on main-shadowmap
-               // TODO: Take this out of here!
-        Engine::GAPI->GetRendererState().RendererSettings.DrawShadowGeometry &&
-        Engine::GAPI->GetRendererState().RendererSettings.EnableShadows) ) {
-        Context->ClearDepthStencilView( dsvOverwrite.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0 );
-
-        // Draw the world mesh without textures
-        DrawWorldAround( cameraPosition, 2, 10000.0f, cullFront, dontCull );
-    } else {
-        if ( Engine::GAPI->GetSky()->GetAtmoshpereSettings().LightDirection.y <= 0 ) {
-            Context->ClearDepthStencilView( dsvOverwrite.Get(), D3D11_CLEAR_DEPTH, 0.0f,
-                0 );  // Always shadow in the night
-        } else {
-            Context->ClearDepthStencilView(
-                dsvOverwrite.Get(), D3D11_CLEAR_DEPTH, 1.0f,
-                0 );  // Clear shadowmap when shadows not enabled
-        }
-    }
-
-    // Restore state
-    SetRenderingStage( oldStage );
-    Context->RSSetViewports( 1, &oldVP );
-
-    Engine::GAPI->SetFarPlane(
-        Engine::GAPI->GetRendererState().RendererSettings.SectionDrawRadius *
-        WORLD_SECTION_SIZE );
+    ShadowMaps->RenderShadowmaps( cameraPosition, target, cullFront, dontCull, dsvOverwrite, debugRTV );
 }
 
 /** Draws a fullscreenquad, copying the given texture to the viewport */

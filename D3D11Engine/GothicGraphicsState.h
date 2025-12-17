@@ -600,7 +600,7 @@ struct GothicRendererSettings {
 
         textureMaxSize = 16384;
         ShadowMapSize = 2048;
-        WorldShadowRangeScale = 8.0f;
+        WorldShadowRangeScale = 0.2f;
 
         ShadowStrength = 0.40f;
         ShadowAOStrength = 0.50f;

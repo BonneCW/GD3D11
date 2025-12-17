@@ -412,9 +412,12 @@ XRESULT D3D11Effect::DrawRainShadowmap() {
     // Create shadowmap view-matrix
     XMMATRIX crViewReplacement = XMMatrixLookAtLH( p, lookAt, XMVectorSet( 0, 1, 0, 0 ) );
 
+    const auto size = RainShadowmap->GetSizeX();
+    const auto legacySingleShadowMapScaleFactor = Toolbox::GetRecommendedWorldShadowRangeScaleForSize( size );
+
     XMMATRIX crProjectionReplacement = XMMatrixOrthographicLH(
-        RainShadowmap->GetSizeX() * Engine::GAPI->GetRendererState().RendererSettings.WorldShadowRangeScale,
-        RainShadowmap->GetSizeX() * Engine::GAPI->GetRendererState().RendererSettings.WorldShadowRangeScale,
+        size * legacySingleShadowMapScaleFactor,
+        size * legacySingleShadowMapScaleFactor,
         1,
         20000.0f
     );

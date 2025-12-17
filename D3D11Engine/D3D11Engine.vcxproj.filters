@@ -782,6 +782,9 @@
     <ClInclude Include="SMAA\D3D11SMAA.h">
       <Filter>Engine\D3D11\PFX</Filter>
     </ClInclude>
+    <ClInclude Include="D3D11ShadowMap.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
@@ -1067,6 +1070,9 @@
     <ClCompile Include="SMAA\D3D11SMAA.cpp">
       <Filter>Engine\D3D11\PFX</Filter>
     </ClCompile>
+    <ClCompile Include="D3D11ShadowMap.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="ddraw.def">
@@ -1099,6 +1105,9 @@
     </None>
     <None Include="include\assimp\.editorconfig">
       <Filter>Librarys\Assimp</Filter>
+    </None>
+    <None Include="Shaders\PS_DS_AtmosphericScattering.hlsl">
+      <Filter>Engine\D3D11</Filter>
     </None>
   </ItemGroup>
 </Project>

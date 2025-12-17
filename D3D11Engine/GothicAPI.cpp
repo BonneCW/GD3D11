@@ -4834,12 +4834,12 @@ XRESULT GothicAPI::LoadMenuSettings( const std::string& file ) {
         }
 
         static XMFLOAT3 defaultLightDirection = XMFLOAT3( 1, 1, 1 );
-
+        const float csmShadowScaleFor2048 = 0.2f; // sharp close shadows even with low res shadowmaps
         s.EnableShadows = GetPrivateProfileBoolA( "Shadows", "EnableShadows", defaultRendererSettings.EnableShadows, ini );
         s.EnableSoftShadows = GetPrivateProfileBoolA( "Shadows", "EnableSoftShadows", defaultRendererSettings.EnableSoftShadows, ini );
         s.ShadowMapSize = GetPrivateProfileIntA( "Shadows", "ShadowMapSize", defaultRendererSettings.ShadowMapSize, ini.c_str() );
         s.EnablePointlightShadows = GothicRendererSettings::EPointLightShadowMode( GetPrivateProfileIntA( "Shadows", "PointlightShadows", GothicRendererSettings::EPointLightShadowMode::PLS_STATIC_ONLY, ini.c_str() ) );
-        s.WorldShadowRangeScale = GetPrivateProfileFloatA( "Shadows", "WorldShadowRangeScale", 1.0f, ini );
+        s.WorldShadowRangeScale = GetPrivateProfileFloatA( "Shadows", "WorldShadowRangeScale", csmShadowScaleFor2048, ini );
         s.EnableDynamicLighting = GetPrivateProfileBoolA( "Shadows", "EnableDynamicLighting", defaultRendererSettings.EnableDynamicLighting, ini );
         s.SmoothShadowCameraUpdate = GetPrivateProfileBoolA( "Shadows", "SmoothCameraUpdate", defaultRendererSettings.SmoothShadowCameraUpdate, ini );
         s.ShadowStrength = GetPrivateProfileFloatA( "Shadows", "ShadowStrength", defaultRendererSettings.ShadowStrength, ini );
@@ -4886,9 +4886,6 @@ XRESULT GothicAPI::LoadMenuSettings( const std::string& file ) {
         s.HbaoSettings.SsaoStepCount = GetPrivateProfileIntA( "HBAO", "SsaoStepCount", defaultHBAOSettings.SsaoStepCount, ini.c_str() );
 
         s.EnableCustomFontRendering = GetPrivateProfileBoolA( "FontRendering", "Enable", defaultRendererSettings.EnableCustomFontRendering, ini );
-
-        // Fix the shadow range
-        s.WorldShadowRangeScale = Toolbox::GetRecommendedWorldShadowRangeScaleForSize( s.ShadowMapSize );
 
         // Fix the resolution if the players maximum resolution got lower
         /*RECT r;
