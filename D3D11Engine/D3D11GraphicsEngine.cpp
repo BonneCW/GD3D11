@@ -2710,6 +2710,11 @@ void D3D11GraphicsEngine::DrawSkeletalMeshVobs(
                 WorldConverter::ExtractNodeVisual( i, node, nodeAttachments );
             }
 
+            auto nodeAttachment = nodeAttachments.find( i );
+            if ( nodeAttachment == nodeAttachments.end() ) {
+                continue;
+            }
+
             if ( model->GetDrawHandVisualsOnly() ) {
                 std::string NodeName = node->ProtoNode->NodeName.ToChar();
 #ifdef BUILD_GOTHIC_2_6_fix
@@ -2721,85 +2726,81 @@ void D3D11GraphicsEngine::DrawSkeletalMeshVobs(
                 }
             }
 
-            auto nodeAttachment = nodeAttachments.find( i );
-            if ( nodeAttachment != nodeAttachments.end() ) {                
-
-                const XMMATRIX curTransform = XMLoadFloat4x4( &transforms[i] );
-                XMFLOAT4X4 finalWorld; XMStoreFloat4x4( &finalWorld, world* curTransform );
+            const XMMATRIX curTransform = XMLoadFloat4x4( &transforms[i] );
+            XMFLOAT4X4 finalWorld; XMStoreFloat4x4( &finalWorld, world* curTransform );
 
             const XMMATRIX prevWorldXm = XMLoadFloat4x4( &prevWorld );
             // just assume same bone transforms of current frame, if we don't have valid previous transforms
             XMFLOAT4X4 finalPrevWorld; XMStoreFloat4x4( &finalPrevWorld, prevWorldXm * curTransform );
 
-                // Go through all attachments this node has
-                for ( MeshVisualInfo* mvi : nodeAttachment->second ) {
+            // Go through all attachments this node has
+            for ( MeshVisualInfo* mvi : nodeAttachment->second ) {
 
-                    if ( !mvi->Visual ) {
-                        LogWarn() << "Attachment without visual on model: " << model->GetVisualName();
-                        continue;
-                    }
+                if ( !mvi->Visual ) {
+                    LogWarn() << "Attachment without visual on model: " << model->GetVisualName();
+                    continue;
+                }
 
-                    // Update animated textures
-                    bool isMMS = strcmp( mvi->Visual->GetFileExtension( 0 ), ".MMS" ) == 0;
-                    if ( updateState ) {
-                        node->TexAniState.UpdateTexList();
-                        if ( isMMS ) {
-                            zCMorphMesh* mm = reinterpret_cast<zCMorphMesh*>(mvi->Visual);
-                            mm->GetTexAniState()->UpdateTexList();
-                        }
-                    }
-
+                // Update animated textures
+                bool isMMS = strcmp( mvi->Visual->GetFileExtension( 0 ), ".MMS" ) == 0;
+                if ( updateState ) {
+                    node->TexAniState.UpdateTexList();
                     if ( isMMS ) {
-                        // Only 0.35f of the fatness wanted by gothic.
-                        // They seem to compensate for that with the scaling.
-                        instanceInfo.Fatness = std::max<float>( 0.f, fatness * 0.35f );
-                        instanceInfo.Scaling = fatness * 0.02f + 1.f;
-                    } else {
-                        instanceInfo.Fatness = 0.f;
-                        instanceInfo.Scaling = 1.f;
+                        zCMorphMesh* mm = reinterpret_cast<zCMorphMesh*>(mvi->Visual);
+                        mm->GetTexAniState()->UpdateTexList();
                     }
+                }
+
+                if ( isMMS ) {
+                    // Only 0.35f of the fatness wanted by gothic.
+                    // They seem to compensate for that with the scaling.
+                    instanceInfo.Fatness = std::max<float>( 0.f, fatness * 0.35f );
+                    instanceInfo.Scaling = fatness * 0.02f + 1.f;
+                } else {
+                    instanceInfo.Fatness = 0.f;
+                    instanceInfo.Scaling = 1.f;
+                }
                 instanceInfo.World = finalWorld;
                 instanceInfo.PrevWorld = finalPrevWorld;
                 vsBufMPI.Update( &instanceInfo );
 
-                    if ( distance < 1000 && isMMS ) {
-                        zCMorphMesh* mm = reinterpret_cast<zCMorphMesh*>( mvi->Visual );
-                        // Only draw this as a morphmesh when rendering the main scene or when rendering as ghost
-                        if ( GetRenderingStage() == DES_MAIN || GetRenderingStage() == DES_GHOST ) {
-                            // Update constantbuffer
+                if ( distance < 1000 && isMMS ) {
+                    zCMorphMesh* mm = reinterpret_cast<zCMorphMesh*>( mvi->Visual );
+                    // Only draw this as a morphmesh when rendering the main scene or when rendering as ghost
+                    if ( GetRenderingStage() == DES_MAIN || GetRenderingStage() == DES_GHOST ) {
+                        // Update constantbuffer
 
-                            if ( updateState ) {
-                                mm->AdvanceAnis();
-                                mm->CalcVertexPositions();
-                            }
-                            Engine::GAPI->DrawMorphMesh( mm, mvi->Meshes );
-                            continue;
+                        if ( updateState ) {
+                            mm->AdvanceAnis();
+                            mm->CalcVertexPositions();
+                        }
+                        Engine::GAPI->DrawMorphMesh( mm, mvi->Meshes );
+                        continue;
+                    }
+                }
+
+                // Go through all materials registered here
+                if ( GetRenderingStage() == DES_SHADOWMAP
+                    || GetRenderingStage() == DES_SHADOWMAP_CUBE ) {
+                    for ( auto const& itm : mvi->Meshes ) {
+                        // no texture binding for shadowmap
+
+                        // Go through all meshes using that material
+                        for ( unsigned int m = 0; m < itm.second.size(); m++ ) {
+                            Engine::GAPI->DrawMeshInfo( itm.first, itm.second[m] );
                         }
                     }
-
-                    // Go through all materials registered here
-                    if ( GetRenderingStage() == DES_SHADOWMAP
-                        || GetRenderingStage() == DES_SHADOWMAP_CUBE ) {
-                        for ( auto const& itm : mvi->Meshes ) {
-                            // no texture binding for shadowmap
-
-                            // Go through all meshes using that material
-                            for ( unsigned int m = 0; m < itm.second.size(); m++ ) {
-                                Engine::GAPI->DrawMeshInfo( itm.first, itm.second[m] );
-                            }
+                } else {
+                    for ( auto const& itm : mvi->Meshes ) {
+                        zCTexture* texture;
+                        if ( itm.first && (texture = itm.first->GetAniTexture()) != nullptr ) {
+                            if ( !BindTextureNRFX( texture, (GetRenderingStage() == DES_MAIN || GetRenderingStage() == DES_GHOST) ) )
+                                continue;
                         }
-                    } else {
-                        for ( auto const& itm : mvi->Meshes ) {
-                            zCTexture* texture;
-                            if ( itm.first && (texture = itm.first->GetAniTexture()) != nullptr ) {
-                                if ( !BindTextureNRFX( texture, (GetRenderingStage() == DES_MAIN || GetRenderingStage() == DES_GHOST) ) )
-                                    continue;
-                            }
 
-                            // Go through all meshes using that material
-                            for ( unsigned int m = 0; m < itm.second.size(); m++ ) {
-                                Engine::GAPI->DrawMeshInfo( itm.first, itm.second[m] );
-                            }
+                        // Go through all meshes using that material
+                        for ( unsigned int m = 0; m < itm.second.size(); m++ ) {
+                            Engine::GAPI->DrawMeshInfo( itm.first, itm.second[m] );
                         }
                     }
                 }
