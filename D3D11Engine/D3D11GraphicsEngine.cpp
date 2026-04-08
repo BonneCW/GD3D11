@@ -2495,7 +2495,7 @@ void D3D11GraphicsEngine::DrawSkeletalMeshVobs(
         if ( linearDepth ) {
             ActivePS = ShaderManager->GetPShader( PShaderID::PS_LinDepth );
             ActivePS->Apply();
-        } else if ( RenderingStage == DES_SHADOWMAP ) {
+        } else if ( RenderingStage == DES_SHADOWMAP) {
             // Unbind PixelShader in this case
             if (ActivePS) {
                 Context->PSSetShader( nullptr, nullptr, 0 );
@@ -2883,16 +2883,24 @@ void D3D11GraphicsEngine::DrawSkeletalMeshVobs(
     // Sort by required shaders first, then texture, then mesh to minimize state changes
     // By sorting ->HasAlphaChannel() first, we ensure minimum shader changes
     // then sorting by texture pointer groups nulls together for shadow passes, and also minimizes texture changes for main/ghost
-    std::sort( instancedDrawItems.begin(), instancedDrawItems.end(),
-        []( const NodeAttachmentDrawItem& a, const NodeAttachmentDrawItem& b ) {
-            bool aAlpha = a.texture ? a.texture->HasAlphaChannel() : false;
-            bool bAlpha = b.texture ? b.texture->HasAlphaChannel() : false;
-            if ( aAlpha != bAlpha )
-                return aAlpha < bAlpha; // non-alpha first
-            if ( a.texture != b.texture )
-                return a.texture < b.texture; // sort by texture pointer
-            return a.mesh->MeshVertexBuffer.get() < b.mesh->MeshVertexBuffer.get(); // sort by mesh VB pointer
-        } );
+    
+    if (wantShader) {
+        std::sort( instancedDrawItems.begin(), instancedDrawItems.end(),
+          []( const NodeAttachmentDrawItem& a, const NodeAttachmentDrawItem& b ) {
+              bool aAlpha = a.texture ? a.texture->HasAlphaChannel() : false;
+              bool bAlpha = b.texture ? b.texture->HasAlphaChannel() : false;
+              if ( aAlpha != bAlpha )
+                  return aAlpha < bAlpha; // non-alpha firstes
+              if ( a.texture != b.texture )
+                  return a.texture < b.texture; // sort by texture pointer
+              return a.mesh->MeshVertexBuffer.get() < b.mesh->MeshVertexBuffer.get(); // sort by mesh VB pointer
+          } );
+    } else {
+        std::sort( instancedDrawItems.begin(), instancedDrawItems.end(),
+          []( const NodeAttachmentDrawItem& a, const NodeAttachmentDrawItem& b ) {
+              return a.mesh->MeshVertexBuffer.get() < b.mesh->MeshVertexBuffer.get(); // sort by mesh VB pointer
+          } );
+    }
 
     // Ensure instance buffer is large enough
     const size_t neededBytes = instancedDrawItems.size() * sizeof( NodeAttachmentInstanceData );
